@@ -1,8 +1,20 @@
-[README.md](https://github.com/user-attachments/files/26828897/README.md)
 # 정결 Design Studio — 인테리어 견적·설문 시스템
 
 ## 프로젝트 개요
 인테리어 리모델링 견적 작성, 자재/노무비 관리, 고객 설문 수집 및 관리를 위한 통합 웹 시스템입니다.
+
+---
+
+## 데이터 스토리지
+
+| 항목 | 서비스 | 비고 |
+|------|--------|------|
+| 고객 설문 데이터 | **Supabase** `survey_responses` | 젠스파크 구독 독립적 |
+| 자재/노무비/공정 DB | localStorage | 브라우저 로컬 저장 |
+| 견적 데이터 | localStorage (`iq_estimates`) | 브라우저 로컬 저장 |
+| 관리자 로그인 | **Supabase Auth** | 이메일/패스워드 인증 |
+
+**Supabase 프로젝트:** https://isrimiwqqytzzqjovtot.supabase.co
 
 ---
 
@@ -12,7 +24,8 @@
 - 5-PART 구성의 인테리어 사전 준비 체크리스트
 - 모바일 최적화 UI (max-width 620px)
 - 실시간 진행률 표시
-- 제출 시 REST API(`tables/survey_responses`)에 자동 저장
+- 제출 시 **Supabase** `survey_responses` 테이블에 저장 (메인)
+- 젠스파크 내부 API(`tables/survey_responses`)에도 병행 저장 (백업)
 - 제출 완료 화면 표시
 
 **설문 구성 (v3.0):**

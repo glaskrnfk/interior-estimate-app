@@ -1035,13 +1035,71 @@ async function submitSurvey() {
     adminMemo      : ''
   };
 
+  /* ── Supabase 설정 ── */
+  const SB_URL = 'https://isrimiwqqytzzqjovtot.supabase.co';
+  const SB_KEY = 'sb_publishable_Znfb1pe1hz7cA1BmMJBLLQ_xIR7EbMB';
+
+  /* Supabase용 payload (snake_case 컬럼명) */
+  const sbPayload = {
+    submitted_at      : payload.submittedAt,
+    status            : payload.status,
+    admin_status      : payload.adminStatus,
+    client_name       : payload.clientName,
+    client_phone      : payload.clientPhone,
+    purpose           : payload.purpose,
+    start_date        : payload.startDate,
+    move_in_date      : payload.moveInDate,
+    budget            : payload.budget,
+    priority1         : payload.priority1,
+    priority2         : payload.priority2,
+    improve_spaces    : payload.improveSpaces,
+    family_info       : payload.familyInfo,
+    site_address      : payload.siteAddress,
+    site_size         : payload.siteSize,
+    apt_type          : payload.aptType,
+    move_status       : payload.moveStatus,
+    construction_scope: payload.constructionScope,
+    kitchen_style     : payload.kitchenStyle,
+    kitchen_notes     : payload.kitchenNotes,
+    bathroom_count    : payload.bathroomCount,
+    bathroom_style    : payload.bathroomStyle,
+    floor_material    : payload.floorMaterial,
+    wall_style        : payload.wallStyle,
+    lighting_style    : payload.lightingStyle,
+    overall_style     : payload.overallStyle,
+    color_prefer      : payload.colorPrefer,
+    custom_furniture  : payload.customFurniture,
+    system_ac         : payload.systemAC,
+    floor_heating     : payload.floorHeating,
+    concerns          : payload.concerns,
+    reference_images  : payload.referenceImages,
+    additional_notes  : payload.additionalNotes,
+    admin_memo        : ''
+  };
+
   try {
-    const res = await fetch('tables/survey_responses', {
+    /* 1차: 젠스파크 내부 저장 (실패해도 계속) */
+    fetch('tables/survey_responses', {
       method  : 'POST',
       headers : { 'Content-Type': 'application/json' },
       body    : JSON.stringify(payload)
+    }).catch(() => {});
+
+    /* 2차: Supabase 저장 (메인) */
+    const res = await fetch(SB_URL + '/rest/v1/survey_responses', {
+      method  : 'POST',
+      headers : {
+        'Content-Type'  : 'application/json',
+        'apikey'        : SB_KEY,
+        'Authorization' : 'Bearer ' + SB_KEY,
+        'Prefer'        : 'return=minimal'
+      },
+      body    : JSON.stringify(sbPayload)
     });
-    if (!res.ok) throw new Error('서버 오류 ' + res.status);
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error('Supabase 오류 ' + res.status + ': ' + errText);
+    }
 
     // 완료 화면
     document.getElementById('loading-overlay').classList.remove('show');

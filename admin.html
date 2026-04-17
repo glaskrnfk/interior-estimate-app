@@ -202,6 +202,31 @@ input[type=number] { user-select:none; }
 </head>
 <body>
 
+<!-- ━━━ Supabase 로그인 오버레이 ━━━ -->
+<div id="sb-login-overlay" style="
+  display:none; position:fixed; inset:0; z-index:9999;
+  background:linear-gradient(135deg,#1a3e72 0%,#2563b0 100%);
+  align-items:center; justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:48px 40px;width:360px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.35);text-align:center">
+    <div style="font-size:40px;margin-bottom:12px">🔐</div>
+    <h2 style="font-size:20px;font-weight:800;color:#1a3e72;margin-bottom:6px">관리자 로그인</h2>
+    <p style="font-size:13px;color:#888;margin-bottom:28px">정결 Design Studio 어드민</p>
+    <div id="sb-login-error" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;font-size:13px;color:#dc2626;margin-bottom:16px"></div>
+    <input id="sb-email" type="email" placeholder="이메일" autocomplete="username"
+      style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid #e1e4e8;border-radius:8px;font-size:14px;margin-bottom:12px;outline:none"
+      onkeydown="if(event.key==='Enter')document.getElementById('sb-password').focus()">
+    <input id="sb-password" type="password" placeholder="비밀번호" autocomplete="current-password"
+      style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid #e1e4e8;border-radius:8px;font-size:14px;margin-bottom:20px;outline:none"
+      onkeydown="if(event.key==='Enter')sbLogin()">
+    <button onclick="sbLogin()" id="sb-login-btn"
+      style="width:100%;padding:13px;background:#1a3e72;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;transition:.2s"
+      onmouseover="this.style.background='#2563b0'" onmouseout="this.style.background='#1a3e72'">
+      <i class="fas fa-sign-in-alt" style="margin-right:8px"></i>로그인
+    </button>
+    <p style="font-size:11px;color:#bbb;margin-top:20px">Supabase Auth 인증 · 정결 Design Studio</p>
+  </div>
+</div>
+
 <!-- 미저장 경고 배너 -->
 <div id="unsaved-banner">
   <i class="fas fa-exclamation-triangle"></i>
@@ -789,6 +814,164 @@ input[type=number] { user-select:none; }
 /* ════════════════════════════════════════════════════════
    관리자 페이지 – 전체 JS (storage.js 로드 후 실행)
 ════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════
+   SUPABASE 설정 & AUTH
+════════════════════════════════════════════════════════ */
+var SB_URL      = 'https://isrimiwqqytzzqjovtot.supabase.co';
+var SB_KEY      = 'sb_publishable_Znfb1pe1hz7cA1BmMJBLLQ_xIR7EbMB';
+var _sbToken    = null;   // 로그인 후 access_token
+var _sbUserId   = null;
+
+/* 공통 Supabase fetch 헤더 */
+function sbHeaders(extra) {
+    var h = {
+        'Content-Type'  : 'application/json',
+        'apikey'        : SB_KEY,
+        'Authorization' : 'Bearer ' + (_sbToken || SB_KEY)
+    };
+    if (extra) Object.assign(h, extra);
+    return h;
+}
+
+/* ── 로그인 ── */
+function sbLogin() {
+    var email = (document.getElementById('sb-email').value || '').trim();
+    var pw    = (document.getElementById('sb-password').value || '').trim();
+    var errEl = document.getElementById('sb-login-error');
+    var btn   = document.getElementById('sb-login-btn');
+    errEl.style.display = 'none';
+    if (!email || !pw) { errEl.textContent = '이메일과 비밀번호를 입력해 주세요.'; errEl.style.display = 'block'; return; }
+    btn.disabled = true; btn.textContent = '로그인 중…';
+    fetch(SB_URL + '/auth/v1/token?grant_type=password', {
+        method  : 'POST',
+        headers : { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+        body    : JSON.stringify({ email: email, password: pw })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right:8px"></i>로그인';
+        if (d.access_token) {
+            _sbToken  = d.access_token;
+            _sbUserId = d.user && d.user.id;
+            localStorage.setItem('sb_token', _sbToken);
+            document.getElementById('sb-login-overlay').style.display = 'none';
+            addLogoutBtn();
+            initPage();
+        } else {
+            errEl.textContent = d.error_description || d.msg || '로그인에 실패했습니다. 이메일/비밀번호를 확인해 주세요.';
+            errEl.style.display = 'block';
+        }
+    })
+    .catch(function() {
+        btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right:8px"></i>로그인';
+        errEl.textContent = '네트워크 오류. 잠시 후 다시 시도해 주세요.';
+        errEl.style.display = 'block';
+    });
+}
+
+/* ── 로그아웃 ── */
+function sbLogout() {
+    _sbToken = null; _sbUserId = null;
+    localStorage.removeItem('sb_token');
+    document.getElementById('sb-login-overlay').style.display = 'flex';
+    document.getElementById('sb-email').value    = '';
+    document.getElementById('sb-password').value = '';
+    document.getElementById('sb-login-error').style.display = 'none';
+}
+
+/* ── 세션 복원 확인 ── */
+function sbCheckSession(token) {
+    return fetch(SB_URL + '/auth/v1/user', {
+        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(u) {
+        if (u && u.id) { _sbToken = token; _sbUserId = u.id; return true; }
+        return false;
+    })
+    .catch(function() { return false; });
+}
+
+/* ════════════════════════════════════════════════════════
+   SUPABASE 설문 데이터 CRUD
+════════════════════════════════════════════════════════ */
+
+/* SELECT — 최신 200건 */
+function sbLoadSurveys() {
+    return fetch(SB_URL + '/rest/v1/survey_responses?select=*&order=submitted_at.desc&limit=200', {
+        headers: sbHeaders({ 'Range': '0-199' })
+    })
+    .then(function(r) {
+        if (!r.ok) throw new Error('조회 실패 ' + r.status);
+        return r.json();
+    })
+    .then(function(rows) {
+        /* snake_case → camelCase 변환 */
+        return rows.map(function(r) { return sbToCamel(r); });
+    });
+}
+
+/* PATCH — 상태 변경 */
+function sbUpdateSurvey(id, fields) {
+    return fetch(SB_URL + '/rest/v1/survey_responses?id=eq.' + id, {
+        method  : 'PATCH',
+        headers : sbHeaders({ 'Prefer': 'return=minimal' }),
+        body    : JSON.stringify(fields)
+    })
+    .then(function(r) { if (!r.ok) throw new Error('수정 실패 ' + r.status); });
+}
+
+/* DELETE */
+function sbDeleteSurvey(id) {
+    return fetch(SB_URL + '/rest/v1/survey_responses?id=eq.' + id, {
+        method  : 'DELETE',
+        headers : sbHeaders()
+    })
+    .then(function(r) { if (!r.ok) throw new Error('삭제 실패 ' + r.status); });
+}
+
+/* snake_case → camelCase 필드 매핑 */
+function sbToCamel(r) {
+    return {
+        id              : r.id,
+        created_at      : r.created_at,
+        submittedAt     : r.submitted_at,
+        status          : r.status          || '신규',
+        adminStatus     : r.admin_status    || r.status || '신규',
+        adminMemo       : r.admin_memo      || '',
+        clientName      : r.client_name     || '',
+        clientPhone     : r.client_phone    || '',
+        purpose         : r.purpose         || [],
+        startDate       : r.start_date      || '',
+        moveInDate      : r.move_in_date    || '',
+        budget          : r.budget          || '',
+        priority1       : r.priority1       || '',
+        priority2       : r.priority2       || '',
+        improveSpaces   : r.improve_spaces  || '',
+        familyInfo      : r.family_info     || '',
+        siteAddress     : r.site_address    || '',
+        siteSize        : r.site_size       || '',
+        aptType         : r.apt_type        || '',
+        moveStatus      : r.move_status     || '',
+        constructionScope: r.construction_scope || [],
+        kitchenStyle    : r.kitchen_style   || '',
+        kitchenNotes    : r.kitchen_notes   || '',
+        bathroomCount   : r.bathroom_count  || '',
+        bathroomStyle   : r.bathroom_style  || '',
+        floorMaterial   : r.floor_material  || '',
+        wallStyle       : r.wall_style      || [],
+        lightingStyle   : r.lighting_style  || '',
+        overallStyle    : r.overall_style   || [],
+        colorPrefer     : r.color_prefer    || '',
+        customFurniture : r.custom_furniture|| [],
+        systemAC        : r.system_ac       || '',
+        floorHeating    : r.floor_heating   || '',
+        concerns        : r.concerns        || '',
+        referenceImages : r.reference_images|| '',
+        additionalNotes : r.additional_notes|| ''
+    };
+}
 
 /* ── 미저장 변경 추적 ──────────────────────── */
 var _hasUnsaved = false;
@@ -1858,14 +2041,13 @@ function copySurveyUrl() {
 function loadSurveyResponses() {
     var body = document.getElementById('survey-list-body');
     if (body) body.innerHTML = '<div style="text-align:center;padding:40px;color:#aaa"><i class="fas fa-spinner fa-spin" style="font-size:28px;display:block;margin-bottom:12px"></i>로딩 중…</div>';
-    fetch('tables/survey_responses?limit=200&sort=created_at')
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-            _surveyRecords = (data.data || []).sort(function(a,b) { return (b.created_at||0) - (a.created_at||0); });
+    sbLoadSurveys()
+        .then(function(rows) {
+            _surveyRecords = rows;
             updateSurveyBadge(); renderSurveyList(); initSurveyUrl();
         })
         .catch(function(e) {
-            if (body) body.innerHTML = '<div style="text-align:center;padding:40px;color:#dc2626"><i class="fas fa-exclamation-triangle" style="font-size:28px;display:block;margin-bottom:12px"></i>로딩 실패. 새로고침 버튼을 눌러주세요.</div>';
+            if (body) body.innerHTML = '<div style="text-align:center;padding:40px;color:#dc2626"><i class="fas fa-exclamation-triangle" style="font-size:28px;display:block;margin-bottom:12px"></i>로딩 실패. 새로고침 버튼을 눌러주세요.<br><small style="font-size:11px;color:#999;margin-top:8px;display:block">' + (e.message||'') + '</small></div>';
         });
 }
 
@@ -1973,34 +2155,30 @@ function openSurveyDetail(id) {
 function saveSurveyStatus() {
     if (!_currentSurveyId) return;
     var st  = document.getElementById('sv-status-select').value;
-    fetch('tables/survey_responses/' + _currentSurveyId, {
-        method : 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body   : JSON.stringify({ adminStatus: st, status: st })
-    }).then(function() {
-        for (var i = 0; i < _surveyRecords.length; i++) {
-            if (_surveyRecords[i].id === _currentSurveyId) {
-                _surveyRecords[i].adminStatus = st; _surveyRecords[i].status = st; break;
+    sbUpdateSurvey(_currentSurveyId, { admin_status: st, status: st })
+        .then(function() {
+            for (var i = 0; i < _surveyRecords.length; i++) {
+                if (_surveyRecords[i].id === _currentSurveyId) {
+                    _surveyRecords[i].adminStatus = st; _surveyRecords[i].status = st; break;
+                }
             }
-        }
-        updateSurveyBadge(); renderSurveyList();
-        showToast('✅ 상태가 "' + st + '"(으)로 변경되었습니다.');
-    }).catch(function() { showToast('저장 실패. 다시 시도해주세요.'); });
+            updateSurveyBadge(); renderSurveyList();
+            showToast('✅ 상태가 "' + st + '"(으)로 변경되었습니다.');
+        })
+        .catch(function() { showToast('저장 실패. 다시 시도해주세요.'); });
 }
 
 function saveSurveyMemo() {
     if (!_currentSurveyId) return;
     var memo = document.getElementById('sv-memo-input').value;
-    fetch('tables/survey_responses/' + _currentSurveyId, {
-        method : 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body   : JSON.stringify({ adminMemo: memo })
-    }).then(function() {
-        for (var i = 0; i < _surveyRecords.length; i++) {
-            if (_surveyRecords[i].id === _currentSurveyId) { _surveyRecords[i].adminMemo = memo; break; }
-        }
-        showToast('✅ 메모가 저장되었습니다.');
-    }).catch(function() { showToast('저장 실패.'); });
+    sbUpdateSurvey(_currentSurveyId, { admin_memo: memo })
+        .then(function() {
+            for (var i = 0; i < _surveyRecords.length; i++) {
+                if (_surveyRecords[i].id === _currentSurveyId) { _surveyRecords[i].adminMemo = memo; break; }
+            }
+            showToast('✅ 메모가 저장되었습니다.');
+        })
+        .catch(function() { showToast('저장 실패.'); });
 }
 
 function deleteSurveyResponse() {
@@ -2009,13 +2187,14 @@ function deleteSurveyResponse() {
     for (var i = 0; i < _surveyRecords.length; i++) if (_surveyRecords[i].id === _currentSurveyId) { r = _surveyRecords[i]; break; }
     if (!r) return;
     if (!confirm('"' + r.clientName + '" 님의 설문 응답을 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.')) return;
-    fetch('tables/survey_responses/' + _currentSurveyId, { method:'DELETE' })
+    sbDeleteSurvey(_currentSurveyId)
         .then(function() {
             _surveyRecords = _surveyRecords.filter(function(x) { return x.id !== _currentSurveyId; });
             _currentSurveyId = null;
             closeModal('survey-detail-modal'); updateSurveyBadge(); renderSurveyList();
             showToast('설문 응답이 삭제되었습니다.');
-        }).catch(function() { showToast('삭제 실패.'); });
+        })
+        .catch(function() { showToast('삭제 실패.'); });
 }
 
 function printSurveyDetail() {
@@ -2063,22 +2242,53 @@ function initPage() {
     var cnt   = loadContractedEstimates().length;
     var badge = document.getElementById('contract-count');
     if (badge) badge.textContent = cnt;
-    /* 설문 신규 건수 배지 */
-    fetch('tables/survey_responses?limit=200')
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-            var rows    = d.data || [];
+    /* 설문 신규 건수 배지 — Supabase */
+    sbLoadSurveys()
+        .then(function(rows) {
             var newCnt  = rows.filter(function(r) { return (r.adminStatus||r.status||'신규') === '신규'; }).length;
             var svBadge = document.getElementById('survey-new-count');
             if (svBadge) svBadge.textContent = newCnt > 0 ? newCnt : '0';
         }).catch(function() {});
 }
 
-/* DOM 로드 완료 후 초기화 */
+/* ── 헤더에 로그아웃 버튼 추가 ── */
+function addLogoutBtn() {
+    var hr = document.querySelector('.header-right');
+    if (!hr || document.getElementById('sb-logout-btn')) return;
+    var btn = document.createElement('button');
+    btn.id = 'sb-logout-btn';
+    btn.className = 'btn btn-secondary';
+    btn.style.color = '#dc2626';
+    btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> 로그아웃';
+    btn.onclick = sbLogout;
+    hr.appendChild(btn);
+}
+
+/* DOM 로드 완료 후 — Supabase 세션 확인 후 초기화 */
+function startApp() {
+    var savedToken = localStorage.getItem('sb_token');
+    var overlay    = document.getElementById('sb-login-overlay');
+    if (savedToken) {
+        /* 저장된 토큰으로 세션 유효성 확인 */
+        sbCheckSession(savedToken).then(function(valid) {
+            if (valid) {
+                overlay.style.display = 'none';
+                addLogoutBtn();
+                initPage();
+            } else {
+                localStorage.removeItem('sb_token');
+                overlay.style.display = 'flex';
+            }
+        });
+    } else {
+        overlay.style.display = 'flex';
+    }
+}
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() { initPage(); });
+    document.addEventListener('DOMContentLoaded', startApp);
 } else {
-    initPage();
+    startApp();
 }
 </script>
 </body>
