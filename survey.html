@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>인테리어 사전 준비 체크리스트 | 정결 Design Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="libs/fontawesome.min.css" rel="stylesheet">
+
+<style>
+/* ══════════════════════════════════════════════
+   CSS 변수 & 리셋
+══════════════════════════════════════════════ */
+:root {
+  --jk-black:   #1a1a1a;
+  --jk-dark:    #2d2d2d;
+  --jk-gray:    #6b7280;
+  --jk-light:   #f5f4f0;
+  --jk-border:  #e5e0d8;
+  --jk-accent:  #8b6f47;
+  --jk-accent2: #c4a882;
+  --jk-gold:    #d4af7a;
+  --jk-bg:      #faf9f6;
+  --jk-white:   #ffffff;
+  --jk-green:   #4a7c59;
+  --jk-red:     #c0392b;
+  --radius:     12px;
+  --radius-sm:  8px;
+  --shadow:     0 4px 24px rgba(0,0,0,.08);
+  --shadow-sm:  0 2px 8px rgba(0,0,0,.06);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--jk-bg);
+  color: var(--jk-black);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ══════════════════════════════════════════════
+   헤더 커버
+══════════════════════════════════════════════ */
+.survey-cover {
+  background: var(--jk-black);
+  color: #fff;
+  padding: 52px 24px 44px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.survey-cover::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2520 50%, #1a1a1a 100%);
+}
+.survey-cover::after {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 200px; height: 200px;
+  border: 1px solid rgba(212,175,122,.2);
+  border-radius: 50%;
+}
+.cover-inner { position: relative; z-index: 1; max-width: 540px; margin: 0 auto; }
+.brand-logo {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 13px; letter-spacing: 5px;
+  color: var(--jk-gold); margin-bottom: 6px;
+  text-transform: uppercase;
+}
+.brand-subtitle {
+  font-size: 11px; color: rgba(255,255,255,.4);
+  letter-spacing: 2px; margin-bottom: 32px;
+}
+.cover-divider {
+  width: 40px; height: 1px;
+  background: var(--jk-gold);
+  margin: 0 auto 28px;
+}
+.cover-title {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 22px; font-weight: 700;
+  line-height: 1.4; margin-bottom: 16px;
+  letter-spacing: -0.5px;
+}
+.cover-desc {
+  font-size: 13px; color: rgba(255,255,255,.65);
+  line-height: 1.8; margin-bottom: 28px;
+}
+.cover-note {
+  display: inline-block;
+  background: rgba(212,175,122,.12);
+  border: 1px solid rgba(212,175,122,.3);
+  border-radius: 99px;
+  padding: 8px 20px;
+  font-size: 12px; color: var(--jk-gold);
+  letter-spacing: 0.5px;
+}
+
+/* ══════════════════════════════════════════════
+   진행 바
+══════════════════════════════════════════════ */
+.progress-bar-wrap {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--jk-white);
+  border-bottom: 1px solid var(--jk-border);
+  padding: 10px 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.progress-info {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 7px;
+}
+.progress-label { font-size: 12px; font-weight: 600; color: var(--jk-gray); }
+.progress-pct   { font-size: 12px; font-weight: 700; color: var(--jk-accent); }
+.progress-bar {
+  height: 4px; background: #ebe8e2;
+  border-radius: 99px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--jk-accent), var(--jk-gold));
+  border-radius: 99px; transition: width .4s ease;
+}
+
+/* ══════════════════════════════════════════════
+   메인 레이아웃
+══════════════════════════════════════════════ */
+.survey-main {
+  max-width: 620px; margin: 0 auto;
+  padding: 24px 16px 100px;
+}
+
+/* ══════════════════════════════════════════════
+   파트 구분
+══════════════════════════════════════════════ */
+.part-header {
+  margin: 36px 0 20px;
+  padding: 20px 22px;
+  background: var(--jk-black);
+  border-radius: var(--radius);
+  color: #fff;
+  position: relative; overflow: hidden;
+}
+.part-header::after {
+  content: '';
+  position: absolute; right: -20px; top: -20px;
+  width: 100px; height: 100px;
+  border: 1px solid rgba(212,175,122,.15);
+  border-radius: 50%;
+}
+.part-num {
+  font-size: 11px; letter-spacing: 3px;
+  color: var(--jk-gold); font-weight: 600;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+.part-title {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 17px; font-weight: 700;
+  line-height: 1.4; color: #fff;
+}
+.part-subtitle {
+  font-size: 12px; color: rgba(255,255,255,.5);
+  margin-top: 5px;
+}
+
+/* ══════════════════════════════════════════════
+   질문 카드
+══════════════════════════════════════════════ */
+.q-card {
+  background: var(--jk-white);
+  border-radius: var(--radius);
+  border: 1px solid var(--jk-border);
+  padding: 20px 20px 22px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow .2s;
+}
+.q-card:focus-within { box-shadow: 0 4px 16px rgba(139,111,71,.15); border-color: var(--jk-accent2); }
+
+.q-label {
+  font-size: 13.5px; font-weight: 700;
+  color: var(--jk-black); line-height: 1.55;
+  margin-bottom: 4px;
+}
+.q-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  background: var(--jk-accent); color: #fff;
+  border-radius: 50%; font-size: 11px; font-weight: 700;
+  margin-right: 7px; flex-shrink: 0; vertical-align: middle;
+}
+.q-hint {
+  font-size: 11.5px; color: var(--jk-gray);
+  margin-bottom: 13px; padding-left: 29px;
+  line-height: 1.6;
+}
+.q-required { color: #c0392b; margin-left: 3px; }
+.q-optional {
+  display: inline-block;
+  background: #f0ece6; color: var(--jk-accent);
+  font-size: 10px; font-weight: 700;
+  padding: 1px 7px; border-radius: 99px;
+  margin-left: 6px; vertical-align: middle;
+}
+
+/* ── 입력 필드 ── */
+.q-input, .q-textarea, .q-select {
+  width: 100%; padding: 11px 14px;
+  border: 1.5px solid var(--jk-border);
+  border-radius: var(--radius-sm);
+  font: 14px 'Noto Sans KR', sans-serif;
+  color: var(--jk-black);
+  background: var(--jk-bg);
+  transition: border .15s, box-shadow .15s;
+  -webkit-appearance: none;
+}
+.q-input:focus, .q-textarea:focus, .q-select:focus {
+  outline: none;
+  border-color: var(--jk-accent);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(139,111,71,.1);
+}
+.q-textarea { resize: vertical; min-height: 80px; line-height: 1.7; }
+.q-select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; cursor: pointer; }
+
+/* 입력 그리드 (날짜 2칸) */
+.q-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media(max-width:400px){ .q-grid-2{ grid-template-columns:1fr; } }
+.q-input-label { font-size: 11.5px; font-weight: 700; color: var(--jk-gray); margin-bottom: 5px; }
+
+/* ── 체크박스 옵션 ── */
+.options-grid {
+  display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+}
+.options-grid.col2 { grid-template-columns: 1fr 1fr; }
+.options-grid.col1 { grid-template-columns: 1fr; }
+
+.opt-item {
+  position: relative;
+  cursor: pointer;
+}
+.opt-item input { position: absolute; opacity: 0; width: 0; height: 0; }
+.opt-box {
+  display: flex; align-items: center; gap: 9px;
+  padding: 10px 13px;
+  border: 1.5px solid var(--jk-border);
+  border-radius: var(--radius-sm);
+  background: var(--jk-bg);
+  font-size: 13px; font-weight: 500; color: var(--jk-dark);
+  transition: .15s; user-select: none;
+}
+.opt-box .opt-check {
+  width: 18px; height: 18px; border-radius: 4px;
+  border: 1.5px solid #c8bfb0;
+  background: #fff; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: .15s;
+}
+/* radio 스타일 */
+.opt-item.radio .opt-box .opt-check { border-radius: 50%; }
+
+.opt-item input:checked ~ .opt-box {
+  border-color: var(--jk-accent);
+  background: #fdf8f2;
+  color: var(--jk-accent);
+}
+.opt-item input:checked ~ .opt-box .opt-check {
+  background: var(--jk-accent);
+  border-color: var(--jk-accent);
+}
+.opt-item input:checked ~ .opt-box .opt-check::after {
+  content: '';
+  width: 6px; height: 10px;
+  border: 2px solid #fff;
+  border-top: none; border-left: none;
+  transform: rotate(45deg) translate(-1px,-1px);
+  display: block;
+}
+/* radio 내부 점 */
+.opt-item.radio input:checked ~ .opt-box .opt-check::after {
+  width: 7px; height: 7px;
+  background: #fff; border: none;
+  border-radius: 50%;
+  transform: none;
+}
+
+/* 범위 슬라이더 */
+.budget-chips {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;
+}
+.budget-chip {
+  padding: 8px 14px;
+  border: 1.5px solid var(--jk-border);
+  border-radius: 99px; font-size: 13px; font-weight: 600;
+  background: var(--jk-bg); color: var(--jk-dark);
+  cursor: pointer; transition: .15s; user-select: none;
+}
+.budget-chip.selected {
+  background: var(--jk-accent); color: #fff; border-color: var(--jk-accent);
+}
+
+/* ── 구분선 ── */
+.q-divider {
+  height: 1px; background: var(--jk-border);
+  margin: 8px 0 14px;
+}
+
+/* ── 기타 입력 (조건부 표시) ── */
+.q-etc-wrap { margin-top: 8px; }
+
+/* ══════════════════════════════════════════════
+   고객 정보 카드 (상단 고정)
+══════════════════════════════════════════════ */
+.client-info-card {
+  background: var(--jk-white);
+  border-radius: var(--radius);
+  border: 1.5px solid var(--jk-gold);
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 12px rgba(212,175,122,.15);
+}
+.client-info-card .ci-title {
+  font-size: 13px; font-weight: 800;
+  color: var(--jk-accent); margin-bottom: 14px;
+  display: flex; align-items: center; gap: 7px;
+}
+
+/* ══════════════════════════════════════════════
+   섹션 인트로
+══════════════════════════════════════════════ */
+.section-intro {
+  font-size: 12px; color: var(--jk-gray);
+  background: #f7f4ef; border-left: 3px solid var(--jk-gold);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 10px 14px; margin-bottom: 14px;
+  line-height: 1.7;
+}
+
+/* ══════════════════════════════════════════════
+   제출 버튼 영역
+══════════════════════════════════════════════ */
+.submit-area {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: rgba(255,255,255,.96);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--jk-border);
+  padding: 14px 20px;
+  z-index: 200;
+  max-width: 100%; box-shadow: 0 -4px 16px rgba(0,0,0,.08);
+}
+.submit-inner { max-width: 620px; margin: 0 auto; }
+.btn-submit {
+  width: 100%; padding: 16px;
+  background: var(--jk-black);
+  color: #fff;
+  border: none; border-radius: var(--radius-sm);
+  font: 700 15px 'Noto Sans KR', sans-serif;
+  cursor: pointer; transition: .2s;
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  letter-spacing: 0.5px;
+}
+.btn-submit:hover { background: var(--jk-dark); transform: translateY(-1px); }
+.btn-submit:active { transform: translateY(0); }
+.btn-submit:disabled { background: #aaa; cursor: not-allowed; transform: none; }
+.btn-submit .submit-icon { font-size: 16px; }
+
+/* ══════════════════════════════════════════════
+   완료 화면
+══════════════════════════════════════════════ */
+#complete-screen {
+  display: none;
+  text-align: center;
+  padding: 60px 24px 40px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+.complete-icon {
+  width: 80px; height: 80px;
+  background: var(--jk-black);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 24px;
+  font-size: 32px; color: var(--jk-gold);
+}
+.complete-title {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 22px; font-weight: 700;
+  margin-bottom: 14px; color: var(--jk-black);
+}
+.complete-desc {
+  font-size: 14px; color: var(--jk-gray);
+  line-height: 1.8; margin-bottom: 32px;
+}
+.complete-card {
+  background: #f7f4ef;
+  border: 1px solid var(--jk-border);
+  border-radius: var(--radius);
+  padding: 20px; text-align: left;
+  margin-bottom: 24px;
+}
+.complete-card-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 13px; padding: 6px 0;
+  border-bottom: 1px solid #ede9e2;
+}
+.complete-card-row:last-child { border-bottom: none; }
+.ccr-label { color: var(--jk-gray); font-weight: 600; min-width: 90px; flex-shrink: 0; }
+.ccr-value { color: var(--jk-black); font-weight: 600; }
+.complete-brand {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 13px; letter-spacing: 3px;
+  color: var(--jk-accent);
+}
+
+/* ══════════════════════════════════════════════
+   로딩 오버레이
+══════════════════════════════════════════════ */
+#loading-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(26,26,26,.85);
+  z-index: 1000;
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  color: #fff;
+}
+#loading-overlay.show { display: flex; }
+.loading-spinner {
+  width: 44px; height: 44px;
+  border: 3px solid rgba(212,175,122,.3);
+  border-top-color: var(--jk-gold);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  margin-bottom: 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 14px; color: rgba(255,255,255,.8); letter-spacing: 1px; }
+
+/* ══════════════════════════════════════════════
+   오류 토스트
+══════════════════════════════════════════════ */
+#toast {
+  position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+  background: var(--jk-red); color: #fff;
+  padding: 12px 22px; border-radius: 8px;
+  font-size: 13.5px; font-weight: 600;
+  box-shadow: 0 4px 16px rgba(0,0,0,.2);
+  z-index: 500; display: none; white-space: nowrap;
+  transition: opacity .3s;
+}
+
+/* ══════════════════════════════════════════════
+   모바일 최적화
+══════════════════════════════════════════════ */
+@media(max-width: 480px) {
+  .survey-cover { padding: 44px 20px 36px; }
+  .cover-title { font-size: 19px; }
+  .part-title { font-size: 15px; }
+  .q-label { font-size: 13px; }
+  .options-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- 로딩 오버레이 -->
+<div id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">제출 중입니다…</div>
+</div>
+
+<!-- 오류 토스트 -->
+<div id="toast"></div>
+
+<!-- ════ 커버 ════ -->
+<div class="survey-cover" id="survey-cover">
+  <div class="cover-inner">
+    <div class="brand-logo">JUNG KYUL DESIGN STUDIO</div>
+    <div class="brand-subtitle">"공간의 결을 바로 세우다" 정결(正潔)</div>
+    <div class="cover-divider"></div>
+    <div class="cover-title">인테리어 사전 준비<br>체크리스트</div>
+    <p class="cover-desc">
+      이 설문은 단순 항목 나열이 아닌,<br>
+      '집의 본질'을 함께 고민하기 위한 질문들로 구성되어 있습니다.<br>
+      어려운 항목은 건너뛰셔도 됩니다.
+    </p>
+    <span class="cover-note">✦ 원활한 상담을 위한 참고 자료입니다</span>
+  </div>
+</div>
+
+<!-- ════ 진행 바 ════ -->
+<div class="progress-bar-wrap">
+  <div class="progress-info">
+    <span class="progress-label" id="progress-label">작성 시작 전</span>
+    <span class="progress-pct" id="progress-pct">0%</span>
+  </div>
+  <div class="progress-bar">
+    <div class="progress-fill" id="progress-fill"></div>
+  </div>
+</div>
+
+<!-- ════ 설문 본문 ════ -->
+<main class="survey-main" id="survey-form-wrap">
+
+  <!-- ── 고객 기본 정보 ── -->
+  <div class="client-info-card" style="margin-top:8px">
+    <div class="ci-title"><i class="fas fa-user-circle"></i> 고객 기본 정보</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div>
+        <div class="q-input-label">성함 <span class="q-required">*</span></div>
+        <input class="q-input" id="clientName" placeholder="홍길동" required>
+      </div>
+      <div>
+        <div class="q-input-label">연락처 <span class="q-required">*</span></div>
+        <input class="q-input" id="clientPhone" type="tel" placeholder="010-0000-0000" required>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PART 1 ══ -->
+  <div class="part-header">
+    <div class="part-num">PART 01</div>
+    <div class="part-title">기본 정보 및 우선 순위</div>
+    <div class="part-subtitle">The Foundation — 리모델링의 목적과 방향을 파악합니다</div>
+  </div>
+
+  <!-- Q1 목적 -->
+  <div class="q-card" data-required="true">
+    <div class="q-label"><span class="q-num">1</span>이번 리모델링의 가장 큰 목적은 무엇인가요? <span class="q-required">*</span></div>
+    <div class="q-hint">해당하는 항목을 모두 선택해 주세요</div>
+    <div class="options-grid col2" id="q-purpose">
+      <label class="opt-item"><input type="checkbox" name="purpose" value="노후수리"><span class="opt-box"><span class="opt-check"></span>노후 수리</span></label>
+      <label class="opt-item"><input type="checkbox" name="purpose" value="이사전리모델링"><span class="opt-box"><span class="opt-check"></span>이사 전 리모델링</span></label>
+      <label class="opt-item"><input type="checkbox" name="purpose" value="확장및구조변경"><span class="opt-box"><span class="opt-check"></span>확장·구조 변경</span></label>
+      <label class="opt-item"><input type="checkbox" name="purpose" value="세입자용"><span class="opt-box"><span class="opt-check"></span>세입자용</span></label>
+      <label class="opt-item"><input type="checkbox" name="purpose" value="전면리모델링"><span class="opt-box"><span class="opt-check"></span>전면 리모델링</span></label>
+      <label class="opt-item"><input type="checkbox" name="purpose" value="부분공사"><span class="opt-box"><span class="opt-check"></span>부분 공사</span></label>
+    </div>
+  </div>
+
+  <!-- Q2 일정 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">2</span>공사 시작 희망일 &amp; 입주 마감일</div>
+    <div class="q-hint">미확정 시 대략적으로 적어주셔도 됩니다 (예: 2025년 9월 초)</div>
+    <div class="q-grid-2">
+      <div>
+        <div class="q-input-label">희망 공사 시작일</div>
+        <input class="q-input" id="startDate" placeholder="예: 2025.09.01">
+      </div>
+      <div>
+        <div class="q-input-label">희망 입주 마감일</div>
+        <input class="q-input" id="moveInDate" placeholder="예: 2025.10.15">
+      </div>
+    </div>
+  </div>
+
+  <!-- Q3 예산 -->
+  <div class="q-card" data-required="true">
+    <div class="q-label"><span class="q-num">3</span>예상 전체 예산의 마지노선 <span class="q-required">*</span></div>
+    <div class="q-hint">별도 가전·가구 제외 금액 기준입니다</div>
+    <div class="budget-chips" id="budget-chips">
+      <div class="budget-chip" data-val="1500~2500만원" onclick="selectBudget(this)">1,500~2,500만</div>
+      <div class="budget-chip" data-val="2500~3500만원" onclick="selectBudget(this)">2,500~3,500만</div>
+      <div class="budget-chip" data-val="3500~5000만원" onclick="selectBudget(this)">3,500~5,000만</div>
+      <div class="budget-chip" data-val="5000~8000만원" onclick="selectBudget(this)">5,000~8,000만</div>
+      <div class="budget-chip" data-val="8000만원 이상" onclick="selectBudget(this)">8,000만 이상</div>
+    </div>
+    <div style="margin-top:10px">
+      <input class="q-input" id="budget-direct" placeholder="직접 입력 (예: 약 4,500만원)" oninput="clearBudgetChips()">
+    </div>
+    <input type="hidden" id="budget">
+  </div>
+
+  <!-- Q4 핵심공간 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">4</span>'이것만은 절대 포기 못 한다' 핵심 공간 1순위</div>
+    <div class="q-hint">예: 주방 아일랜드 / 드레스룸 시스템 장</div>
+    <textarea class="q-textarea" id="priority1" placeholder="핵심 공간이나 시공 항목을 자유롭게 적어주세요"></textarea>
+  </div>
+
+  <!-- Q5 생략가능 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">5</span>'예산에 따라 생략 가능하다'고 생각하는 부분</div>
+    <div class="q-hint">예: 베란다 확장공사 / 욕실 한 곳</div>
+    <textarea class="q-textarea" id="priority2" placeholder="우선순위가 낮은 공간이나 항목을 적어주세요"></textarea>
+  </div>
+
+  <!-- Q6 개선공간 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">6</span>현재 라이프스타일에서 가장 개선하고 싶은 공간 3가지</div>
+    <div class="q-hint">예: 주방 동선을 효율적으로 / 드레스룸이 협소해요</div>
+    <textarea class="q-textarea" id="improveSpaces" placeholder="개선하고 싶은 점을 구체적으로 적어주세요" style="min-height:90px"></textarea>
+  </div>
+
+  <!-- Q7 가족구성 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">7</span>거주하실 가족 구성원</div>
+    <div class="q-hint">예: 3인 가족 / 부부 + 학생 자녀 2명</div>
+    <input class="q-input" id="familyInfo" placeholder="가족 구성원을 알려주세요">
+  </div>
+
+  <!-- ══ 현장 정보 (PART 01 통합) ══ -->
+  <div class="part-header" style="background:linear-gradient(135deg,#2d2d2d 0%,#1a1a1a 100%)">
+    <div class="part-num">PART 01 — 현장 정보</div>
+    <div class="part-title">현장 &amp; 공간 현황</div>
+    <div class="part-subtitle">Site Information — 공간의 현재 상태를 파악합니다</div>
+  </div>
+
+  <!-- Q8 주소 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">8</span>현장 주소</div>
+    <input class="q-input" id="siteAddress" placeholder="예: 서울시 서초구 잠원동 000-0">
+  </div>
+
+  <!-- Q9 평수 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">9</span>평수 (전용면적)</div>
+    <div class="q-grid-2">
+      <div>
+        <div class="q-input-label">전용면적 (평)</div>
+        <input class="q-input" id="siteSize" type="number" placeholder="예: 28">
+      </div>
+      <div>
+        <div class="q-input-label">공급면적 (㎡)</div>
+        <input class="q-input" id="siteSizeSqm" type="number" placeholder="예: 92">
+      </div>
+    </div>
+  </div>
+
+  <!-- Q10 주거유형 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">10</span>주거 유형</div>
+    <div class="options-grid col2">
+      <label class="opt-item radio"><input type="radio" name="aptType" value="아파트"><span class="opt-box"><span class="opt-check"></span>아파트</span></label>
+      <label class="opt-item radio"><input type="radio" name="aptType" value="빌라/다세대"><span class="opt-box"><span class="opt-check"></span>빌라/다세대</span></label>
+      <label class="opt-item radio"><input type="radio" name="aptType" value="단독주택"><span class="opt-box"><span class="opt-check"></span>단독주택</span></label>
+      <label class="opt-item radio"><input type="radio" name="aptType" value="오피스텔"><span class="opt-box"><span class="opt-check"></span>오피스텔</span></label>
+      <label class="opt-item radio"><input type="radio" name="aptType" value="상가/사무실"><span class="opt-box"><span class="opt-check"></span>상가/사무실</span></label>
+      <label class="opt-item radio"><input type="radio" name="aptType" value="기타"><span class="opt-box"><span class="opt-check"></span>기타</span></label>
+    </div>
+  </div>
+
+  <!-- Q11 현재 공간의 상태 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">11</span>현재 공간의 상태</div>
+    <div class="options-grid col1">
+      <label class="opt-item radio"><input type="radio" name="moveStatus" value="거주중 부분공사 희망"><span class="opt-box"><span class="opt-check"></span>거주중 부분공사 희망</span></label>
+      <label class="opt-item radio"><input type="radio" name="moveStatus" value="거주중 보관이사 예정으로 전체공사 희망"><span class="opt-box"><span class="opt-check"></span>거주중 보관이사 예정으로 전체공사 희망</span></label>
+      <label class="opt-item radio"><input type="radio" name="moveStatus" value="매매후 공사 예정 (매매잔금 전 상태)"><span class="opt-box"><span class="opt-check"></span>매매후 공사 예정 (매매잔금 전 상태)</span></label>
+      <label class="opt-item radio"><input type="radio" name="moveStatus" value="세입자용 공사 (월세 및 전세용도)"><span class="opt-box"><span class="opt-check"></span>세입자용 공사 (월세 및 전세용도)</span></label>
+    </div>
+  </div>
+
+  <!-- ══ PART 2 ══ -->
+  <div class="part-header">
+    <div class="part-num">PART 02</div>
+    <div class="part-title">공사 범위 &amp; 공간별 요구사항</div>
+    <div class="part-subtitle">Scope of Work — 각 공간별 구체적인 요청사항을 알려주세요</div>
+  </div>
+
+  <!-- Q12 공사범위 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">12</span>공사 범위 (해당 항목 모두 선택)</div>
+    <div class="options-grid" id="q-scope">
+      <label class="opt-item"><input type="checkbox" name="scope" value="확장공사"><span class="opt-box"><span class="opt-check"></span>확장공사</span></label>
+      <label class="opt-item"><input type="checkbox" name="scope" value="창호교체"><span class="opt-box"><span class="opt-check"></span>창호교체</span></label>
+      <label class="opt-item"><input type="checkbox" name="scope" value="시스템에어콘"><span class="opt-box"><span class="opt-check"></span>시스템에어콘</span></label>
+      <label class="opt-item"><input type="checkbox" name="scope" value="욕실공사"><span class="opt-box"><span class="opt-check"></span>욕실공사</span></label>
+      <label class="opt-item"><input type="checkbox" name="scope" value="전기/조명"><span class="opt-box"><span class="opt-check"></span>전기/조명</span></label>
+      <label class="opt-item"><input type="checkbox" name="scope" value="리폼필름 및 도배"><span class="opt-box"><span class="opt-check"></span>리폼필름 및 도배</span></label>
+      <label class="opt-item"><input type="checkbox" name="scope" value="현관 및 베란다 타일"><span class="opt-box"><span class="opt-check"></span>현관 및 베란다 타일</span></label>
+      <label class="opt-item"><input type="checkbox" name="scope" value="베란다 도장"><span class="opt-box"><span class="opt-check"></span>베란다 도장</span></label>
+      <label class="opt-item"><input type="checkbox" name="scope" value="벽체 철거 및 구조변경"><span class="opt-box"><span class="opt-check"></span>벽체 철거 및 구조변경</span></label>
+      <label class="opt-item"><input type="checkbox" name="scope" value="마루교체"><span class="opt-box"><span class="opt-check"></span>마루교체</span></label>
+      <label class="opt-item"><input type="checkbox" name="scope" value="전체 공사 올리모델링"><span class="opt-box"><span class="opt-check"></span>전체 공사 올리모델링</span></label>
+    </div>
+  </div>
+
+  <!-- Q13 주방 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">13</span>주방 — 원하는 스타일 &amp; 요청사항</div>
+    <div class="q-hint">주방 형태를 선택해 주세요</div>
+    <div class="options-grid col2" style="margin-bottom:10px">
+      <label class="opt-item radio"><input type="radio" name="kitchenStyle" value="일자형"><span class="opt-box"><span class="opt-check"></span>일자형</span></label>
+      <label class="opt-item radio"><input type="radio" name="kitchenStyle" value="ㄱ자형"><span class="opt-box"><span class="opt-check"></span>ㄱ자형</span></label>
+      <label class="opt-item radio"><input type="radio" name="kitchenStyle" value="아일랜드형"><span class="opt-box"><span class="opt-check"></span>아일랜드형</span></label>
+      <label class="opt-item radio"><input type="radio" name="kitchenStyle" value="ㄷ자형"><span class="opt-box"><span class="opt-check"></span>ㄷ자형</span></label>
+    </div>
+    <div class="q-divider"></div>
+    <div class="q-input-label">주방 세부 요청사항</div>
+    <textarea class="q-textarea" id="kitchenNotes" placeholder="예: 아일랜드 추가 / 상부장 제거 / 상판 세라믹 선호 / 팬트리 공간 필요"></textarea>
+  </div>
+
+  <!-- Q14 욕실 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">14</span>욕실 공사</div>
+    <div class="q-hint">공사할 욕실 개수를 선택해 주세요</div>
+    <div class="options-grid col2" style="margin-bottom:10px">
+      <label class="opt-item radio"><input type="radio" name="bathroomCount" value="1개소"><span class="opt-box"><span class="opt-check"></span>1개소</span></label>
+      <label class="opt-item radio"><input type="radio" name="bathroomCount" value="2개소"><span class="opt-box"><span class="opt-check"></span>2개소</span></label>
+      <label class="opt-item radio"><input type="radio" name="bathroomCount" value="3개소 이상"><span class="opt-box"><span class="opt-check"></span>3개소 이상</span></label>
+      <label class="opt-item radio"><input type="radio" name="bathroomCount" value="공사 없음"><span class="opt-box"><span class="opt-check"></span>공사 없음</span></label>
+    </div>
+    <div class="q-divider"></div>
+    <div class="q-input-label">욕실 스타일 선호도</div>
+    <div class="options-grid col2" style="margin-bottom:10px">
+      <label class="opt-item radio"><input type="radio" name="bathroomStyle" value="미니멀/모던"><span class="opt-box"><span class="opt-check"></span>미니멀/모던</span></label>
+      <label class="opt-item radio"><input type="radio" name="bathroomStyle" value="호텔식"><span class="opt-box"><span class="opt-check"></span>호텔식 럭셔리</span></label>
+      <label class="opt-item radio"><input type="radio" name="bathroomStyle" value="빈티지/내추럴"><span class="opt-box"><span class="opt-check"></span>빈티지/내추럴</span></label>
+      <label class="opt-item radio"><input type="radio" name="bathroomStyle" value="심플/깔끔"><span class="opt-box"><span class="opt-check"></span>심플/깔끔</span></label>
+    </div>
+  </div>
+
+  <!-- ══ PART 4 ══ -->
+  <div class="part-header">
+    <div class="part-num">PART 04</div>
+    <div class="part-title">마감재 &amp; 스타일 선호도</div>
+    <div class="part-subtitle">Finishing &amp; Style — 공간의 분위기와 마감 방향을 결정합니다</div>
+  </div>
+
+  <!-- Q15 바닥재 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">15</span>바닥재 선호도</div>
+    <div class="options-grid col2">
+      <label class="opt-item radio"><input type="radio" name="floorMaterial" value="강마루"><span class="opt-box"><span class="opt-check"></span>강마루</span></label>
+      <label class="opt-item radio"><input type="radio" name="floorMaterial" value="원목마루"><span class="opt-box"><span class="opt-check"></span>원목마루</span></label>
+      <label class="opt-item radio"><input type="radio" name="floorMaterial" value="헤링본마루"><span class="opt-box"><span class="opt-check"></span>헤링본 마루</span></label>
+      <label class="opt-item radio"><input type="radio" name="floorMaterial" value="대형타일"><span class="opt-box"><span class="opt-check"></span>대형 타일</span></label>
+      <label class="opt-item radio"><input type="radio" name="floorMaterial" value="현재유지"><span class="opt-box"><span class="opt-check"></span>현재 유지</span></label>
+      <label class="opt-item radio"><input type="radio" name="floorMaterial" value="미정"><span class="opt-box"><span class="opt-check"></span>미정 (상담 후 결정)</span></label>
+    </div>
+  </div>
+
+  <!-- Q16 벽/도배 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">16</span>벽체 &amp; 도배 선호도</div>
+    <div class="options-grid col2">
+      <label class="opt-item radio"><input type="radio" name="wallStyle" value="실크도배 (무광)"><span class="opt-box"><span class="opt-check"></span>실크도배 (무광)</span></label>
+      <label class="opt-item radio"><input type="radio" name="wallStyle" value="합지도배"><span class="opt-box"><span class="opt-check"></span>합지도배</span></label>
+      <label class="opt-item radio"><input type="radio" name="wallStyle" value="패턴/포인트 도배"><span class="opt-box"><span class="opt-check"></span>패턴/포인트 도배</span></label>
+      <label class="opt-item radio"><input type="radio" name="wallStyle" value="친환경 페인트"><span class="opt-box"><span class="opt-check"></span>친환경 페인트</span></label>
+      <label class="opt-item radio"><input type="radio" name="wallStyle" value="타일/석재 포인트"><span class="opt-box"><span class="opt-check"></span>타일/석재 포인트</span></label>
+      <label class="opt-item radio"><input type="radio" name="wallStyle" value="미정"><span class="opt-box"><span class="opt-check"></span>미정</span></label>
+    </div>
+  </div>
+
+  <!-- Q17 조명 밝기 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">17</span>조명 밝기 선호도</div>
+    <div class="q-hint">조명 색온도 및 밝기를 선택해 주세요</div>
+    <div class="options-grid col1">
+      <label class="opt-item radio"><input type="radio" name="lightingStyle" value="아주 밝은 6500K"><span class="opt-box"><span class="opt-check"></span>아주 밝은 6500K &nbsp;<span style="font-size:11px;color:var(--jk-gray)">(주방·학습공간 추천)</span></span></label>
+      <label class="opt-item radio"><input type="radio" name="lightingStyle" value="은은한 밝기 4000K"><span class="opt-box"><span class="opt-check"></span>은은한 밝기 4000K &nbsp;<span style="font-size:11px;color:var(--jk-gray)">(거실·요즈공간 추천)</span></span></label>
+      <label class="opt-item radio"><input type="radio" name="lightingStyle" value="노란 불빛 3000K"><span class="opt-box"><span class="opt-check"></span>노란 불빛 3000K &nbsp;<span style="font-size:11px;color:var(--jk-gray)">(침실·휴식공간 추천)</span></span></label>
+    </div>
+  </div>
+
+  <!-- Q18 전체 스타일 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">18</span>원하는 전체 인테리어 스타일 (복수 선택 가능)</div>
+    <div class="options-grid col1">
+      <label class="opt-item"><input type="checkbox" name="style" value="모던/미니멀"><span class="opt-box"><span class="opt-check"></span>모던/미니멀</span></label>
+      <label class="opt-item"><input type="checkbox" name="style" value="내추럴/우드톤"><span class="opt-box"><span class="opt-check"></span>내추럴/우드톤</span></label>
+      <label class="opt-item"><input type="checkbox" name="style" value="미정 (상담 후 협의)"><span class="opt-box"><span class="opt-check"></span>미정 (상담 후 협의)</span></label>
+    </div>
+  </div>
+
+  <!-- Q19 색상 계열 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">19</span>선호하는 색상 계열</div>
+    <div class="options-grid col2">
+      <label class="opt-item radio"><input type="radio" name="colorPrefer" value="화이트/아이보리 계열"><span class="opt-box"><span class="opt-check"></span>화이트/아이보리</span></label>
+      <label class="opt-item radio"><input type="radio" name="colorPrefer" value="그레이/무채색 계열"><span class="opt-box"><span class="opt-check"></span>그레이/무채색</span></label>
+      <label class="opt-item radio"><input type="radio" name="colorPrefer" value="베이지/웜톤 계열"><span class="opt-box"><span class="opt-check"></span>베이지/웜톤</span></label>
+      <label class="opt-item radio"><input type="radio" name="colorPrefer" value="다크/블랙 계열"><span class="opt-box"><span class="opt-check"></span>다크/블랙</span></label>
+      <label class="opt-item radio"><input type="radio" name="colorPrefer" value="내추럴 우드톤"><span class="opt-box"><span class="opt-check"></span>내추럴 우드톤</span></label>
+      <label class="opt-item radio"><input type="radio" name="colorPrefer" value="포인트 컬러 활용"><span class="opt-box"><span class="opt-check"></span>포인트 컬러 활용</span></label>
+    </div>
+  </div>
+
+  <!-- ══ PART 4 ══ -->
+  <div class="part-header">
+    <div class="part-num">PART 04</div>
+    <div class="part-title">맞춤 가구 계획</div>
+    <div class="part-subtitle">Custom Furniture — 맞춤 제작이 필요한 공간을 알려주세요</div>
+  </div>
+
+  <!-- Q20 맞춤 가구 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">20</span>맞춤 가구가 필요한 공간 (복수 선택)</div>
+    <div class="q-hint">필요한 항목을 모두 선택해 주세요</div>
+    <div class="options-grid col2">
+      <label class="opt-item"><input type="checkbox" name="furniture" value="주방 수납장(키큰장)"><span class="opt-box"><span class="opt-check"></span>주방 수납장(키큰장)</span></label>
+      <label class="opt-item"><input type="checkbox" name="furniture" value="침실 붙박이장"><span class="opt-box"><span class="opt-check"></span>침실 붙박이장</span></label>
+      <label class="opt-item"><input type="checkbox" name="furniture" value="작은방 붙박이장"><span class="opt-box"><span class="opt-check"></span>작은방 붙박이장</span></label>
+      <label class="opt-item"><input type="checkbox" name="furniture" value="서재 책장 수납장"><span class="opt-box"><span class="opt-check"></span>서재 책장 수납장</span></label>
+      <label class="opt-item"><input type="checkbox" name="furniture" value="파우더룸 화장대 제작"><span class="opt-box"><span class="opt-check"></span>파우더룸 화장대 제작</span></label>
+      <label class="opt-item"><input type="checkbox" name="furniture" value="드레스룸 시스템장"><span class="opt-box"><span class="opt-check"></span>드레스룸 시스템장</span></label>
+      <label class="opt-item"><input type="checkbox" name="furniture" value="현관 신발장"><span class="opt-box"><span class="opt-check"></span>현관 신발장</span></label>
+      <label class="opt-item"><input type="checkbox" name="furniture" value="욕실 하부장"><span class="opt-box"><span class="opt-check"></span>욕실 하부장</span></label>
+    </div>
+    <input type="hidden" id="storageNeeds" value="">
+  </div>
+
+  <!-- ══ PART 5 ══ -->
+  <div class="part-header">
+    <div class="part-num">PART 05</div>
+    <div class="part-title">설비 &amp; 기타 특이사항</div>
+    <div class="part-subtitle">Systems &amp; Etc — 냉·난방 및 기타 요청사항을 알려주세요</div>
+  </div>
+
+  <!-- Q22 시스템 에어컨 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">22</span>시스템 에어컨</div>
+    <div class="options-grid col1">
+      <label class="opt-item radio"><input type="radio" name="systemAC" value="신규 설치 희망"><span class="opt-box"><span class="opt-check"></span>신규 설치 희망</span></label>
+      <label class="opt-item radio"><input type="radio" name="systemAC" value="기존 제품 재활용"><span class="opt-box"><span class="opt-check"></span>기존 제품 재활용</span></label>
+      <label class="opt-item radio"><input type="radio" name="systemAC" value="이동 설치 (스탠드형 보유)"><span class="opt-box"><span class="opt-check"></span>이동 설치 (스탠드형 보유)</span></label>
+      <label class="opt-item radio"><input type="radio" name="systemAC" value="해당 없음"><span class="opt-box"><span class="opt-check"></span>해당 없음</span></label>
+    </div>
+  </div>
+
+  <!-- Q23 난방 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">23</span>난방 관련 요청사항</div>
+    <div class="options-grid col2" style="margin-bottom:10px">
+      <label class="opt-item"><input type="checkbox" name="heating" value="보일러 교체"><span class="opt-box"><span class="opt-check"></span>보일러 교체</span></label>
+      <label class="opt-item"><input type="checkbox" name="heating" value="분배기 교체"><span class="opt-box"><span class="opt-check"></span>분배기 교체</span></label>
+      <label class="opt-item"><input type="checkbox" name="heating" value="난방 배관 전체 교체"><span class="opt-box"><span class="opt-check"></span>난방 배관 전체 교체</span></label>
+      <label class="opt-item"><input type="checkbox" name="heating" value="해당없음"><span class="opt-box"><span class="opt-check"></span>해당없음</span></label>
+    </div>
+    <input class="q-input" id="floorHeating" placeholder="기타 난방 관련 요청사항을 입력해 주세요">
+  </div>
+
+  <!-- Q24 현재 불편한 점 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">24</span>현재 집에서 가장 불편한 점</div>
+    <div class="q-hint">생활하면서 느끼는 불편함, 고쳐야 할 부분을 솔직하게 적어주세요</div>
+    <textarea class="q-textarea" id="concerns" placeholder="예: 수납이 너무 부족해요 / 주방이 어두워요 / 욕실 물 빠짐이 안 좋아요 / 겨울에 너무 추워요" style="min-height:90px"></textarea>
+  </div>
+
+  <!-- Q25 레퍼런스 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">25</span>참고 이미지 / 레퍼런스 <span class="q-optional">선택</span></div>
+    <div class="q-hint">핀터레스트, 인스타그램, 유튜브 링크 또는 잡지·TV 프로그램 등 마음에 드는 인테리어를 알려주세요</div>
+    <textarea class="q-textarea" id="referenceImages" placeholder="예: 핀터레스트 링크 / '구해줘 홈즈' 000 편 스타일 / 인스타 @xxx 계정처럼"></textarea>
+  </div>
+
+  <!-- Q26 추가 요청사항 -->
+  <div class="q-card">
+    <div class="q-label"><span class="q-num">26</span>그 밖에 전달하고 싶은 말씀 <span class="q-optional">선택</span></div>
+    <div class="q-hint">알레르기·반려동물·특수 시공·이전 공사 불만 등 자유롭게 적어주세요</div>
+    <textarea class="q-textarea" id="additionalNotes" placeholder="자유롭게 적어주세요" style="min-height:90px"></textarea>
+  </div>
+
+  <!-- 안내 문구 -->
+  <div class="section-intro" style="margin-top:8px">
+    <i class="fas fa-lock" style="margin-right:6px;color:var(--jk-accent)"></i>
+    입력하신 정보는 상담 목적으로만 활용되며, 외부에 제공되지 않습니다.<br>
+    제출 후 담당자가 확인하여 <strong>24시간 이내</strong>에 연락드립니다.
+  </div>
+
+</main>
+
+<!-- ════ 제출 버튼 ════ -->
+<div class="submit-area" id="submit-area">
+  <div class="submit-inner">
+    <button class="btn-submit" id="btn-submit" onclick="submitSurvey()">
+      <span class="submit-icon">✦</span>
+      체크리스트 제출하기
+    </button>
+  </div>
+</div>
+
+<!-- ════ 완료 화면 ════ -->
+<div id="complete-screen" style="display:none;padding:60px 24px 120px">
+  <div style="max-width:480px;margin:0 auto;text-align:center">
+    <div class="complete-icon">✦</div>
+    <div class="complete-title">제출이 완료되었습니다</div>
+    <p class="complete-desc">
+      소중한 답변 감사합니다.<br>
+      담당자가 내용을 확인 후<br>
+      <strong>24시간 이내에 연락드리겠습니다.</strong>
+    </p>
+    <div class="complete-card" id="complete-summary"></div>
+    <p style="font-size:12px;color:#aaa;margin-top:16px;letter-spacing:1px">
+      — JUNG KYUL DESIGN STUDIO —
+    </p>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════
+   진행률 계산
+══════════════════════════════════════════════ */
+const REQUIRED_IDS = ['clientName', 'clientPhone', 'budget'];
+
+function updateProgress() {
+  const total    = document.querySelectorAll('.q-card').length + 1; // +1 client card
+  let   filled   = 0;
+  // 고객정보
+  if (vt('clientName'))  filled++;
+  if (vt('clientPhone')) filled++;
+  // 각 카드
+  document.querySelectorAll('.q-card').forEach(card => {
+    const hasInput   = card.querySelectorAll('input[type=text],input[type=tel],input[type=number],textarea').length;
+    const hasCheck   = card.querySelectorAll('input[type=checkbox]:checked,input[type=radio]:checked').length;
+    const hasChip    = _budget ? 1 : 0;
+    if (hasCheck > 0 || hasChip > 0) { filled++; return; }
+    if (hasInput > 0) {
+      const vals = [...card.querySelectorAll('input[type=text],input[type=number],textarea')]
+        .map(el => el.value.trim()).filter(Boolean);
+      if (vals.length > 0) filled++;
+    }
+  });
+  const pct = Math.min(Math.round((filled / (total + 2)) * 100), 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent  = pct + '%';
+  document.getElementById('progress-label').textContent =
+    pct < 30 ? '작성 중…' : pct < 70 ? '잘 하고 계세요 👍' : pct < 100 ? '거의 다 됐어요! ✦' : '완성!';
+}
+
+document.querySelectorAll('input,textarea,select').forEach(el => {
+  el.addEventListener('input', updateProgress);
+  el.addEventListener('change', updateProgress);
+});
+
+/* ══════════════════════════════════════════════
+   예산 칩 선택
+══════════════════════════════════════════════ */
+let _budget = '';
+function selectBudget(el) {
+  document.querySelectorAll('.budget-chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  _budget = el.dataset.val;
+  document.getElementById('budget').value = _budget;
+  document.getElementById('budget-direct').value = '';
+  updateProgress();
+}
+function clearBudgetChips() {
+  document.querySelectorAll('.budget-chip').forEach(c => c.classList.remove('selected'));
+  _budget = '';
+  document.getElementById('budget').value = document.getElementById('budget-direct').value;
+  updateProgress();
+}
+
+/* ══════════════════════════════════════════════
+   유틸
+══════════════════════════════════════════════ */
+function vt(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+function getChecked(name) {
+  return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(i => i.value);
+}
+function getRadio(name) {
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : '';
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._t);
+  t._t = setTimeout(() => { t.style.display = 'none'; }, 3500);
+}
+
+/* ══════════════════════════════════════════════
+   제출
+══════════════════════════════════════════════ */
+async function submitSurvey() {
+  // 필수 검증
+  if (!vt('clientName'))  { showToast('성함을 입력해 주세요.'); document.getElementById('clientName').focus(); return; }
+  if (!vt('clientPhone')) { showToast('연락처를 입력해 주세요.'); document.getElementById('clientPhone').focus(); return; }
+
+  const budgetVal = document.getElementById('budget').value.trim() || vt('budget-direct');
+  if (!budgetVal) { showToast('예산 마지노선을 선택하거나 입력해 주세요.'); return; }
+
+  const purposeList = getChecked('purpose');
+  if (purposeList.length === 0) { showToast('리모델링 목적을 하나 이상 선택해 주세요.'); return; }
+
+  // 로딩
+  document.getElementById('loading-overlay').classList.add('show');
+  document.getElementById('btn-submit').disabled = true;
+
+  const payload = {
+    submittedAt    : new Date().toISOString(),
+    status         : '신규',
+    adminStatus    : '신규',
+    clientName     : vt('clientName'),
+    clientPhone    : vt('clientPhone'),
+    purpose        : purposeList,
+    startDate      : vt('startDate'),
+    moveInDate     : vt('moveInDate'),
+    budget         : budgetVal,
+    priority1      : vt('priority1'),
+    priority2      : vt('priority2'),
+    improveSpaces  : vt('improveSpaces'),
+    familyInfo     : vt('familyInfo'),
+    siteAddress    : vt('siteAddress'),
+    siteSize       : vt('siteSize') + (vt('siteSizeSqm') ? '평 / ' + vt('siteSizeSqm') + '㎡' : '평'),
+    aptType        : getRadio('aptType'),
+    moveStatus     : getRadio('moveStatus'),
+    constructionScope: getChecked('scope'),
+    kitchenStyle   : getRadio('kitchenStyle'),
+    kitchenNotes   : vt('kitchenNotes'),
+    bathroomCount  : getRadio('bathroomCount'),
+    bathroomStyle  : getRadio('bathroomStyle'),
+    floorMaterial  : getRadio('floorMaterial'),
+    wallStyle      : getChecked('wallStyle'),
+    lightingStyle  : getRadio('lightingStyle'),
+    overallStyle   : getChecked('style'),
+    colorPrefer    : getRadio('colorPrefer'),
+    storageNeeds   : '',
+    customFurniture: getChecked('furniture'),
+    systemAC       : getRadio('systemAC'),
+    floorHeating   : (() => {
+      const h = getChecked('heating');
+      const etc = vt('floorHeating');
+      return h.length ? h.join(', ') + (etc ? ' / ' + etc : '') : etc;
+    })(),
+    concerns       : vt('concerns'),
+    referenceImages: vt('referenceImages'),
+    additionalNotes: vt('additionalNotes'),
+    adminMemo      : ''
+  };
+
+  /* ── Supabase 설정 ── */
+  const SB_URL = 'https://isrimiwqqytzzqjovtot.supabase.co';
+  const SB_KEY = 'sb_publishable_Znfb1pe1hz7cA1BmMJBLLQ_xIR7EbMB';
+
+  /* Supabase용 payload (snake_case 컬럼명) */
+  const sbPayload = {
+    submitted_at      : payload.submittedAt,
+    status            : payload.status,
+    admin_status      : payload.adminStatus,
+    client_name       : payload.clientName,
+    client_phone      : payload.clientPhone,
+    purpose           : payload.purpose,
+    start_date        : payload.startDate,
+    move_in_date      : payload.moveInDate,
+    budget            : payload.budget,
+    priority1         : payload.priority1,
+    priority2         : payload.priority2,
+    improve_spaces    : payload.improveSpaces,
+    family_info       : payload.familyInfo,
+    site_address      : payload.siteAddress,
+    site_size         : payload.siteSize,
+    apt_type          : payload.aptType,
+    move_status       : payload.moveStatus,
+    construction_scope: payload.constructionScope,
+    kitchen_style     : payload.kitchenStyle,
+    kitchen_notes     : payload.kitchenNotes,
+    bathroom_count    : payload.bathroomCount,
+    bathroom_style    : payload.bathroomStyle,
+    floor_material    : payload.floorMaterial,
+    wall_style        : payload.wallStyle,
+    lighting_style    : payload.lightingStyle,
+    overall_style     : payload.overallStyle,
+    color_prefer      : payload.colorPrefer,
+    custom_furniture  : payload.customFurniture,
+    system_ac         : payload.systemAC,
+    floor_heating     : payload.floorHeating,
+    concerns          : payload.concerns,
+    reference_images  : payload.referenceImages,
+    additional_notes  : payload.additionalNotes,
+    admin_memo        : ''
+  };
+
+  try {
+    /* 1차: 젠스파크 내부 저장 (실패해도 계속) */
+    fetch('tables/survey_responses', {
+      method  : 'POST',
+      headers : { 'Content-Type': 'application/json' },
+      body    : JSON.stringify(payload)
+    }).catch(() => {});
+
+    /* 2차: Supabase 저장 (메인) */
+    const res = await fetch(SB_URL + '/rest/v1/survey_responses', {
+      method  : 'POST',
+      headers : {
+        'Content-Type'  : 'application/json',
+        'apikey'        : SB_KEY,
+        'Authorization' : 'Bearer ' + SB_KEY,
+        'Prefer'        : 'return=minimal'
+      },
+      body    : JSON.stringify(sbPayload)
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error('Supabase 오류 ' + res.status + ': ' + errText);
+    }
+
+    // 완료 화면
+    document.getElementById('loading-overlay').classList.remove('show');
+    document.getElementById('survey-cover').style.display   = 'none';
+    document.getElementById('survey-form-wrap').style.display = 'none';
+    document.querySelector('.progress-bar-wrap').style.display = 'none';
+    document.getElementById('submit-area').style.display    = 'none';
+    document.getElementById('complete-screen').style.display = 'block';
+
+    // 요약 카드
+    const summary = [
+      ['성함',    payload.clientName],
+      ['연락처',  payload.clientPhone],
+      ['주소',    payload.siteAddress || '—'],
+      ['평수',    payload.siteSize    || '—'],
+      ['예산',    payload.budget      || '—'],
+      ['목적',    payload.purpose.join(', ') || '—'],
+    ];
+    document.getElementById('complete-summary').innerHTML = summary.map(([l,v]) => `
+      <div class="complete-card-row">
+        <span class="ccr-label">${l}</span>
+        <span class="ccr-value">${v}</span>
+      </div>`).join('');
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch(err) {
+    document.getElementById('loading-overlay').classList.remove('show');
+    document.getElementById('btn-submit').disabled = false;
+    showToast('제출 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+    console.error(err);
+  }
+}
+</script>
+</body>
+</html>
