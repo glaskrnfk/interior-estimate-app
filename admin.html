@@ -286,6 +286,9 @@ input[type=number] { user-select:none; }
       <i class="fas fa-clipboard-list"></i> 고객 설문
       <span id="survey-new-count" class="cat-count" style="background:#fee2e2;color:#dc2626">0</span>
     </button>
+    <button class="tab-btn" onclick="window.open('schedule.html','_blank')" style="background:#1a3e72;color:#fff;border-radius:6px 6px 0 0">
+      <i class="fas fa-calendar-alt"></i> 공정표 관리
+    </button>
   </div>
 
   <!-- ━━━ 공정 카테고리 관리 ━━━ -->
@@ -819,7 +822,7 @@ input[type=number] { user-select:none; }
    SUPABASE 설정 & AUTH
 ════════════════════════════════════════════════════════ */
 var SB_URL      = 'https://isrimiwqqytzzqjovtot.supabase.co';
-var SB_KEY      = 'sb_publishable_Znfb1pe1hz7cA1BmMJBLLQ_xIR7EbMB';
+var SB_KEY      = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzcmltaXdxcXl0enpxam92dG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0Mjg5NDEsImV4cCI6MjA5MjAwNDk0MX0.DescofNz1_U0eCp1CY0Nstxd3OzB_xlRMCv0IBiZAGA';
 var _sbToken    = null;   // 로그인 후 access_token
 var _sbUserId   = null;
 
@@ -1970,7 +1973,10 @@ function renderContractList() {
             '<td style="text-align:right;font-weight:700">' + wonFull(f.fin) + '</td>' +
             '<td style="text-align:right" class="' + profitClass + '">' + profitSign + wonFull(f.profit) + '</td>' +
             '<td style="text-align:right;font-weight:600;color:' + (f.profitPct>=0?'#059669':'#dc2626') + '">' + f.profitPct.toFixed(1) + '%</td>' +
-            '<td><button class="btn btn-secondary" style="font-size:12px;padding:4px 10px" onclick="showContractPreview(\'' + r.id + '\')"><i class="fas fa-eye"></i> 상세</button></td>' +
+            '<td style="white-space:nowrap">' +
+              '<button class="btn btn-secondary" style="font-size:12px;padding:4px 10px;margin-right:4px" onclick="showContractPreview(\'' + r.id + '\')"><i class="fas fa-eye"></i> 상세</button>' +
+              '<button class="btn btn-secondary" style="font-size:12px;padding:4px 10px;color:#1a3e72" onclick="openScheduleFromContract(\'' + r.id + '\')"><i class="fas fa-calendar-alt"></i> 공정표</button>' +
+            '</td>' +
             '</tr>';
     }
     tbody.innerHTML = rows;
@@ -2109,7 +2115,12 @@ function renderSurveyList() {
             (r.siteAddress ? '<div><strong>주소:</strong> ' + escHtml(r.siteAddress) + '</div>' : '') +
             (purpose ? '<div><strong>목적:</strong> ' + escHtml(purpose) + '</div>' : '') +
             (r.concerns ? '<div><strong>불편사항:</strong> ' + escHtml(r.concerns.slice(0,60)) + (r.concerns.length>60?'…':'') + '</div>' : '') +
-            '</div></div>';
+            '</div>' +
+            '<div style="padding:8px 0 0;border-top:1px solid #f0f4f8;margin-top:8px">' +
+            '<button class="btn btn-secondary" style="font-size:12px;padding:4px 12px;color:#1a3e72" onclick="event.stopPropagation();openScheduleFromSurvey(\'' + escHtml(r.clientName||'') + '\',\'' + escHtml(r.siteAddress||'') + '\')">' +
+            '<i class="fas fa-calendar-alt"></i> 공정표 작성</button>' +
+            '</div>' +
+            '</div>';
     }
     body.innerHTML = html;
 }
@@ -2227,6 +2238,25 @@ function printSurveyDetail() {
     win.document.write(html);
     win.document.close();
     win.onload = function() { win.print(); };
+}
+
+/* ════════════════════════════════════════════════════════
+   공정표 연동
+════════════════════════════════════════════════════════ */
+function openScheduleFromContract(contractId) {
+    /* 계약 레코드에서 현장명·고객명 추출 */
+    var recs = loadContractedEstimates();
+    var r = null;
+    for (var i=0; i<recs.length; i++) if (recs[i].id===contractId) { r=recs[i]; break; }
+    var site   = r ? (r.siteName || r.title || '') : '';
+    var client = r ? (r.clientName || '') : '';
+    var url = 'schedule.html?from=contract&client='+encodeURIComponent(client)+'&site='+encodeURIComponent(site);
+    window.open(url, '_blank');
+}
+
+function openScheduleFromSurvey(clientName, siteAddress) {
+    var url = 'schedule.html?from=survey&client='+encodeURIComponent(clientName)+'&site='+encodeURIComponent(siteAddress);
+    window.open(url, '_blank');
 }
 
 /* ── 초기 렌더 ──────────────────────────────── */
