@@ -885,10 +885,25 @@ function sbLogout() {
 
 /* ── 세션 복원 확인 ── */
 function sbCheckSession(token) {
+    /* 1) JWT 만료 시간 먼저 체크 (네트워크 없이 즉시 판단) */
+    try {
+        var payload = JSON.parse(atob(token.split('.')[1]));
+        var now = Math.floor(Date.now() / 1000);
+        if (payload.exp && payload.exp < now) {
+            /* 만료된 토큰 → 즉시 false */
+            return Promise.resolve(false);
+        }
+    } catch(e) {
+        return Promise.resolve(false);
+    }
+    /* 2) Supabase /auth/v1/user 로 실제 검증 */
     return fetch(SB_URL + '/auth/v1/user', {
         headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + token }
     })
-    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(r) {
+        if (!r.ok) return null;          /* 401/403 → 무효 */
+        return r.json();
+    })
     .then(function(u) {
         if (u && u.id) { _sbToken = token; _sbUserId = u.id; return true; }
         return false;
@@ -2298,21 +2313,26 @@ function addLogoutBtn() {
 function startApp() {
     var savedToken = localStorage.getItem('sb_token');
     var overlay    = document.getElementById('sb-login-overlay');
-    if (savedToken) {
-        /* 저장된 토큰으로 세션 유효성 확인 */
-        sbCheckSession(savedToken).then(function(valid) {
-            if (valid) {
-                overlay.style.display = 'none';
-                addLogoutBtn();
-                initPage();
-            } else {
-                localStorage.removeItem('sb_token');
-                overlay.style.display = 'flex';
-            }
-        });
-    } else {
+
+    if (!savedToken) {
+        /* 저장된 토큰 없음 → 무조건 로그인 화면 */
         overlay.style.display = 'flex';
+        return;
     }
+
+    /* 저장된 토큰 있음 → Supabase 서버에 실제 유효성 검증 */
+    overlay.style.display = 'flex'; /* 검증 중에는 로그인 화면 유지 */
+    sbCheckSession(savedToken).then(function(valid) {
+        if (valid) {
+            overlay.style.display = 'none';
+            addLogoutBtn();
+            initPage();
+        } else {
+            /* 만료/무효 토큰 → 삭제 후 로그인 화면 */
+            localStorage.removeItem('sb_token');
+            overlay.style.display = 'flex';
+        }
+    });
 }
 
 if (document.readyState === 'loading') {
