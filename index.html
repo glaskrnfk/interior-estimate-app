@@ -1777,12 +1777,11 @@ function updateActualDaysDisplay() {
    pdf.js의 doPDF는 이미 buildEstDoc을 호출하므로 추가 패치 불필요
    하지만 미리보기 모달도 최신 데이터로 갱신
 ════════════════════════════════════════════════════════ */
+/* ── patchDoPDF: 중복 buildEstDoc 제거 ──
+   pdf.js doPDF 내부에서 recalc() + buildEstDoc() + 50ms 대기를 처리하므로
+   여기서 추가 호출 불필요. 원본 doPDF 그대로 실행. */
 (function patchDoPDF() {
-  const _orig = window.doPDF;
-  window.doPDF = function() {
-    if (typeof buildEstDoc === 'function') buildEstDoc(); // 캐시 강제 갱신
-    return _orig && _orig.apply(this, arguments);
-  };
+  // patch 불필요 – doPDF 자체에서 recalc+buildEstDoc 보장
 })();
 </script>
 </body>

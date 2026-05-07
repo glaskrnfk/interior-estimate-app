@@ -1763,17 +1763,22 @@ function buildEstDoc() {
             const rm = (r.matPrice || 0) * (r.qty || 0);
             const rl = (r.labPrice || 0) * (r.qty || 0);
             const rt = rm + rl;
-            // 서비스 항목: 붉은 글자
-            const svcStyle = r.isService ? 'style="color:#dc2626;font-weight:700"' : '';
-            const svcMark  = r.isService ? ' <span style="color:#dc2626;font-size:9px;font-weight:700">SVC</span>' : '';
-            return `<tr ${r.isService ? 'class="pdf-service-row"' : ''}>
-              <td class="name-cell" ${svcStyle}>${esc(r.name)}${svcMark}</td>
-              <td class="brand-cell" ${svcStyle}>${esc(r.brand || '-')}</td>
+            // 행 타입별 색상: 서비스(붉은색) / 관리자전용(주황색) / 일반(기본)
+            const isAdminOnly = !!r.isAdminOnly;
+            let rowColor = '';
+            if (r.isService)   rowColor = 'color:#dc2626;font-weight:700';  // 서비스 – 빨강
+            else if (isAdminOnly) rowColor = 'color:#d97706;font-weight:700'; // 관리자 – 주황
+            const cellStyle = rowColor ? `style="${rowColor}"` : '';
+            const trClass   = r.isService ? 'class="pdf-service-row"' : (isAdminOnly ? 'class="pdf-admin-row"' : '');
+            // SVC 텍스트 제거 – 색상만으로 구분
+            return `<tr ${trClass}>
+              <td class="name-cell" ${cellStyle}>${esc(r.name)}</td>
+              <td class="brand-cell" ${cellStyle}>${esc(r.brand || '-')}</td>
               <td class="c">${esc(r.unit)}</td>
               <td class="r">${r.qty}</td>
-              <td class="r" ${svcStyle}>${r.matPrice ? won(r.matPrice) : '-'}</td>
-              <td class="r" ${svcStyle}>${r.labPrice ? won(r.labPrice) : '-'}</td>
-              <td class="r bold" ${svcStyle}>${won(rt)}</td>
+              <td class="r" ${cellStyle}>${r.matPrice ? won(r.matPrice) : '-'}</td>
+              <td class="r" ${cellStyle}>${r.labPrice ? won(r.labPrice) : '-'}</td>
+              <td class="r bold" ${cellStyle}>${won(rt)}</td>
             </tr>`;
         });
 

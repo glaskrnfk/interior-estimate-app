@@ -13,7 +13,15 @@
 
 async function doPDF() {
     try {
+        // ── PDF 시작 전: 현재 폼/전역 상태를 반드시 최신화 ──
+        // ① recalc() 로 costResult 갱신
+        if (typeof recalc === 'function') recalc();
+        // ② buildEstDoc() 으로 #estimate-doc DOM 완전 재구성
+        //    (이전 견적서 불러오기 후 캐시가 남아있는 경우 방지)
         buildEstDoc();
+        // ③ 렌더링이 DOM에 반영될 때까지 한 틱 대기
+        await new Promise(r => setTimeout(r, 50));
+
         showToast('PDF 생성 중… 잠시 기다려주세요.');
 
         // 폰트·렌더링 완료 대기
