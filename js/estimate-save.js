@@ -1,6 +1,5 @@
 // ============================================================
-//  estimate-save.js  v2.0
-//  견적서 저장 · 불러오기 · 계약완료 관리 모듈
+//  estimate-save.js  v3.0  –  Supabase 동기화 + localStorage 폴백
 //
 //  ▣ 저장 흐름
 //    최초 저장  → 팝업(제목 자동채움) → 신규 레코드 생성
@@ -8,46 +7,202 @@
 //    다른이름저장 → 팝업(제목 자동채움) → 새 레코드 생성
 //    계약완료   → 현재 레코드 contractedAt 토글
 //
-//  ▣ EstimateRecord 스키마
-//    {
-//      id           : string  (UUID)
-//      title        : string  (현장명 + 평수 + 관리자 입력)
-//      clientName   : string
-//      siteName     : string
-//      version      : string
-//      savedAt      : number  (timestamp ms)
-//      step         : number
-//      fields       : object
-//      selectedMats : object
-//      selectedLabs : object
-//      detailRows   : array
-//      estRates     : object
-//      vatMode      : string
-//      contracted   : boolean  (계약완료 여부)
-//      contractedAt : number   (계약완료 시각, ms)
-//      costSnapshot : object   (계약 시점 costResult 스냅샷)
-//    }
+//  ▣ Supabase 전략 (A안: public read/write, anon key)
+//    - 저장: Supabase upsert + localStorage 동시 저장
+//    - 로드: Supabase 우선, 실패 시 localStorage fallback
+//    - 삭제: Supabase delete + localStorage 동시 삭제
+//    - 오프라인/오류 시 localStorage 단독 동작 (무중단)
+//
+//  ▣ Supabase 테이블: estimates
+//    id          text PRIMARY KEY
+//    title       text
+//    client_name text
+//    site_name   text
+//    saved_at    bigint
+//    contracted  boolean default false
+//    contracted_at bigint
+//    cost_snapshot jsonb
+//    data        jsonb   (fields, selectedMats, selectedLabs, detailRows, estRates, vatMode, step 전체)
+//    created_at  timestamptz default now()
+//    updated_at  timestamptz default now()
 // ============================================================
 
-const EST_SAVE_KEY = 'iq_estimates';
+/* ══════════════════════════════════════════════════════
+   Supabase 설정
+══════════════════════════════════════════════════════ */
+const EST_SB_URL  = 'https://isrimiwqqytzzqjovtot.supabase.co';
+const EST_SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzcmltaXdxcXl0enpxam92dG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0Mjg5NDEsImV4cCI6MjA5MjAwNDk0MX0.DescofNz1_U0eCp1CY0Nstxd3OzB_xlRMCv0IBiZAGA';
+const EST_SB_TABLE = 'estimates';
+const EST_SAVE_KEY = 'iq_estimates';   // localStorage 키 (폴백용)
 
-/* ── 유틸 ─────────────────────────────────────────────── */
+/* Supabase fetch 헤더 */
+function _estSbHeaders() {
+    return {
+        'Content-Type'  : 'application/json',
+        'apikey'        : EST_SB_KEY,
+        'Authorization' : 'Bearer ' + EST_SB_KEY,
+        'Prefer'        : 'return=representation'
+    };
+}
+
+/* ══════════════════════════════════════════════════════
+   Supabase CRUD 헬퍼
+══════════════════════════════════════════════════════ */
+
+/** 전체 목록 조회 (최신순) */
+async function _sbFetchAll() {
+    const res = await fetch(
+        `${EST_SB_URL}/rest/v1/${EST_SB_TABLE}?order=saved_at.desc&limit=200`,
+        { headers: _estSbHeaders() }
+    );
+    if (!res.ok) throw new Error('Supabase fetch 오류: ' + res.status);
+    const rows = await res.json();
+    // DB row → 앱 record 변환
+    return rows.map(_rowToRecord);
+}
+
+/** 단건 upsert (insert or update) */
+async function _sbUpsert(record) {
+    const row = _recordToRow(record);
+    const res = await fetch(
+        `${EST_SB_URL}/rest/v1/${EST_SB_TABLE}`,
+        {
+            method  : 'POST',
+            headers : { ..._estSbHeaders(), 'Prefer': 'resolution=merge-duplicates,return=representation' },
+            body    : JSON.stringify(row)
+        }
+    );
+    if (!res.ok) {
+        const errText = await res.text();
+        throw new Error('Supabase upsert 오류: ' + res.status + ' ' + errText);
+    }
+    return record;
+}
+
+/** 단건 삭제 */
+async function _sbDelete(id) {
+    const res = await fetch(
+        `${EST_SB_URL}/rest/v1/${EST_SB_TABLE}?id=eq.${encodeURIComponent(id)}`,
+        { method: 'DELETE', headers: _estSbHeaders() }
+    );
+    if (!res.ok) throw new Error('Supabase delete 오류: ' + res.status);
+}
+
+/* ── DB row ↔ 앱 record 변환 ─────────────────────── */
+function _recordToRow(r) {
+    return {
+        id            : r.id,
+        title         : r.title         || '',
+        client_name   : r.clientName    || '',
+        site_name     : r.siteName      || '',
+        saved_at      : r.savedAt       || Date.now(),
+        contracted    : !!r.contracted,
+        contracted_at : r.contractedAt  || null,
+        cost_snapshot : r.costSnapshot  || null,
+        data          : {
+            fields      : r.fields       || {},
+            selectedMats: r.selectedMats || {},
+            selectedLabs: r.selectedLabs || {},
+            detailRows  : r.detailRows   || [],
+            estRates    : r.estRates     || {},
+            vatMode     : r.vatMode      || 'include',
+            step        : r.step         || 1
+        }
+    };
+}
+function _rowToRecord(row) {
+    const d = row.data || {};
+    return {
+        id           : row.id,
+        title        : row.title         || '',
+        clientName   : row.client_name   || '',
+        siteName     : row.site_name     || '',
+        savedAt      : row.saved_at      || 0,
+        contracted   : !!row.contracted,
+        contractedAt : row.contracted_at || null,
+        costSnapshot : row.cost_snapshot || null,
+        fields       : d.fields          || {},
+        selectedMats : d.selectedMats    || {},
+        selectedLabs : d.selectedLabs    || {},
+        detailRows   : d.detailRows      || [],
+        estRates     : d.estRates        || {},
+        vatMode      : d.vatMode         || 'include',
+        step         : d.step            || 1
+    };
+}
+
+/* ══════════════════════════════════════════════════════
+   동기화 상태 표시 헬퍼
+══════════════════════════════════════════════════════ */
+function _setSyncStatus(status) {
+    // status: 'syncing' | 'ok' | 'offline' | 'error'
+    const el = document.getElementById('sync-status-badge');
+    if (!el) return;
+    const map = {
+        syncing : { text: '☁ 동기화 중…', cls: 'sync-syncing' },
+        ok      : { text: '☁ 동기화 완료', cls: 'sync-ok'      },
+        offline : { text: '⚡ 오프라인 (로컬저장)', cls: 'sync-offline' },
+        error   : { text: '⚠ 동기화 실패 (로컬저장)', cls: 'sync-error' }
+    };
+    const m = map[status] || map.offline;
+    el.textContent = m.text;
+    el.className   = 'sync-status-badge ' + m.cls;
+    el.style.display = 'inline-flex';
+    if (status === 'ok') {
+        setTimeout(() => { if (el.classList.contains('sync-ok')) el.style.display = 'none'; }, 3000);
+    }
+}
+
+/* ══════════════════════════════════════════════════════
+   localStorage 래퍼 (폴백)
+══════════════════════════════════════════════════════ */
+function _lsLoad() {
+    try { return JSON.parse(localStorage.getItem(EST_SAVE_KEY) || '[]'); }
+    catch { return []; }
+}
+function _lsSave(list) {
+    try { localStorage.setItem(EST_SAVE_KEY, JSON.stringify(list)); }
+    catch(e) { console.warn('localStorage 저장 실패:', e); }
+}
+
+/* ══════════════════════════════════════════════════════
+   공개 API: 목록 로드 (Supabase → localStorage fallback)
+══════════════════════════════════════════════════════ */
+
+/** 비동기 로드: Supabase에서 가져와 localStorage 캐시 갱신 */
+async function loadEstimatesFromCloud() {
+    try {
+        _setSyncStatus('syncing');
+        const list = await _sbFetchAll();
+        _lsSave(list);   // 로컬 캐시 갱신
+        _setSyncStatus('ok');
+        return list;
+    } catch (e) {
+        console.warn('[estimate-save] Supabase 로드 실패, localStorage 사용:', e.message);
+        _setSyncStatus('offline');
+        return _lsLoad();
+    }
+}
+
+/** 동기 로드: localStorage 캐시 반환 (즉시 렌더용) */
+function loadEstimates() {
+    return _lsLoad();
+}
+
+/** 동기 저장 (localStorage만) — 내부 호환용 */
+function saveEstimates(list) {
+    _lsSave(list);
+}
+
+/* ══════════════════════════════════════════════════════
+   유틸
+══════════════════════════════════════════════════════ */
 function genEstId() {
     return 'est_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
 }
 
-/* ── 목록 로드/저장 ───────────────────────────────────── */
-function loadEstimates() {
-    try { return JSON.parse(localStorage.getItem(EST_SAVE_KEY) || '[]'); }
-    catch { return []; }
-}
-function saveEstimates(list) {
-    localStorage.setItem(EST_SAVE_KEY, JSON.stringify(list));
-}
-
 /* ── 현재 견적 상태 수집 ──────────────────────────────── */
 function collectCurrentState() {
-    // ★수정 #17: constDaysActual, constStartDate, constEndDate 포함
     const fieldIds = [
         'clientName','siteName','siteAddress',
         'areaPyeong','areaSqm','constDays','constDaysActual',
@@ -112,7 +267,7 @@ function restoreState(record) {
    핵심 저장 함수
 ══════════════════════════════════════════════════════ */
 
-/* 새 레코드 생성 */
+/** 새 레코드 생성 (localStorage 즉시 + Supabase 비동기) */
 function createEstimate(title) {
     const state  = collectCurrentState();
     const fields = state.fields;
@@ -127,46 +282,58 @@ function createEstimate(title) {
         costSnapshot : null,
         ...state
     };
-    const list = loadEstimates();
+
+    // ① localStorage 즉시 저장
+    const list = _lsLoad();
     list.unshift(record);
-    saveEstimates(list);
+    _lsSave(list);
+
+    // ② Supabase 비동기 upsert
+    _setSyncStatus('syncing');
+    _sbUpsert(record)
+        .then(() => _setSyncStatus('ok'))
+        .catch(e => { console.warn('[estimate-save] 클라우드 저장 실패:', e.message); _setSyncStatus('error'); });
+
     return record;
 }
 
-/* 기존 레코드 덮어쓰기 */
+/** 기존 레코드 덮어쓰기 (localStorage 즉시 + Supabase 비동기) */
 function updateEstimate(id, titleOverride) {
-    const state = collectCurrentState();
-    const list  = loadEstimates();
-    const idx   = list.findIndex(r => r.id === id);
+    const state    = collectCurrentState();
+    const list     = _lsLoad();
+    const idx      = list.findIndex(r => r.id === id);
     if (idx === -1) return null;
     const existing = list[idx];
-    list[idx] = {
+    const updated  = {
         ...existing,
         ...state,
         title        : titleOverride || existing.title,
         clientName   : state.fields.clientName || existing.clientName,
         siteName     : state.fields.siteName   || existing.siteName,
         savedAt      : Date.now(),
-        // 계약 상태는 유지
         contracted   : existing.contracted,
         contractedAt : existing.contractedAt,
         costSnapshot : existing.costSnapshot
     };
-    saveEstimates(list);
-    return list[idx];
+    list[idx] = updated;
+    _lsSave(list);
+
+    // Supabase 비동기 upsert
+    _setSyncStatus('syncing');
+    _sbUpsert(updated)
+        .then(() => _setSyncStatus('ok'))
+        .catch(e => { console.warn('[estimate-save] 클라우드 저장 실패:', e.message); _setSyncStatus('error'); });
+
+    return updated;
 }
 
 /* ══════════════════════════════════════════════════════
-   저장 버튼 클릭 핸들러 (스마트 저장)
-   - 현재 작업 중인 ID가 없으면 → 팝업(최초 저장)
-   - 있으면 → 즉시 덮어쓰기
+   저장 버튼 핸들러 (스마트 저장)
 ══════════════════════════════════════════════════════ */
 function smartSave() {
     if (!_currentEstimateId) {
-        // 최초 저장 → 팝업
         openSaveDialog(false);
     } else {
-        // 이미 저장된 적 있음 → 즉시 덮어쓰기
         const record = updateEstimate(_currentEstimateId);
         if (record) {
             showToast(`💾 "${record.title}" 저장되었습니다.`);
@@ -176,98 +343,81 @@ function smartSave() {
     }
 }
 
-/* 다른 이름으로 저장 → 항상 팝업 */
-function saveAsNew() {
-    openSaveDialog(true);
-}
+function saveAsNew() { openSaveDialog(true); }
 
 /* ══════════════════════════════════════════════════════
    계약 완료 토글
 ══════════════════════════════════════════════════════ */
 function toggleContract() {
-    // 미저장 상태면 먼저 저장하도록 안내
     if (!_currentEstimateId) {
         showToast('⚠️ 먼저 견적서를 저장해 주세요.');
         openSaveDialog(false);
         return;
     }
-    const list  = loadEstimates();
-    const idx   = list.findIndex(r => r.id === _currentEstimateId);
+    const list = _lsLoad();
+    const idx  = list.findIndex(r => r.id === _currentEstimateId);
     if (idx === -1) return;
 
     const cur = list[idx];
     const newContracted = !cur.contracted;
+    let updated;
 
     if (newContracted) {
         if (!confirm(`"${cur.title}"\n\n이 견적서를 계약 완료로 표시하시겠습니까?\n계약 시점의 금액 정보가 함께 저장됩니다.`)) return;
-        // costResult 스냅샷 저장
         const snap = typeof costResult !== 'undefined' ? JSON.parse(JSON.stringify(costResult)) : {};
-        list[idx] = { ...cur, contracted: true, contractedAt: Date.now(), costSnapshot: snap };
+        updated = { ...cur, contracted: true, contractedAt: Date.now(), costSnapshot: snap };
         showToast('🎉 계약 완료로 표시되었습니다!');
     } else {
         if (!confirm(`"${cur.title}"\n\n계약 완료 표시를 해제하시겠습니까?`)) return;
-        list[idx] = { ...cur, contracted: false, contractedAt: null };
+        updated = { ...cur, contracted: false, contractedAt: null };
         showToast('계약 완료 표시가 해제되었습니다.');
     }
-    saveEstimates(list);
+    list[idx] = updated;
+    _lsSave(list);
+
+    // Supabase 동기화
+    _setSyncStatus('syncing');
+    _sbUpsert(updated)
+        .then(() => _setSyncStatus('ok'))
+        .catch(e => { console.warn('[estimate-save] 클라우드 동기화 실패:', e.message); _setSyncStatus('error'); });
+
     updateCurrentEstBadge();
     if (typeof renderEstimateList === 'function') renderEstimateList();
 }
 
 /* ══════════════════════════════════════════════════════
-   저장 다이얼로그 열기/닫기
-   isNew = true  → 다른이름저장 (항상 신규 생성)
-   isNew = false → 최초 저장
+   저장 다이얼로그
 ══════════════════════════════════════════════════════ */
 function openSaveDialog(isNew = false) {
     const modal = document.getElementById('save-dialog-modal');
     if (!modal) return;
-
-    // 제목 자동 채움
     const titleInput = document.getElementById('save-title-input');
     if (titleInput) {
-        const autoTitle = buildAutoTitle();
-        titleInput.value = autoTitle;
-        setTimeout(() => {
-            titleInput.focus();
-            titleInput.select();
-        }, 100);
+        titleInput.value = buildAutoTitle();
+        setTimeout(() => { titleInput.focus(); titleInput.select(); }, 100);
     }
-
     modal.dataset.saveMode = isNew ? 'new' : 'first';
     modal.classList.add('open');
 }
-
 function closeSaveDialog() {
     const modal = document.getElementById('save-dialog-modal');
     if (modal) modal.classList.remove('open');
 }
-
 function confirmSave() {
-    const modal     = document.getElementById('save-dialog-modal');
+    const modal      = document.getElementById('save-dialog-modal');
     const titleInput = document.getElementById('save-title-input');
-    const title     = (titleInput ? titleInput.value.trim() : '') || buildAutoTitle() || '새 견적서';
-    const saveMode  = modal ? modal.dataset.saveMode : 'first';
+    const title      = (titleInput ? titleInput.value.trim() : '') || buildAutoTitle() || '새 견적서';
+    const saveMode   = modal ? modal.dataset.saveMode : 'first';
 
-    let record;
-    if (saveMode === 'new') {
-        // 다른이름으로 저장 → 반드시 신규 생성
-        record = createEstimate(title);
-        setCurrentEstimateId(record.id);
-        showToast(`✅ "${record.title}" 새 버전으로 저장되었습니다.`);
-    } else {
-        // 최초 저장
-        record = createEstimate(title);
-        setCurrentEstimateId(record.id);
-        showToast(`✅ "${record.title}" 저장 완료`);
-    }
+    const record = createEstimate(title);
+    setCurrentEstimateId(record.id);
+    showToast(saveMode === 'new'
+        ? `✅ "${record.title}" 새 버전으로 저장되었습니다.`
+        : `✅ "${record.title}" 저장 완료`);
     closeSaveDialog();
     updateCurrentEstBadge();
     if (typeof renderEstimateList === 'function') renderEstimateList();
 }
-
-/* ── 기존 호환용 (외부에서 openSaveDialog() 단독 호출 시) */
-// 이미 위에서 정의됨
 
 /* ══════════════════════════════════════════════════════
    견적 목록 모달
@@ -275,8 +425,15 @@ function confirmSave() {
 function openEstimateList() {
     const modal = document.getElementById('estimate-list-modal');
     if (!modal) return;
-    renderEstimateList();
     modal.classList.add('open');
+
+    // ① 로컬 캐시로 즉시 렌더
+    renderEstimateList();
+
+    // ② 클라우드 최신 데이터로 갱신
+    loadEstimatesFromCloud().then(list => {
+        renderEstimateList();   // 최신 데이터로 재렌더
+    });
 }
 function closeEstimateList() {
     const modal = document.getElementById('estimate-list-modal');
@@ -286,7 +443,7 @@ function closeEstimateList() {
 function renderEstimateList() {
     const container = document.getElementById('estimate-list-body');
     if (!container) return;
-    const list = loadEstimates();
+    const list = loadEstimates();   // 로컬 캐시 사용 (빠른 렌더)
 
     const count = document.getElementById('est-list-count');
     if (count) count.textContent = `전체 ${list.length}건`;
@@ -298,7 +455,7 @@ function renderEstimateList() {
     if (list.length === 0) {
         container.innerHTML = `
           <div style="text-align:center;padding:48px 20px;color:#aaa">
-            <i class="fas fa-folder-open" style="font-size:42px;margin-bottom:14px;display:block;color:#d0d8e4"></i>
+            <i class="fas fa-cloud" style="font-size:42px;margin-bottom:14px;display:block;color:#d0d8e4"></i>
             <p style="font-size:14px;font-weight:600;margin-bottom:6px">저장된 견적서가 없습니다</p>
             <p style="font-size:12px">작업 중인 견적을 저장해 보세요.</p>
           </div>`;
@@ -313,7 +470,6 @@ function renderEstimateList() {
         const isCur    = r.id === _currentEstimateId;
         const isContr  = !!r.contracted;
 
-        // 금액 표시 (costSnapshot 또는 detailRows 합산)
         let finText = '';
         if (r.costSnapshot && r.costSnapshot.fin) {
             finText = `₩ ${Number(r.costSnapshot.fin).toLocaleString()}`;
@@ -330,6 +486,7 @@ function renderEstimateList() {
               ${isCur   ? `<span class="est-badge-current"><i class="fas fa-pen"></i> 작성중</span>` : ''}
               <div class="est-card-title">${escHtml(r.title || r.siteName || '제목 없음')}</div>
             </div>
+            <span class="est-cloud-badge" title="클라우드 동기화됨">☁</span>
           </div>
           <div class="est-card-meta">
             <span><i class="fas fa-user"></i> ${escHtml(r.clientName || '—')}</span>
@@ -357,8 +514,11 @@ function renderEstimateList() {
 
 function zp2(n) { return String(n).padStart(2,'0'); }
 
-/* ── 불러오기 ─────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════
+   불러오기
+══════════════════════════════════════════════════════ */
 function loadEstimateById(id) {
+    // 로컬 캐시에서 먼저 검색
     const list   = loadEstimates();
     const record = list.find(r => r.id === id);
     if (!record) { showToast('견적서를 찾을 수 없습니다.'); return; }
@@ -381,16 +541,20 @@ function loadEstimateById(id) {
     showToast(`✅ "${record.title}" 불러오기 완료`);
 }
 
-/* ── 삭제 ─────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════
+   삭제
+══════════════════════════════════════════════════════ */
 function deleteEstimate(id) {
-    const list = loadEstimates().filter(r => r.id !== id);
-    saveEstimates(list);
+    const list = _lsLoad().filter(r => r.id !== id);
+    _lsSave(list);
 }
 function deleteEstimateUI(id) {
-    const list   = loadEstimates();
+    const list   = _lsLoad();
     const record = list.find(r => r.id === id);
     if (!record) return;
     if (!confirm(`"${record.title}" 견적서를 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.`)) return;
+
+    // localStorage 즉시 삭제
     deleteEstimate(id);
     if (id === _currentEstimateId) {
         _currentEstimateId = null;
@@ -398,9 +562,16 @@ function deleteEstimateUI(id) {
     }
     renderEstimateList();
     showToast('견적서가 삭제되었습니다.');
+
+    // Supabase 비동기 삭제
+    _sbDelete(id)
+        .then(() => _setSyncStatus('ok'))
+        .catch(e => { console.warn('[estimate-save] 클라우드 삭제 실패:', e.message); _setSyncStatus('error'); });
 }
 
-/* ── JSON 내보내기 ────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════
+   JSON 내보내기 / 가져오기
+══════════════════════════════════════════════════════ */
 function exportEstimateAsJSON(id) {
     const record = loadEstimates().find(r => r.id === id);
     if (!record) return;
@@ -415,7 +586,6 @@ function exportEstimateAsJSON(id) {
     URL.revokeObjectURL(url);
 }
 
-/* ── JSON 가져오기 ────────────────────────────────────── */
 function importEstimateFromFile(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -423,13 +593,15 @@ function importEstimateFromFile(file) {
             try {
                 const record = JSON.parse(e.target.result);
                 if (!record.id || !record.savedAt) { reject(new Error('유효하지 않은 견적 파일입니다.')); return; }
-                const list = loadEstimates();
+                const list = _lsLoad();
                 if (list.some(r => r.id === record.id)) {
                     record.id    = genEstId();
                     record.title = '[가져오기] ' + (record.title || '');
                 }
                 list.unshift(record);
-                saveEstimates(list);
+                _lsSave(list);
+                // Supabase 업로드
+                _sbUpsert(record).catch(e => console.warn('[import] 클라우드 업로드 실패:', e.message));
                 resolve(record);
             } catch (err) { reject(err); }
         };
@@ -463,7 +635,7 @@ function setCurrentEstimateId(id) { _currentEstimateId = id; updateCurrentEstBad
 function getCurrentEstimateId()   { return _currentEstimateId; }
 
 function updateCurrentEstBadge() {
-    const badge      = document.getElementById('current-est-badge');
+    const badge       = document.getElementById('current-est-badge');
     const contractBtn = document.getElementById('btn-contract');
     if (!badge) return;
 
@@ -490,7 +662,7 @@ function updateCurrentEstBadge() {
 }
 
 /* ══════════════════════════════════════════════════════
-   자동 임시저장
+   자동 임시저장 (localStorage 전용 — 클라우드 불필요)
 ══════════════════════════════════════════════════════ */
 function autoSaveDraft() {
     const state = collectCurrentState();

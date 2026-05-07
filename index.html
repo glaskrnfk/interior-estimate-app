@@ -83,6 +83,20 @@ body { font-family: 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', 'Apple SD 
 .cur-est-badge.saved      { background: #22c55e; color: #fff; }
 .cur-est-badge.contracted { background: #10b981; color: #fff; }
 
+/* ☁ 동기화 상태 배지 */
+.sync-status-badge {
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:10.5px; font-weight:600; padding:3px 10px;
+  border-radius:99px; white-space:nowrap;
+  position:absolute; bottom:-24px; right:16px;
+  pointer-events:none; transition:opacity .3s;
+}
+.sync-status-badge.sync-syncing { background:rgba(255,255,255,.15); color:rgba(255,255,255,.8); }
+.sync-status-badge.sync-ok      { background:#22c55e; color:#fff; }
+.sync-status-badge.sync-offline { background:rgba(255,200,0,.25); color:#ffe066; }
+.sync-status-badge.sync-error   { background:rgba(220,38,38,.25);  color:#fca5a5; }
+.est-cloud-badge { font-size:14px; color:#60a5fa; margin-left:auto; opacity:.7; }
+
 /* 견적 목록 카드 상태 */
 .est-card.contracted { border-color: #10b981 !important; background: #f0fdf4 !important; }
 .est-card.current    { border-color: #f59e0b !important; }
@@ -801,6 +815,8 @@ body { font-family: 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', 'Apple SD 
         <i class="fas fa-file-pdf"></i> PDF
       </button>
     </div>
+    <!-- ☁ 동기화 상태 배지 -->
+    <span id="sync-status-badge" class="sync-status-badge" style="display:none"></span>
   </div>
 </header>
 
@@ -1531,6 +1547,11 @@ body { font-family: 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', 'Apple SD 
             <button class="btn-nav btn-nav-primary" style="font-size:12px;padding:7px 16px" onclick="smartSave();closeEstimateList();">
               <i class="fas fa-save"></i> 현재 견적 저장
             </button>
+            <button class="btn-nav btn-nav-secondary" id="btn-migrate-cloud"
+              style="font-size:12px;padding:7px 14px;background:#3b82f6;color:#fff;border-color:#3b82f6"
+              onclick="migrateLocalToCloud()">
+              <i class="fas fa-cloud-upload-alt"></i> 로컬→클라우드 이관
+            </button>
           </div>
         </div>
         <!-- 필터 -->
@@ -1783,6 +1804,48 @@ function updateActualDaysDisplay() {
 (function patchDoPDF() {
   // patch 불필요 – doPDF 자체에서 recalc+buildEstDoc 보장
 })();
+
+/* ════════════════════════════════════════════════════════
+   로컬 → Supabase 이관 함수 (버튼 클릭용)
+════════════════════════════════════════════════════════ */
+async function migrateLocalToCloud() {
+  const btn  = document.getElementById('btn-migrate-cloud');
+  const list = JSON.parse(localStorage.getItem('iq_estimates') || '[]');
+
+  if (list.length === 0) {
+    alert('이관할 로컬 견적서가 없습니다.');
+    return;
+  }
+
+  if (!confirm(`로컬에 저장된 견적서 ${list.length}건을 클라우드(Supabase)로 이관합니다.\n계속하시겠습니까?`)) return;
+
+  // 버튼 비활성화
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 이관 중…'; }
+
+  let ok = 0, fail = 0, failList = [];
+
+  for (const r of list) {
+    try {
+      await _sbUpsert(r);
+      ok++;
+    } catch(e) {
+      fail++;
+      failList.push(r.title || r.id);
+      console.warn('[이관 실패]', r.title, e.message);
+    }
+  }
+
+  // 버튼 복구
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 로컬→클라우드 이관'; }
+
+  if (fail === 0) {
+    alert(`✅ 이관 완료!\n\n총 ${ok}건 모두 클라우드에 업로드되었습니다.\n이제 다른 PC에서도 견적 목록을 볼 수 있습니다.`);
+    // 목록 새로고침
+    loadEstimatesFromCloud().then(() => renderEstimateList());
+  } else {
+    alert(`이관 결과\n✅ 성공: ${ok}건\n❌ 실패: ${fail}건\n\n실패 항목:\n${failList.join('\n')}\n\n실패 항목은 개별 저장을 시도해 주세요.`);
+  }
+}
 </script>
 </body>
 </html>
