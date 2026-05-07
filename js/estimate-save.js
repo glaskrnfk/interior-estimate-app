@@ -47,9 +47,11 @@ function saveEstimates(list) {
 
 /* ── 현재 견적 상태 수집 ──────────────────────────────── */
 function collectCurrentState() {
+    // ★수정 #17: constDaysActual, constStartDate, constEndDate 포함
     const fieldIds = [
         'clientName','siteName','siteAddress',
-        'areaPyeong','areaSqm','constDays',
+        'areaPyeong','areaSqm','constDays','constDaysActual',
+        'constStartDate','constEndDate',
         'companyName','repName','companyTel','companyFax','companyAddr',
         'siteWorkSummary','adminMemo'
     ];

@@ -47,6 +47,8 @@ body{font-family:'Noto Sans KR',sans-serif;font-size:13px;background:#f5f7fa;col
 .sch-badge-period{background:var(--navy-bg);color:var(--navy2)}
 .sch-card-actions{position:absolute;top:14px;right:14px;display:flex;gap:6px;opacity:0;transition:.2s}
 .sch-card:hover .sch-card-actions{opacity:1}
+/* 복사 뱃지 */
+.sch-copy-badge{background:#e0f2fe;color:#0369a1;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px}
 .empty-state{text-align:center;padding:60px 20px;color:#aaa}
 .empty-state i{font-size:48px;display:block;margin-bottom:16px;opacity:.3}
 
@@ -68,6 +70,13 @@ body{font-family:'Noto Sans KR',sans-serif;font-size:13px;background:#f5f7fa;col
 .deadline-field label{color:#be185d;font-weight:800}
 .deadline-field input{border-color:#f9a8d4;background:#fff0f9;font-weight:700;color:#be185d}
 
+/* 월별 집계 탭 */
+.month-tab-bar{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.month-tab{padding:4px 10px;border:1.5px solid #bae6fd;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;background:#f0f9ff;color:#0369a1;transition:.15s}
+.month-tab.active{background:#0369a1;color:#fff;border-color:#0369a1}
+.month-tab:hover:not(.active){background:#e0f2fe}
+/* 실제 작업일수 표시 */
+.workday-badge{background:#f0fdf4;border:1px solid #86efac;color:#166534;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:4px}
 /* 인력/인건비 요약 패널 (관리자 전용) */
 .cost-panel{background:#fff;border:1.5px solid #bae6fd;border-radius:10px;padding:14px 18px;margin-bottom:12px;display:none}
 .cost-panel-title{font-size:13px;font-weight:800;color:#0369a1;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -77,6 +86,14 @@ body{font-family:'Noto Sans KR',sans-serif;font-size:13px;background:#f5f7fa;col
 .cost-card .cc-val{font-size:20px;font-weight:800;color:#0369a1}
 .cost-card .cc-label{font-size:11px;color:#0c4a6e;margin-top:2px}
 
+/* 월별 인건비 테이블 */
+.cost-by-month{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}
+.cost-by-month th{background:#fef9c3;color:#713f12;padding:5px 10px;text-align:left;font-weight:700;border:1px solid #fde68a}
+.cost-by-month td{padding:5px 10px;border:1px solid #fef9c3;vertical-align:middle}
+.cost-by-month tr:nth-child(even) td{background:#fffbeb}
+.cost-by-month .td-num{text-align:right;font-weight:600}
+.cost-by-month tfoot td{font-weight:800;background:#713f12;color:#fff;text-align:right}
+.cost-by-month tfoot td:first-child{text-align:left}
 /* 공종별 인건비 테이블 */
 .cost-by-cat{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}
 .cost-by-cat th{background:#e0f2fe;color:#0c4a6e;padding:5px 10px;text-align:left;font-weight:700;border:1px solid #bae6fd}
@@ -226,6 +243,9 @@ td.ctrl-copy-target{background:rgba(5,150,105,.1)!important;outline:2px dashed #
   .meta-grid{grid-template-columns:repeat(4,1fr)}
   /* 인쇄 시 인원/비용 숨김 */
   .chip-crew-info{display:none!important}
+  /* 작업일수 뱃지는 인쇄에 포함 */
+  #workday-info{display:block!important}
+  .workday-badge{background:#f0fdf4!important;border:1px solid #86efac!important;color:#166534!important;-webkit-print-color-adjust:exact}
 }
 .print-header{display:none;margin-bottom:12px;border-bottom:2px solid #000;padding-bottom:8px}
 .print-header h1{font-size:17px;font-weight:800}
@@ -365,8 +385,11 @@ td.ctrl-copy-target{background:rgba(5,150,105,.1)!important;outline:2px dashed #
       <i class="fas fa-users" style="color:#0369a1"></i>
       인력 &amp; 인건비 현황
       <span class="cpt-badge">👮 관리자 전용 · 인쇄 미출력</span>
-      <button class="btn btn-sm" style="background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;margin-left:8px;font-size:11px" onclick="toggleCostDetail()">
-        <i class="fas fa-table" id="cost-detail-icon"></i> 공종별 상세
+      <button class="btn btn-sm" style="background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;margin-left:4px;font-size:11px" onclick="showCostTab('cat')" id="cost-tab-cat">
+        <i class="fas fa-table"></i> 공종별
+      </button>
+      <button class="btn btn-sm" style="background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;margin-left:4px;font-size:11px" onclick="showCostTab('month')" id="cost-tab-month">
+        <i class="fas fa-calendar"></i> 월별
       </button>
     </div>
     <!-- 요약 카드 -->
@@ -388,12 +411,20 @@ td.ctrl-copy-target{background:rgba(5,150,105,.1)!important;outline:2px dashed #
         <div class="cc-label">일평균 인력</div>
       </div>
     </div>
-    <!-- 공종별 상세 (토글) -->
+    <!-- 공종별 상세 -->
     <div id="cost-by-cat-wrap" style="display:none">
       <table class="cost-by-cat" id="cost-by-cat-table">
         <thead><tr><th>공종</th><th class="td-num">투입 인원</th><th class="td-num">인건비</th><th>메모</th></tr></thead>
         <tbody id="cost-by-cat-body"></tbody>
         <tfoot><tr id="cost-by-cat-foot"><td>합계</td><td class="td-num" id="cbc-total-crew">0명</td><td class="td-num" id="cbc-total-cost">₩0</td><td></td></tr></tfoot>
+      </table>
+    </div>
+    <!-- 월별 상세 -->
+    <div id="cost-by-month-wrap" style="display:none">
+      <table class="cost-by-month" id="cost-by-month-table">
+        <thead><tr><th>월</th><th class="td-num">작업일수</th><th class="td-num">투입 인원 합계</th><th class="td-num">인건비 합계</th><th class="td-num">일평균 인력</th></tr></thead>
+        <tbody id="cost-by-month-body"></tbody>
+        <tfoot><tr><td>합계</td><td class="td-num" id="cbm-total-days">0일</td><td class="td-num" id="cbm-total-crew">0명</td><td class="td-num" id="cbm-total-cost">₩0</td><td class="td-num">-</td></tr></tfoot>
       </table>
     </div>
   </div>
@@ -428,6 +459,11 @@ td.ctrl-copy-target{background:rgba(5,150,105,.1)!important;outline:2px dashed #
     </div>
   </div>
 
+  <!-- 실제 작업일수 표시 -->
+  <div id="workday-info" style="padding:0 0 8px 4px;display:none">
+    <span class="workday-badge" id="workday-badge-text"><i class="fas fa-calculator"></i> 실제 작업일수 계산 중...</span>
+    <span style="font-size:11px;color:#888;margin-left:8px" id="workday-sub-text"></span>
+  </div>
   <div class="print-note">
     ※ 현장 상황, 디자인 변경 등의 이유로 공정이 변경될 수 있으며 사전에 고지해 드리겠습니다.
   </div>
@@ -659,12 +695,15 @@ function renderList(){
       days=s.start_date.slice(5).replace('-','.')+'~'+s.end_date.slice(5).replace('-','.')+'('+diff+'일)';
     }
     var stBadge='<span class="status-'+s.status+'">'+s.status+'</span>';
-    return '<div class="sch-card" onclick="openSchedule(\''+s.id+'\')">'+
+    var copyBadge=s.is_copy?'<span class="sch-copy-badge">📋 복사본</span>':'';
+    var sid=s.id, sname=escHtml(s.site_name||'');
+    return '<div class="sch-card" onclick="openSchedule(\''+sid+'\')">'+
       '<div class="sch-card-actions">'+
-        '<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openSchedule(\''+s.id+'\')"><i class="fas fa-edit"></i></button>'+
-        '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteSchedule(\''+s.id+'\',\''+escHtml(s.site_name||'')+'\')"><i class="fas fa-trash"></i></button>'+
+        '<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openSchedule(\''+sid+'\')" title="열기"><i class="fas fa-edit"></i></button>'+
+        '<button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="event.stopPropagation();duplicateSchedule(\''+sid+'\',\''+sname+'\')" title="공정표 복사"><i class="fas fa-copy"></i></button>'+
+        '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteSchedule(\''+sid+'\',\''+sname+'\')" title="삭제"><i class="fas fa-trash"></i></button>'+
       '</div>'+
-      '<div class="sch-card-title"><i class="fas fa-hard-hat" style="color:var(--navy);margin-right:6px"></i>'+escHtml(s.site_name||'현장명 없음')+'</div>'+
+      '<div class="sch-card-title"><i class="fas fa-hard-hat" style="color:var(--navy);margin-right:6px"></i>'+escHtml(s.site_name||'현장명 없음')+copyBadge+'</div>'+
       '<div class="sch-card-site">'+escHtml(s.client_name||'고객명 없음')+'</div>'+
       '<div class="sch-card-meta">'+
         (days?'<span class="sch-badge sch-badge-period">📅 '+days+'</span>':'')+
@@ -728,6 +767,46 @@ async function openSchedule(id){
 /* ═══════════════════════════════════════════
    달력 빌드
 ═══════════════════════════════════════════ */
+/* ═══════════════════════════════════════════
+   실제 작업일수 계산 (주말·공휴일·지정휴무 제외)
+═══════════════════════════════════════════ */
+function calcWorkDays(sv,ev){
+  if(!sv||!ev) return {total:0,work:0,weekend:0,hol:0,custom:0};
+  var s=new Date(sv+'T00:00:00'), e=new Date(ev+'T00:00:00');
+  var total=0,work=0,weekend=0,hol=0,custom=0;
+  var cur=new Date(s);
+  while(cur<=e){
+    total++;
+    var dk=dateKey(cur);
+    var w=cur.getDay();
+    var isWeekend=(w===0||w===6);
+    var isHol=!!getHoliday(cur);
+    var isCustHol=!!_customHols[dk];
+    if(isWeekend) weekend++;
+    else if(isCustHol) custom++;
+    else if(isHol) hol++;
+    else work++;
+    cur=addDays(cur,1);
+  }
+  return {total:total,work:work,weekend:weekend,hol:hol,custom:custom};
+}
+
+function updateWorkDayDisplay(){
+  var sv=document.getElementById('f-start').value;
+  var ev=document.getElementById('f-end').value;
+  var wrap=document.getElementById('workday-info');
+  if(!sv||!ev){wrap.style.display='none';return;}
+  var r=calcWorkDays(sv,ev);
+  wrap.style.display='block';
+  document.getElementById('workday-badge-text').innerHTML=
+    '<i class="fas fa-calculator"></i> 실제 작업일수: <strong>'+r.work+'일</strong> / 전체 '+r.total+'일';
+  var parts=[];
+  if(r.weekend>0) parts.push('주말 '+r.weekend+'일');
+  if(r.hol>0) parts.push('법정공휴일 '+r.hol+'일');
+  if(r.custom>0) parts.push('지정휴무 '+r.custom+'일');
+  document.getElementById('workday-sub-text').textContent=parts.length?'(제외: '+parts.join(', ')+')':'';
+}
+
 function buildCalendar(){
   var sv=document.getElementById('f-start').value;
   var ev=document.getElementById('f-end').value;
@@ -745,6 +824,7 @@ function refreshCalendar(){
   tbody.innerHTML=buildCalHTML(sv,ev);
   bindDragDrop();
   bindMobileTouch();
+  updateWorkDayDisplay();
   updateCostSummary();
 }
 
@@ -1111,10 +1191,29 @@ function toggleCostPanel(){
   showToast(_costPanelOpen?'👮 인력 현황 패널 열림 (관리자 전용)':'인력 현황 패널 닫힘');
 }
 
-function toggleCostDetail(){
-  _costDetailOpen=!_costDetailOpen;
-  document.getElementById('cost-by-cat-wrap').style.display=_costDetailOpen?'block':'none';
-  document.getElementById('cost-detail-icon').className=_costDetailOpen?'fas fa-chevron-up':'fas fa-table';
+var _costCurrentTab='';
+function showCostTab(tab){
+  if(_costCurrentTab===tab){
+    _costCurrentTab='';
+    document.getElementById('cost-by-cat-wrap').style.display='none';
+    document.getElementById('cost-by-month-wrap').style.display='none';
+    document.getElementById('cost-tab-cat').style.cssText='background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;margin-left:4px;font-size:11px';
+    document.getElementById('cost-tab-month').style.cssText='background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;margin-left:4px;font-size:11px';
+    return;
+  }
+  _costCurrentTab=tab;
+  var showCat=(tab==='cat'), showMonth=(tab==='month');
+  document.getElementById('cost-by-cat-wrap').style.display=showCat?'block':'none';
+  document.getElementById('cost-by-month-wrap').style.display=showMonth?'block':'none';
+  var catBtn=document.getElementById('cost-tab-cat');
+  var monthBtn=document.getElementById('cost-tab-month');
+  catBtn.style.cssText=showCat?
+    'background:#0369a1;color:#fff;border:1px solid #0369a1;margin-left:4px;font-size:11px':
+    'background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;margin-left:4px;font-size:11px';
+  monthBtn.style.cssText=showMonth?
+    'background:#d97706;color:#fff;border:1px solid #d97706;margin-left:4px;font-size:11px':
+    'background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;margin-left:4px;font-size:11px';
+  updateCostSummary();
 }
 
 function updateCostSummary(){
@@ -1169,6 +1268,46 @@ function updateCostSummary(){
     foot.querySelector('#cbc-total-crew').textContent=totalCrew+'명';
     foot.querySelector('#cbc-total-cost').textContent=wonFull(totalCost);
   }
+
+  /* ── 월별 집계 ── */
+  var byMonth={};
+  Object.keys(_tasks).forEach(function(dk){
+    var arr=_tasks[dk]||[];
+    var mKey=dk.slice(0,7); /* YYYY-MM */
+    if(!byMonth[mKey]) byMonth[mKey]={days:0,crew:0,cost:0};
+    /* 공정이 하나라도 있으면 작업일 카운트 */
+    if(arr.length>0) byMonth[mKey].days++;
+    arr.forEach(function(t){
+      byMonth[mKey].crew+=Number(t.crew||0);
+      byMonth[mKey].cost+=Number(t.cost||0);
+    });
+  });
+  var monthKeys=Object.keys(byMonth).sort();
+  var monthBody=document.getElementById('cost-by-month-body');
+  if(monthBody){
+    monthBody.innerHTML=monthKeys.length?monthKeys.map(function(mk){
+      var row=byMonth[mk];
+      var avg=row.days>0?(row.crew/row.days).toFixed(1):0;
+      var yr=mk.slice(0,4), mo=parseInt(mk.slice(5));
+      var label=yr+'년 '+mo+'월';
+      return '<tr>'+
+        '<td style="font-weight:700">'+label+'</td>'+
+        '<td class="td-num">'+row.days+'일</td>'+
+        '<td class="td-num">'+row.crew+'명</td>'+
+        '<td class="td-num">'+(row.cost>0?wonFull(row.cost):'-')+'</td>'+
+        '<td class="td-num">'+avg+'명</td>'+
+        '</tr>';
+    }).join(''):'<tr><td colspan="5" style="text-align:center;padding:12px;color:#aaa">등록된 인력 데이터 없음</td></tr>';
+  }
+  var mTotalDays=monthKeys.reduce(function(s,k){return s+byMonth[k].days;},0);
+  var mTotalCrew=monthKeys.reduce(function(s,k){return s+byMonth[k].crew;},0);
+  var mTotalCost=monthKeys.reduce(function(s,k){return s+byMonth[k].cost;},0);
+  var cbmDays=document.getElementById('cbm-total-days');
+  var cbmCrew=document.getElementById('cbm-total-crew');
+  var cbmCost=document.getElementById('cbm-total-cost');
+  if(cbmDays) cbmDays.textContent=mTotalDays+'일';
+  if(cbmCrew) cbmCrew.textContent=mTotalCrew+'명';
+  if(cbmCost) cbmCost.textContent=wonFull(mTotalCost);
 }
 
 /* ═══════════════════════════════════════════
@@ -1233,6 +1372,47 @@ async function deleteSchedule(id,name){
   }catch(e){showToast('삭제 실패.');}
 }
 
+/* ═══════════════════════════════════════════
+   공정표 복사 (A안→B안 버전 생성)
+═══════════════════════════════════════════ */
+async function duplicateSchedule(id,name){
+  var newName=prompt('복사본 이름을 입력하세요:', name+' (B안)');
+  if(newName===null) return; /* 취소 */
+  newName=newName.trim();
+  if(!newName){showToast('이름을 입력해주세요.');return;}
+  var s=_schedules.find(function(x){return x.id===id;});
+  if(!s){showToast('원본 공정표를 찾을 수 없습니다.');return;}
+  showToast('📋 복사 중...');
+  var payload={
+    site_name:newName,
+    client_name:s.client_name||null,
+    start_date:s.start_date||null,
+    end_date:s.end_date||null,
+    move_in_date:s.move_in_date||null,
+    deadline_date:s.deadline_date||null,
+    status:'입력중',
+    source:s.source||null,
+    note:'[복사] 원본: '+name+(s.note?' | '+s.note:''),
+    tasks:s.tasks||{},
+    custom_hols:s.custom_hols||{},
+    is_copy:true,
+    updated_at:new Date().toISOString()
+  };
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/schedules',{
+      method:'POST',
+      headers:sbH({'Prefer':'return=representation'}),
+      body:JSON.stringify(payload)
+    });
+    if(!r.ok){var t=await r.text();throw new Error('HTTP '+r.status+' '+t);}
+    showToast('✅ "'+newName+'" 복사 완료!');
+    await loadSchedules();
+  }catch(e){
+    showToast('❌ 복사 실패: '+e.message);
+    console.error('[복사 오류]',e);
+  }
+}
+
 function backToList(){
   if(confirm('목록으로 돌아갑니다. 저장되지 않은 변경사항이 있을 수 있습니다.')) showListView();
 }
@@ -1248,12 +1428,15 @@ function printSchedule(){
   var movein=document.getElementById('f-movein').value;
   var deadline=document.getElementById('f-deadline').value;
   var days='';
+  var workDayStr='';
   if(start&&end){
     var diff=Math.round((new Date(end)-new Date(start))/864e5)+1;
     days=start.slice(5).replace('-','.')+'~'+end.slice(5).replace('-','.')+'('+diff+'일간)';
+    var wd=calcWorkDays(start,end);
+    workDayStr=' | 실제 작업일수: '+wd.work+'일 (주말·공휴일 제외)';
   }
   document.getElementById('print-title-text').textContent='Schedule : '+site+' 공정표';
-  var meta=(client?'고객 : '+client+' | ':'')+' 공사기간 : '+days;
+  var meta=(client?'고객 : '+client+' | ':'')+' 공사기간 : '+days+workDayStr;
   if(movein) meta+=' | 입주일 : '+movein.slice(5).replace('-','.');
   if(deadline) meta+=' | 마감일 : '+deadline.slice(5).replace('-','.');
   document.getElementById('print-meta-text').textContent=meta;

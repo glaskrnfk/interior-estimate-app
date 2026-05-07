@@ -704,6 +704,47 @@ body { font-family: 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', 'Apple SD 
   cursor: pointer; border-bottom: 1px solid #f0f4f8; font-size: 12.5px;
 }
 .name-opt:hover { background: #f0f4ff; color: var(--navy); }
+
+/* ★수정 #9: 비견적 행 스타일 */
+.row-non-est td {
+  color: #6b7280 !important;
+  background: #f9fafb !important;
+  opacity: .75;
+}
+.row-non-est td input { color: #6b7280 !important; }
+
+/* ★수정 #12: 반응형 – 모바일/태블릿 */
+@media (max-width: 900px) {
+  .app-header-inner { flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
+  .header-actions { flex-wrap: wrap; gap: 4px; }
+  .hbtn { padding: 5px 9px; font-size: 11.5px; }
+  .app-title { font-size: 14px; }
+  .app-subtitle { display: none; }
+  .app-main { padding: 12px 10px 60px; }
+  .step-nav-inner { padding: 0 8px; }
+  .step-item { padding: 10px 12px; }
+  .step-desc { display: none; }
+  .form-grid-2, .form-grid-3 { grid-template-columns: 1fr 1fr !important; }
+  .edit-table th:nth-child(n+9):nth-child(-n+10) { display: none; }
+  .edit-table td:nth-child(n+9):nth-child(-n+10) { display: none; }
+  .exec-col { display: none; }
+  .card { padding: 14px 12px; }
+}
+@media (max-width: 600px) {
+  .form-grid-2, .form-grid-3 { grid-template-columns: 1fr !important; }
+  .cur-est-wrap { display: none; }
+  .header-divider { display: none; }
+  .hbtn-saveas { display: none; }
+  .step-item { padding: 8px 10px; }
+  .step-num { width: 22px; height: 22px; font-size: 10.5px; }
+  .step-name { font-size: 11.5px; }
+  .step-connector { width: 16px; }
+  .app-main { padding: 8px 6px 60px; }
+  .modal-box { width: 98% !important; max-height: 95vh !important; }
+  .modal-hdr { padding: 12px 14px; }
+  .modal-body { padding: 14px; }
+  .cost-layout { grid-template-columns: 1fr !important; }
+}
 </style>
 </head>
 <body>
@@ -729,6 +770,11 @@ body { font-family: 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', 'Apple SD 
     </div>
 
     <div class="header-actions">
+      <!-- ★수정 #4: 새로만들기 버튼 추가 -->
+      <button class="hbtn hbtn-ghost" onclick="newEstimateWithCheck()" title="새 견적서 작성 (미저장 확인)">
+        <i class="fas fa-plus"></i> 새로만들기
+      </button>
+      <div class="header-divider" style="height:24px;background:rgba(255,255,255,.15)"></div>
       <!-- 저장 (스마트: 최초=팝업, 이후=즉시) -->
       <button class="hbtn hbtn-save" onclick="smartSave()" title="저장 (최초 저장 시 제목 입력)">
         <i class="fas fa-save"></i> 저장
@@ -894,6 +940,35 @@ body { font-family: 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', 'Apple SD 
         <div class="form-group">
           <label class="form-label">공사 기간 (일)</label>
           <input class="form-input" id="constDays" type="number" value="45" min="1">
+        </div>
+      </div>
+      <!-- ★수정 #7: 시공 날짜 + 실제 시공일수 자동계산 영역 -->
+      <div style="background:#f0f7ff;border:1.5px solid #bdd6f5;border-radius:8px;padding:14px 16px;margin-top:12px">
+        <div style="font-size:12px;font-weight:700;color:#1a3e72;margin-bottom:10px">
+          <i class="fas fa-calendar-check" style="margin-right:5px"></i>시공 기간 설정
+          <span style="font-size:10.5px;font-weight:400;color:#888;margin-left:6px">시작·종료일 입력 시 주말/공휴일 제외 실제 일수 자동 계산</span>
+        </div>
+        <div class="form-grid-3" style="margin-bottom:0">
+          <div class="form-group">
+            <label class="form-label">시공 시작일</label>
+            <input class="form-input" id="constStartDate" type="date"
+              oninput="window._constDaysActualEdited=false; updateActualDaysDisplay()" style="font-size:13px">
+          </div>
+          <div class="form-group">
+            <label class="form-label">시공 종료일</label>
+            <input class="form-input" id="constEndDate" type="date"
+              oninput="window._constDaysActualEdited=false; updateActualDaysDisplay()" style="font-size:13px">
+          </div>
+          <div class="form-group">
+            <label class="form-label">실제 시공일수 (일)
+              <span style="font-size:10px;color:#888;font-weight:400"> 수동 수정 가능</span>
+            </label>
+            <input class="form-input" id="constDaysActual" type="number" min="1" placeholder="자동 계산"
+              oninput="window._constDaysActualEdited=true; (function(){var cd=document.getElementById('constDays'); if(cd)cd.value=this.value;}).call(this)">
+          </div>
+        </div>
+        <div id="actual-days-badge" style="display:none;margin-top:8px;font-size:11.5px;font-weight:600;color:#1a3e72;background:#dce7f5;border-radius:5px;padding:5px 10px;line-height:1.6">
+          <i class="fas fa-info-circle" style="margin-right:4px"></i>
         </div>
       </div>
       <!-- 현장 요약 시공내역 -->
@@ -1069,8 +1144,11 @@ body { font-family: 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', 'Apple SD 
       <strong style="color:var(--navy)">공종 번호</strong>를 클릭해 수정하거나,
       공종 드롭다운으로 다른 공정으로 이동할 수 있습니다.
       <strong style="color:#f59e0b">순서</strong> 드롭다운으로 공종 내 위치를 변경하세요.
-      <span style="color:#dc2626;font-weight:700">🎁서비스</span> 항목은 PDF에 붉은색으로 출력됩니다.
-      <span style="color:#6b7280">🔒잠금</span> 항목은 수정이 불가합니다.
+      <span style="color:#dc2626;font-weight:700">🎁서비스(빨강)</span> PDF 붉은색 출력 ·
+      <span style="color:#d97706;font-weight:700">⚙️관리자전용(주황)</span> 원가관리용 ·
+      <span style="color:#6b7280;font-weight:700">🚫비견적(회색)</span> 합계 미포함 ·
+      <span style="color:#9ca3af">🔒잠금</span> 수정 불가 ·
+      <!-- ★수정 #9 -->
       <span style="color:#f59e0b">★실행단가</span>는 관리자 전용이며 PDF에 미반영됩니다.
     </p>
 
@@ -1102,19 +1180,31 @@ body { font-family: 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', 'Apple SD 
             <th>합계</th>
             <th class="exec-col" title="관리자용 실행단가 – PDF 미반영" style="background:#fef3c7;color:#92400e">실행자재★</th>
             <th class="exec-col" title="관리자용 실행단가 – PDF 미반영" style="background:#fef3c7;color:#92400e">실행노무★</th>
-            <th title="잠금/서비스 상태">상태</th>
+            <!-- ★수정 #9: 상태 컬럼 툴팁 개선 -->
+            <th title="🔒잠금 / 🎁서비스(빨강) / ⚙️관리자전용(주황) / 🚫비견적(회색)" style="min-width:68px">상태</th>
             <th>순서/삭제</th>
           </tr>
         </thead>
         <tbody id="edit-tbody"></tbody>
         <tfoot>
-          <!-- 직접공사비 합계 행 -->
+          <!-- ★수정 #5: 직접공사비 합계 행 – 자재/노무 소계 분리 + 합계 강조 -->
           <tr class="edit-tfoot-row">
-            <td colspan="5" style="text-align:right;font-size:12px;font-weight:600;color:#374151">직접공사비 합계</td>
-            <td id="edit-mat-cell" style="text-align:right;white-space:nowrap;font-size:12px;color:#1a3e72;font-weight:700">0 원</td>
-            <td id="edit-lab-cell" style="text-align:right;white-space:nowrap;font-size:12px;color:#059669;font-weight:700">0 원</td>
-            <td id="edit-total-cell" style="white-space:nowrap;text-align:right;font-weight:800;font-size:13px;color:#1a3e72">0 원</td>
-            <td colspan="4" style="font-size:11px;color:#b45309;text-align:center;font-weight:600;letter-spacing:.3px">★ 관리자 전용 실행단가</td>
+            <td colspan="3" style="text-align:right;font-size:12px;font-weight:700;color:#374151;padding-right:8px">
+              직접공사비 합계
+            </td>
+            <td colspan="2" style="text-align:right;font-size:11px;color:#888;white-space:nowrap">
+              (자재+노무)
+            </td>
+            <td id="edit-mat-cell" style="text-align:right;white-space:nowrap;font-size:12px;color:#1a3e72;font-weight:700;border-top:2px solid #1a3e72">
+              0 원
+              <div style="font-size:9.5px;color:#aaa;font-weight:400;margin-top:1px">자재 소계</div>
+            </td>
+            <td id="edit-lab-cell" style="text-align:right;white-space:nowrap;font-size:12px;color:#059669;font-weight:700;border-top:2px solid #059669">
+              0 원
+              <div style="font-size:9.5px;color:#aaa;font-weight:400;margin-top:1px">노무 소계</div>
+            </td>
+            <td id="edit-total-cell" style="white-space:nowrap;text-align:right;font-weight:800;font-size:14px;color:#fff;background:#1a3e72;border-radius:5px;padding:6px 10px">0 원</td>
+            <td colspan="4" style="font-size:11px;color:#b45309;text-align:center;font-weight:600;letter-spacing:.3px;background:#fffbeb">★ 관리자 전용 실행단가</td>
           </tr>
           <!-- 실행단가 합계 행 -->
           <tr class="edit-tfoot-exec-row">
@@ -1347,6 +1437,39 @@ body { font-family: 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', 'Apple SD 
   </div>
 </div>
 
+<!-- ★수정 #4: 새로만들기 확인 모달 -->
+<div class="modal-overlay" id="new-estimate-confirm-modal">
+  <div class="modal-box modal-box-sm">
+    <div class="modal-hdr">
+      <h2><i class="fas fa-exclamation-triangle" style="color:#f59e0b"></i> 새 견적서 작성</h2>
+      <button class="modal-close-btn" onclick="document.getElementById('new-estimate-confirm-modal').classList.remove('open')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13.5px;color:#374151;line-height:1.7;margin-bottom:6px">
+        현재 작업 중인 견적이 있습니다.<br>
+        <strong style="color:#dc2626">저장하지 않으면 내용이 사라집니다.</strong>
+      </p>
+      <p style="font-size:12px;color:#888;margin-bottom:18px">새로 만들기 전에 저장하시겠습니까?</p>
+      <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+        <button class="btn-nav btn-nav-secondary"
+          onclick="document.getElementById('new-estimate-confirm-modal').classList.remove('open')">
+          취소
+        </button>
+        <button class="btn-nav btn-nav-secondary"
+          style="background:#f59e0b;color:#fff;border-color:#f59e0b"
+          onclick="document.getElementById('new-estimate-confirm-modal').classList.remove('open'); smartSave()">
+          <i class="fas fa-save"></i> 저장 후 계속
+        </button>
+        <button class="btn-nav btn-nav-primary"
+          style="background:#dc2626;border-color:#dc2626"
+          onclick="doNewEstimate()">
+          <i class="fas fa-trash-alt"></i> 저장 안 함
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ════════════════════════════════════════════
      저장 다이얼로그
 ════════════════════════════════════════════ -->
@@ -1482,7 +1605,185 @@ document.addEventListener('DOMContentLoaded', () => {
       applyEstListFilter();
     };
   }
+
+  /* ── #1: URL 파라미터로 견적서 자동 로드 ── */
+  const params = new URLSearchParams(location.search);
+  const loadId = params.get('load_est_id');
+  if (loadId) {
+    setTimeout(() => {
+      if (typeof loadEstimateById === 'function') {
+        loadEstimateById(loadId);
+        showToast('✅ 견적서를 불러왔습니다.');
+      }
+    }, 800);
+  }
+
+  /* ── #8: BroadcastChannel – 관리자 공정명 변경 수신 ── */
+  try {
+    const bc = new BroadcastChannel('iq_proc_update');
+    bc.onmessage = (e) => {
+      if (e.data.type === 'proc_renamed') {
+        const { oldName, newName } = e.data;
+        // detailRows 카테고리명 동기화
+        if (typeof detailRows !== 'undefined') {
+          detailRows.forEach(r => { if (r.category === oldName) r.category = newName; });
+          if (typeof renderEditTable === 'function' && typeof currentStep !== 'undefined' && currentStep === 3) renderEditTable();
+        }
+        // 선택된 자재/노무의 category 동기화
+        if (typeof selectedMats !== 'undefined') {
+          Object.values(selectedMats).forEach(m => { if (m.category === oldName) m.category = newName; });
+        }
+        if (typeof selectedLabs !== 'undefined') {
+          Object.values(selectedLabs).forEach(l => { if (l.category === oldName) l.category = newName; });
+        }
+        if (typeof renderMatBlocks === 'function') renderMatBlocks();
+        if (typeof renderLabBlocks === 'function') renderLabBlocks();
+        showToast(`📌 공정명 동기화: "${oldName}" → "${newName}"`);
+      } else if (e.data.type === 'proc_changed') {
+        if (typeof renderMatBlocks === 'function') renderMatBlocks();
+        if (typeof renderLabBlocks === 'function') renderLabBlocks();
+      }
+    };
+  } catch(e) {}
 });
+
+/* ════════════════════════════════════════════════════════
+   #4: 새로만들기 버튼 – 미저장 변경사항 확인 다이얼로그
+   기존 openNewEstimate/createNew 함수가 없으므로 저장 대화상자에서 처리
+════════════════════════════════════════════════════════ */
+let _currentEstId = null;  // 현재 작업 중인 견적 ID (estimate-save.js와 공유)
+let _hasUnsavedChanges = false;
+
+/* 변경 감지 - 주요 입력 필드에 이벤트 */
+document.addEventListener('DOMContentLoaded', () => {
+  const watchIds = ['clientName','siteName','siteAddress','areaPyeong','areaSqm','constDays',
+                    'companyName','repName','companyTel','companyFax','companyAddr','siteWorkSummary','adminMemo','constDaysActual'];
+  watchIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', () => { _hasUnsavedChanges = true; });
+  });
+});
+
+/* 새 견적 만들기 – 미저장 확인 후 초기화 */
+function newEstimateWithCheck() {
+  if (_hasUnsavedChanges || (typeof detailRows !== 'undefined' && detailRows.length > 0)) {
+    const dialog = document.getElementById('new-estimate-confirm-modal');
+    if (dialog) {
+      dialog.classList.add('open');
+      return;
+    }
+    // 폴백: confirm
+    if (!confirm('현재 작업 중인 견적이 있습니다.\n저장하지 않으면 내용이 사라집니다.\n\n새로 만드시겠습니까?')) return;
+  }
+  doNewEstimate();
+}
+
+function doNewEstimate() {
+  document.getElementById('new-estimate-confirm-modal') && document.getElementById('new-estimate-confirm-modal').classList.remove('open');
+  // 폼 초기화
+  ['clientName','siteName','siteAddress','areaPyeong','areaSqm','constDays',
+   'companyName','repName','companyTel','companyFax','companyAddr','siteWorkSummary','adminMemo',
+   'constDaysActual','constStartDate','constEndDate'].forEach(id => {   // ★수정 #7: 날짜 초기화
+    const el = document.getElementById(id);
+    if (el) {
+      if (id === 'areaPyeong') el.value = '28';
+      else if (id === 'areaSqm') el.value = '92';
+      else if (id === 'constDays') el.value = '45';
+      else el.value = '';
+    }
+  });
+  window._constDaysActualEdited = false;  // ★수정 #7: 수동편집 플래그 초기화
+  const daysBadge = document.getElementById('actual-days-badge');
+  if (daysBadge) daysBadge.style.display = 'none';
+  if (typeof selectedMats !== 'undefined') Object.keys(selectedMats).forEach(k => delete selectedMats[k]);
+  if (typeof selectedLabs !== 'undefined') Object.keys(selectedLabs).forEach(k => delete selectedLabs[k]);
+  if (typeof detailRows !== 'undefined') detailRows.length = 0;
+  _currentEstId = null;
+  _hasUnsavedChanges = false;
+  const badge = document.getElementById('current-est-badge');
+  if (badge) { badge.textContent = '미저장'; badge.className = 'cur-est-badge unsaved'; }
+  const btnC = document.getElementById('btn-contract');
+  if (btnC) btnC.classList.remove('contracted');
+  if (typeof renderMatBlocks === 'function') renderMatBlocks();
+  if (typeof renderLabBlocks === 'function') renderLabBlocks();
+  if (typeof renderEditTable === 'function') renderEditTable();
+  if (typeof goStep === 'function') goStep(1);
+  showToast('✨ 새 견적서를 시작합니다.');
+}
+
+/* save 완료 시 미저장 플래그 리셋 */
+(function patchSmartSave() {
+  const origSmart = window.smartSave;
+  const origConfirm = window.confirmSave;
+  window.confirmSave = function() {
+    origConfirm && origConfirm.apply(this, arguments);
+    _hasUnsavedChanges = false;
+  };
+})();
+
+/* ════════════════════════════════════════════════════════
+   #7: 시공일수 자동계산 (주말/공휴일 제외)
+════════════════════════════════════════════════════════ */
+const KR_HOLIDAYS_EST = {
+  '01-01':1,'03-01':1,'05-05':1,'06-06':1,'08-15':1,
+  '10-03':1,'10-09':1,'12-25':1
+};
+function calcActualDays(startStr, endStr, customHols) {
+  if (!startStr || !endStr) return null;
+  const s = new Date(startStr), e = new Date(endStr);
+  if (isNaN(s) || isNaN(e) || s > e) return null;
+  let total = 0, weekends = 0, holidays = 0;
+  const holSet = new Set(customHols || []);
+  const cur = new Date(s);
+  while (cur <= e) {
+    total++;
+    const dow = cur.getDay();
+    const mmdd = String(cur.getMonth()+1).padStart(2,'0') + '-' + String(cur.getDate()).padStart(2,'0');
+    const ymd  = cur.toISOString().slice(0,10);
+    if (dow === 0 || dow === 6) weekends++;
+    else if (KR_HOLIDAYS_EST[mmdd] || holSet.has(ymd)) holidays++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  const actual = total - weekends - holidays;
+  return { total, weekends, holidays, actual };
+}
+
+function updateActualDaysDisplay() {
+  const s = (document.getElementById('constStartDate') || {}).value;
+  const e = (document.getElementById('constEndDate')   || {}).value;
+  const r = calcActualDays(s, e);
+  const badge    = document.getElementById('actual-days-badge');
+  const manualEl = document.getElementById('constDaysActual');
+  if (!badge) return;
+  if (r) {
+    // ★수정 #7: 배지 텍스트 + 아이콘
+    badge.innerHTML = `<i class="fas fa-info-circle" style="margin-right:5px;color:#2563b0"></i>
+      실제 <strong>${r.actual}일</strong> &nbsp;/&nbsp; 전체 ${r.total}일
+      <span style="color:#888;font-weight:400;margin-left:4px">(주말 ${r.weekends}일 · 공휴일 ${r.holidays}일 제외)</span>`;
+    badge.style.display = '';
+    // 수동 편집 플래그가 없을 때만 자동 반영
+    if (!window._constDaysActualEdited) {
+      if (manualEl) manualEl.value = r.actual;
+      const cd = document.getElementById('constDays');
+      if (cd) cd.value = r.actual;
+    }
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+/* ════════════════════════════════════════════════════════
+   #12: PDF 캐싱 버그 수정 – doPDF 전 항상 buildEstDoc 재호출
+   pdf.js의 doPDF는 이미 buildEstDoc을 호출하므로 추가 패치 불필요
+   하지만 미리보기 모달도 최신 데이터로 갱신
+════════════════════════════════════════════════════════ */
+(function patchDoPDF() {
+  const _orig = window.doPDF;
+  window.doPDF = function() {
+    if (typeof buildEstDoc === 'function') buildEstDoc(); // 캐시 강제 갱신
+    return _orig && _orig.apply(this, arguments);
+  };
+})();
 </script>
 </body>
 </html>

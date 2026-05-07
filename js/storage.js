@@ -120,6 +120,8 @@ function loadCompany() {
 function saveCompany(obj) {
     localStorage.setItem(STORAGE_KEYS.COMPANY, JSON.stringify(obj));
 }
+/* loadCompany 별칭 – admin.html 에서 loadCompanyInfo() 로도 호출 */
+function loadCompanyInfo() { return loadCompany(); }
 
 /* ── 공정명 변경 시 자재·노무 category 일괄 rename ── */
 function renameProcInItems(oldName, newName) {

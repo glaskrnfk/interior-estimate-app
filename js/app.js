@@ -589,19 +589,25 @@ function renderEditTable() {
             const rowMat   = (row.matPrice || 0) * (row.qty || 0);
             const rowLab   = (row.labPrice || 0) * (row.qty || 0);
             const rowTotal = rowMat + rowLab;
-            procMatTotal += rowMat;
-            procLabTotal += rowLab;
-            procTotal    += rowTotal;
-            totalMat     += rowMat;
-            totalLab     += rowLab;
-            totalDirect  += rowTotal;
-            // 실행단가 합계 (수량 × 실행단가)
+            // ★수정 #20: 비견적(isNonEst) 항목은 합계에서 제외
+            const skipAmt  = !!row.isNonEst;
+            if (!skipAmt) {
+                procMatTotal += rowMat;
+                procLabTotal += rowLab;
+                procTotal    += rowTotal;
+                totalMat     += rowMat;
+                totalLab     += rowLab;
+                totalDirect  += rowTotal;
+            }
+            // 실행단가 합계 (수량 × 실행단가) – 비견적도 실행원가에는 포함
             const execMat = (row.execMatPrice || 0) * (row.qty || 0);
             const execLab = (row.execLabPrice || 0) * (row.qty || 0);
-            procExecMat  += execMat;
-            procExecLab  += execLab;
-            totalExecMat += execMat;
-            totalExecLab += execLab;
+            if (!skipAmt) {
+                procExecMat  += execMat;
+                procExecLab  += execLab;
+                totalExecMat += execMat;
+                totalExecLab += execLab;
+            }
 
             const tr = document.createElement('tr');
             tr.dataset.rowId = row.id;
@@ -611,6 +617,8 @@ function renderEditTable() {
             const isService = !!row.isService;
             if (isLocked)  tr.classList.add('row-locked');
             if (isService) tr.classList.add('row-service');
+            // ★수정 #9: 비견적 행 클래스 적용
+            if (!!row.isNonEst) tr.classList.add('row-non-est');
 
             // 자재/노무 구분 뱃지 (이름 선택 시에도 반영)
             const typeVal = row._type || (row._matId ? 'mat' : row._labId ? 'lab' : 'mat');
@@ -637,7 +645,7 @@ function renderEditTable() {
                 `<span class="unit-opt" onclick="setUnit(${idx},'${u}')">${u}</span>`
             ).join('');
 
-            // 품목명 팝업 (클릭 시 브랜드/규격/금액 자동 반영)
+            // 품목명 팝업 (클릭 시 브랜드/규격/금액 자동 반영) + 관리자 DB 등록 버튼
             const allMats = loadMaterials().filter(m => m.category === cat);
             const allLabs = loadLabors().filter(l => l.category === cat);
             const nameBtns = [
@@ -646,15 +654,35 @@ function renderEditTable() {
                     ><span class="name-opt-badge mat">자재</span>${esc(m.name)}<span class="name-opt-price">${Number(m.price).toLocaleString()}원</span></div>`),
                 ...allLabs.map(l => `<div class="name-opt" data-type="lab"
                     onclick="setNameFull(${idx},'${esc(l.name)}','${esc(l.spec||'-')}',0,${l.price},'lab','','${l.id}')"
-                    ><span class="name-opt-badge lab">노무</span>${esc(l.name)}<span class="name-opt-price">${Number(l.price).toLocaleString()}원</span></div>`)
+                    ><span class="name-opt-badge lab">노무</span>${esc(l.name)}<span class="name-opt-price">${Number(l.price).toLocaleString()}원</span></div>`),
+                `<div class="name-opt-register-row">
+                    <button class="name-opt-reg-btn" onclick="openRegisterToDbModal(${idx})" title="현재 행 정보를 관리자 DB(자재/노무)에 등록">
+                      <i class="fas fa-database"></i> 관리자 DB에 등록
+                    </button>
+                 </div>`
             ].join('');
 
             const lockIcon  = isLocked  ? 'fa-lock'   : 'fa-lock-open';
             const lockTitle = isLocked  ? '잠금 해제' : '완료 잠금';
             const lockStyle = isLocked  ? 'color:#b91c1c' : 'color:#9ca3af';
+
+            // #9: 서비스 아이콘 스타일 (SVC 라벨 제거 – 아이콘+색상으로 구분)
             const svcStyle  = isService ? 'color:#dc2626;font-weight:700' : 'color:#d1d5db';
 
+            // #9: 행 타입별 글자색 구분
+            // isService=true → 소비자 서비스(붉은색), isAdminOnly=true → 관리자 전용(주황), isNonEst=true → 비견적(회색)
+            const isAdminOnly = !!row.isAdminOnly;
+            const isNonEst    = !!row.isNonEst;
+            let rowTextColor = '';
+            if (isService)   rowTextColor = 'color:#dc2626';      // 소비자 서비스 – 빨강
+            else if (isAdminOnly) rowTextColor = 'color:#d97706'; // 관리자 전용 – 주황
+            else if (isNonEst)   rowTextColor = 'color:#6b7280';  // 비견적 – 회색
+
             const disAttr   = isLocked ? 'disabled style="pointer-events:none;opacity:.55"' : '';
+
+            // #5: 소계 = 자재 소계 + 노무 소계 (단가×수량)
+            const matSubtotal = rowMat;   // matPrice × qty
+            const labSubtotal = rowLab;   // labPrice × qty
 
             tr.innerHTML = `
               <td>
@@ -664,13 +692,13 @@ function renderEditTable() {
                   ${catOptions}
                 </select>
               </td>
-              <td>
+              <td style="${rowTextColor}">
                 <div class="name-btn-wrap">
                   <input type="text" value="${esc(row.name)}"
                          onchange="upRow(${idx},'name',this.value)"
                          onfocus="openNamePopup(${idx})"
                          id="name-inp-${idx}"
-                         style="width:100%" ${disAttr}>
+                         style="width:100%;${rowTextColor?'color:inherit':''}" ${disAttr}>
                   <div class="name-popup" id="name-pop-${idx}">
                     ${nameBtns || '<div style="padding:8px 14px;color:#aaa;font-size:12px">항목 없음</div>'}
                   </div>
@@ -689,11 +717,21 @@ function renderEditTable() {
               </td>
               <td><input type="number" value="${row.qty}"
                    onchange="upRow(${idx},'qty',+this.value)" min="0" step="1" style="width:56px" ${disAttr}></td>
-              <td><input type="number" value="${row.matPrice}"
-                   onchange="upRow(${idx},'matPrice',+this.value)" min="0" step="100" style="width:88px" ${disAttr}></td>
-              <td><input type="number" value="${row.labPrice}"
-                   onchange="upRow(${idx},'labPrice',+this.value)" min="0" step="100" style="width:88px" ${disAttr}></td>
-              <td style="text-align:right;font-weight:600;white-space:nowrap">${won(rowTotal)}</td>
+              <td>
+                <input type="number" value="${row.matPrice}"
+                   onchange="upRow(${idx},'matPrice',+this.value)" min="0" step="100" style="width:82px" ${disAttr}>
+                <div style="font-size:10px;color:#1a3e72;font-weight:600;text-align:right;margin-top:2px;white-space:nowrap">${matSubtotal>0?'='+won(matSubtotal):''}</div>
+              </td>
+              <td>
+                <input type="number" value="${row.labPrice}"
+                   onchange="upRow(${idx},'labPrice',+this.value)" min="0" step="100" style="width:82px" ${disAttr}>
+                <div style="font-size:10px;color:#059669;font-weight:600;text-align:right;margin-top:2px;white-space:nowrap">${labSubtotal>0?'='+won(labSubtotal):''}</div>
+              </td>
+              <td style="text-align:right;font-weight:600;white-space:nowrap;${rowTextColor}">
+                ${isNonEst
+                  ? `<span style="text-decoration:line-through;color:#9ca3af;font-size:10px">${won(rowTotal)}</span><br><span style="font-size:9px;color:#9ca3af;font-weight:400">비견적</span>`
+                  : won(rowTotal)}
+              </td>
               <td class="exec-col">
                 <input type="number" value="${row.execMatPrice||0}"
                    onchange="upRow(${idx},'execMatPrice',+this.value)" min="0" step="100"
@@ -711,10 +749,21 @@ function renderEditTable() {
                           style="${lockStyle};background:none;border:none;cursor:pointer;font-size:13px;padding:2px 5px">
                     <i class="fas ${lockIcon}"></i>
                   </button>
-                  <button class="icon-btn" title="서비스 항목"
+                  <button class="icon-btn" title="서비스 항목 (소비자 서비스 – 빨간색)"
                           onclick="upRow(${idx},'isService',${!isService})"
                           style="${svcStyle};background:none;border:none;cursor:pointer;font-size:13px;padding:2px 5px">
                     <i class="fas fa-gift"></i>
+                  </button>
+                  <button class="icon-btn" title="관리자 전용 항목 (주황색 – 원가관리용)"
+                          onclick="upRow(${idx},'isAdminOnly',${!isAdminOnly})"
+                          style="${isAdminOnly?'color:#d97706;font-weight:700':'color:#d1d5db'};background:none;border:none;cursor:pointer;font-size:11px;padding:2px 3px">
+                    <i class="fas fa-cog"></i>
+                  </button>
+                  <!-- ★수정 #9: 비견적 항목 토글 (회색) -->
+                  <button class="icon-btn" title="비견적 항목 (회색 – 견적 금액에 미포함)"
+                          onclick="upRow(${idx},'isNonEst',${!isNonEst})"
+                          style="${isNonEst?'color:#6b7280;font-weight:700':'color:#d1d5db'};background:none;border:none;cursor:pointer;font-size:11px;padding:2px 3px">
+                    <i class="fas fa-eye-slash"></i>
                   </button>
                 </div>
               </td>
@@ -750,12 +799,16 @@ function renderEditTable() {
         tbody.appendChild(stTr);
     });
 
-    // 전체 합계 업데이트
-    document.getElementById('edit-total-cell').textContent = won(totalDirect);
+    // ★수정 #5: 전체 합계 업데이트 – 자재/노무 소계 innerHTML 유지
+    const totCell = document.getElementById('edit-total-cell');
+    if (totCell) totCell.textContent = won(totalDirect);
+
     const matCell = document.getElementById('edit-mat-cell');
     const labCell = document.getElementById('edit-lab-cell');
-    if (matCell) matCell.textContent = won(totalMat);
-    if (labCell) labCell.textContent = won(totalLab);
+    // innerHTML로 소계 라벨 보존
+    if (matCell) matCell.innerHTML = `${won(totalMat)}<div style="font-size:9.5px;color:#aaa;font-weight:400;margin-top:1px">자재 소계</div>`;
+    if (labCell) labCell.innerHTML = `${won(totalLab)}<div style="font-size:9.5px;color:#aaa;font-weight:400;margin-top:1px">노무 소계</div>`;
+
     // 실행 합계
     const execMatCell  = document.getElementById('edit-exec-mat-cell');
     const execLabCell  = document.getElementById('edit-exec-lab-cell');
@@ -767,8 +820,8 @@ function renderEditTable() {
     if (execLabCell)  execLabCell.textContent  = won(totalExecLab);
     if (execTotCell)  execTotCell.textContent  = won(totExec);
     if (execDiffCell) {
-        execDiffCell.textContent  = (totDiff >= 0 ? '+' : '') + won(totDiff);
-        execDiffCell.style.color  = totDiff > 0 ? '#dc2626' : totDiff < 0 ? '#059669' : '#888';
+        execDiffCell.textContent = (totDiff >= 0 ? '+' : '') + won(totDiff);
+        execDiffCell.style.color = totDiff > 0 ? '#dc2626' : totDiff < 0 ? '#059669' : '#888';
     }
 }
 
@@ -943,9 +996,181 @@ function moveRowByOrder(idx, newPosStr) {
     renderEditTable();
 }
 
+/* ══════════════════════════════════════════════════════
+   #3: 세부내역 행 → 관리자 DB 등록 모달
+══════════════════════════════════════════════════════ */
+function openRegisterToDbModal(idx) {
+    const row = detailRows[idx];
+    if (!row) return;
+    document.querySelectorAll('.name-popup').forEach(p => p.classList.remove('open'));
+
+    // 모달 HTML 생성 (없으면 삽입)
+    let modal = document.getElementById('register-to-db-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'register-to-db-modal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+          <div class="modal-box modal-box-sm" style="max-width:500px">
+            <div class="modal-hdr">
+              <h2><i class="fas fa-database" style="color:var(--navy)"></i> 관리자 DB에 등록</h2>
+              <button class="modal-close-btn" onclick="document.getElementById('register-to-db-modal').classList.remove('open')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" id="reg-db-body"></div>
+          </div>`;
+        modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
+        document.body.appendChild(modal);
+    }
+
+    const units = (typeof loadUnits === 'function') ? loadUnits() : ['㎡','m','개','식','품','장'];
+    const procs = (typeof loadProcesses === 'function') ? loadProcesses() : [];
+    const catOpts = procs.map(p => `<option value="${esc(p.name)}" ${p.name===row.category?'selected':''}>${p.num} ${esc(p.name)}</option>`).join('');
+    const unitOpts = units.map(u => `<option value="${u}" ${u===row.unit?'selected':''}>${u}</option>`).join('');
+
+    const gradeOpts = ['실속형','기본형','중급형','고급형','프리미엄','공통'].map(g =>
+        `<option value="${g}">${g}</option>`).join('');
+    const basisOpts = ['식당','㎡당','m당','개당','품당','평당'].map(b =>
+        `<option value="${b}">${b}</option>`).join('');
+
+    const body = document.getElementById('reg-db-body');
+    body.innerHTML = `
+      <p style="font-size:12px;color:#888;margin-bottom:16px;line-height:1.5">
+        현재 행의 정보를 자재 DB 또는 노무비 DB에 저장합니다.<br>
+        저장 후 자재/노무비 선택(STEP 2)에서 바로 사용할 수 있습니다.
+      </p>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button onclick="setRegType('mat')" id="reg-type-mat"
+          style="flex:1;padding:10px;border:2px solid var(--navy);border-radius:7px;background:var(--navy);color:#fff;font-weight:700;cursor:pointer;font-size:13px">
+          <i class="fas fa-boxes"></i> 자재로 등록
+        </button>
+        <button onclick="setRegType('lab')" id="reg-type-lab"
+          style="flex:1;padding:10px;border:2px solid var(--border);border-radius:7px;background:#fff;color:#555;font-weight:700;cursor:pointer;font-size:13px">
+          <i class="fas fa-hard-hat"></i> 노무비로 등록
+        </button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div><label style="font-size:11px;font-weight:700;color:#586069;display:block;margin-bottom:4px">공종 <span style="color:red">*</span></label>
+          <select id="reg-cat" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px">
+            ${catOpts}
+          </select>
+        </div>
+        <div id="reg-grade-wrap"><label style="font-size:11px;font-weight:700;color:#586069;display:block;margin-bottom:4px">등급</label>
+          <select id="reg-grade" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px">${gradeOpts}</select>
+        </div>
+        <div id="reg-basis-wrap" style="display:none"><label style="font-size:11px;font-weight:700;color:#586069;display:block;margin-bottom:4px">산출기준</label>
+          <select id="reg-basis" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px">${basisOpts}</select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div><label style="font-size:11px;font-weight:700;color:#586069;display:block;margin-bottom:4px">품목명 <span style="color:red">*</span></label>
+          <input id="reg-name" value="${esc(row.name)}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box">
+        </div>
+        <div id="reg-brand-wrap"><label style="font-size:11px;font-weight:700;color:#586069;display:block;margin-bottom:4px">브랜드</label>
+          <input id="reg-brand" value="${esc((row.brand||'').split('/')[0].trim())}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+        <div><label style="font-size:11px;font-weight:700;color:#586069;display:block;margin-bottom:4px">규격/시리즈</label>
+          <input id="reg-spec" value="${esc((row.brand||'').split('/').slice(1).join('/').trim())}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box">
+        </div>
+        <div><label style="font-size:11px;font-weight:700;color:#586069;display:block;margin-bottom:4px">단위</label>
+          <select id="reg-unit" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px">${unitOpts}</select>
+        </div>
+        <div><label style="font-size:11px;font-weight:700;color:#586069;display:block;margin-bottom:4px">단가 (원) <span style="color:red">*</span></label>
+          <input id="reg-price" type="number" value="${row.matPrice||row.labPrice||0}" min="0" step="100"
+            style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:10px;border-top:1px solid var(--border)">
+        <button onclick="document.getElementById('register-to-db-modal').classList.remove('open')"
+          style="padding:9px 18px;border:1.5px solid var(--border);border-radius:7px;background:#fff;color:#555;cursor:pointer;font-size:13px">취소</button>
+        <button onclick="confirmRegisterToDb()"
+          style="padding:9px 18px;border:none;border-radius:7px;background:var(--navy);color:#fff;font-weight:700;cursor:pointer;font-size:13px">
+          <i class="fas fa-save"></i> DB에 저장
+        </button>
+      </div>`;
+
+    window._regDbType = 'mat';
+    modal.classList.add('open');
+}
+
+function setRegType(type) {
+    window._regDbType = type;
+    const matBtn  = document.getElementById('reg-type-mat');
+    const labBtn  = document.getElementById('reg-type-lab');
+    const gradeW  = document.getElementById('reg-grade-wrap');
+    const basisW  = document.getElementById('reg-basis-wrap');
+    const brandW  = document.getElementById('reg-brand-wrap');
+    if (!matBtn) return;
+    if (type === 'mat') {
+        matBtn.style.background = 'var(--navy)'; matBtn.style.color = '#fff'; matBtn.style.borderColor = 'var(--navy)';
+        labBtn.style.background = '#fff'; labBtn.style.color = '#555'; labBtn.style.borderColor = 'var(--border)';
+        if (gradeW) gradeW.style.display = '';
+        if (basisW) basisW.style.display = 'none';
+        if (brandW) brandW.style.display = '';
+    } else {
+        labBtn.style.background = '#059669'; labBtn.style.color = '#fff'; labBtn.style.borderColor = '#059669';
+        matBtn.style.background = '#fff'; matBtn.style.color = '#555'; matBtn.style.borderColor = 'var(--border)';
+        if (gradeW) gradeW.style.display = 'none';
+        if (basisW) basisW.style.display = '';
+        if (brandW) brandW.style.display = 'none';
+    }
+}
+
+function confirmRegisterToDb() {
+    const type  = window._regDbType || 'mat';
+    const cat   = (document.getElementById('reg-cat')   || {}).value || '';
+    const name  = ((document.getElementById('reg-name')  || {}).value || '').trim();
+    const price = parseFloat((document.getElementById('reg-price') || {}).value) || 0;
+    const unit  = (document.getElementById('reg-unit')  || {}).value || '식';
+
+    if (!cat || !name || price <= 0) {
+        showToast('⚠️ 공종, 품목명, 단가를 모두 입력하세요.');
+        return;
+    }
+
+    if (type === 'mat') {
+        const newMat = {
+            id       : 'mat_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+            category : cat,
+            name     : name,
+            brand    : (document.getElementById('reg-brand') || {}).value || '',
+            spec     : (document.getElementById('reg-spec')  || {}).value || '',
+            grade    : (document.getElementById('reg-grade') || {}).value || '기본형',
+            unit     : unit,
+            price    : price
+        };
+        const list = loadMaterials();
+        list.push(newMat);
+        saveMaterials(list);
+        showToast(`✅ "${name}" 자재로 DB에 등록되었습니다.`);
+    } else {
+        const newLab = {
+            id       : 'lab_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+            category : cat,
+            name     : name,
+            spec     : (document.getElementById('reg-spec')  || {}).value || '',
+            basis    : (document.getElementById('reg-basis') || {}).value || '식당',
+            unit     : unit,
+            price    : price
+        };
+        const list = loadLabors();
+        list.push(newLab);
+        saveLabors(list);
+        showToast(`✅ "${name}" 노무비로 DB에 등록되었습니다.`);
+    }
+
+    document.getElementById('register-to-db-modal').classList.remove('open');
+    // 자재/노무 블록 즉시 갱신
+    if (typeof renderMatBlocks === 'function') renderMatBlocks();
+    if (typeof renderLabBlocks === 'function') renderLabBlocks();
+}
+
 function upRow(idx, field, val) {
     if (!detailRows[idx]) return;
-    if (detailRows[idx].isLocked && field !== 'isLocked' && field !== 'isService') {
+    // ★수정 #9: isAdminOnly, isNonEst 도 잠금 상태에서 변경 허용
+    const unlockFields = ['isLocked','isService','isAdminOnly','isNonEst'];
+    if (detailRows[idx].isLocked && !unlockFields.includes(field)) {
         showToast('⛔ 잠긴 항목입니다. 잠금을 해제하세요.');
         renderEditTable();
         return;
@@ -1016,7 +1241,9 @@ function syncRateForm() {
 function recalc() {
     let matTotal = 0, labTotal = 0;
     let execMatTotal = 0, execLabTotal = 0;
+    // ★수정 #20: 비견적(isNonEst) 항목은 원가 계산에서 제외
     detailRows.forEach(r => {
+        if (r.isNonEst) return;
         matTotal     += (r.matPrice     || 0) * (r.qty || 0);
         labTotal     += (r.labPrice     || 0) * (r.qty || 0);
         execMatTotal += (r.execMatPrice || 0) * (r.qty || 0);
@@ -1193,6 +1420,8 @@ function renderExecProcTable() {
         const catRows = groups[cat];
         let estMat = 0, estLab = 0, execMat = 0, execLab = 0;
         catRows.forEach(r => {
+            // ★수정 #20: 비견적(isNonEst) 항목 제외
+            if (r.isNonEst) return;
             estMat  += (r.matPrice     || 0) * (r.qty || 0);
             estLab  += (r.labPrice     || 0) * (r.qty || 0);
             execMat += (r.execMatPrice || 0) * (r.qty || 0);
@@ -1407,9 +1636,15 @@ function buildEstDoc() {
 
       <div class="cov-remark">
         <strong>비 고 / REMARK</strong><br>
-        · 본 견적서의 유효기간은 발행일로부터 30일입니다.<br>
-        · 내역 외 추가·변경 공사비는 별도 협의 산정됩니다.<br>
-        · 상기 금액은 첨부 세부내역서를 기준으로 산출하였습니다.
+        ${(function(){
+          try {
+            var co = (typeof loadCompany === 'function') ? loadCompany() : {};
+            if (co && co.remarkText && co.remarkText.trim()) {
+              return co.remarkText.trim().split('\n').map(function(l){ return '· ' + l; }).join('<br>');
+            }
+          } catch(e) {}
+          return '· 본 견적서의 유효기간은 발행일로부터 30일입니다.<br>· 내역 외 추가·변경 공사비는 별도 협의 산정됩니다.<br>· 상기 금액은 첨부 세부내역서를 기준으로 산출하였습니다.';
+        })()}
       </div>
 
       <div class="cov-company">
@@ -1512,7 +1747,10 @@ function buildEstDoc() {
         const rows = groups[cat];
         if (!rows || rows.length === 0) return null;
         let catMatTotal = 0, catLabTotal = 0;
-        rows.forEach(r => {
+        // ★수정 #20: 비견적(isNonEst) 항목은 PDF 합계·내역에서 제외
+        const visibleRows = rows.filter(r => !r.isNonEst);
+        if (visibleRows.length === 0) return null; // 공정 내 visible 행 없으면 섹션 제외
+        visibleRows.forEach(r => {
             catMatTotal += (r.matPrice || 0) * (r.qty || 0);
             catLabTotal += (r.labPrice || 0) * (r.qty || 0);
         });
@@ -1521,7 +1759,7 @@ function buildEstDoc() {
         grandTotalMat  += catMatTotal;
         grandTotalLab  += catLabTotal;
 
-        const dataRows = rows.map(r => {
+        const dataRows = visibleRows.map(r => {
             const rm = (r.matPrice || 0) * (r.qty || 0);
             const rl = (r.labPrice || 0) * (r.qty || 0);
             const rt = rm + rl;

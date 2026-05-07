@@ -163,7 +163,10 @@
 .sv-badge.new   { background:#fee2e2; color:#dc2626; }
 .sv-badge.check { background:#dbeafe; color:#1d4ed8; }
 .sv-badge.done  { background:#d1fae5; color:#065f46; }
-.sv-badge.contract { background:#d1fae5; color:#065f46; }
+.sv-badge.contract  { background:#d1fae5; color:#065f46; }
+.sv-badge.canceled  { background:#fee2e2; color:#9f1239; }
+/* ★수정 #6: 취소 카드 스타일 */
+.survey-card.sv-canceled-card { border-left:4px solid #9f1239; background:#fff5f5; opacity:.85; }
 .sv-badge.budget { background:#fef3c7; color:#92400e; }
 .sv-badge.scope  { background:#ede9fe; color:#5b21b6; }
 .sv-body  { margin-top:10px; font-size:12.5px; color:#555; line-height:1.7; }
@@ -197,6 +200,35 @@ input[type=number] { user-select:none; }
 @media print {
   .tab-bar, #unsaved-banner, .admin-header, .modal-backdrop { display:none !important; }
   .tab-panel { display:block !important; }
+}
+/* ★수정 #12: 관리자 반응형 */
+@media (max-width: 1024px) {
+  .summary-cards { grid-template-columns: repeat(2,1fr); }
+  .month-grid    { grid-template-columns: repeat(2,1fr); }
+  .rate-grid     { grid-template-columns: repeat(2,1fr); }
+  .frow3         { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 768px) {
+  .admin-wrap    { padding: 14px 12px; }
+  .tab-btn       { padding: 8px 12px; font-size: 12.5px; }
+  .tab-bar       { gap: 2px; }
+  .summary-cards { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .month-grid    { grid-template-columns: 1fr; }
+  .rate-grid     { grid-template-columns: 1fr 1fr; }
+  .toolbar       { gap: 7px; }
+  .toolbar input { width: 140px; }
+  .tbl th, .tbl td { padding: 8px 8px; font-size: 12px; }
+  .tbl th:nth-child(n+5):nth-child(-n+6) { display: none; }
+  .tbl td:nth-child(n+5):nth-child(-n+6) { display: none; }
+  .frow, .frow3  { grid-template-columns: 1fr; }
+  .modal-box     { width: 98vw !important; }
+}
+@media (max-width: 480px) {
+  .summary-cards { grid-template-columns: 1fr; }
+  .rate-grid     { grid-template-columns: 1fr; }
+  .tab-btn span  { display: none; }
+  .contract-year-nav span { font-size: 18px; }
+  .summary-card .sc-value { font-size: 18px; }
 }
 </style>
 </head>
@@ -285,6 +317,10 @@ input[type=number] { user-select:none; }
     <button class="tab-btn" onclick="switchTab('tab-survey',this)">
       <i class="fas fa-clipboard-list"></i> 고객 설문
       <span id="survey-new-count" class="cat-count" style="background:#fee2e2;color:#dc2626">0</span>
+    </button>
+    <!-- ★수정 #13/#14: 계약서 탭 추가 -->
+    <button class="tab-btn" onclick="switchTab('tab-contract-tmpl',this)">
+      <i class="fas fa-file-contract"></i> 계약서 템플릿
     </button>
     <button class="tab-btn" onclick="window.open('schedule.html','_blank')" style="background:#1a3e72;color:#fff;border-radius:6px 6px 0 0">
       <i class="fas fa-calendar-alt"></i> 공정표 관리
@@ -470,11 +506,20 @@ input[type=number] { user-select:none; }
         <div class="fg"><label>대표자명</label><input id="co-rep" placeholder="예: 홍길동"></div>
       </div>
       <div class="frow">
+        <div class="fg"><label>사업자등록번호</label><input id="co-bizno" placeholder="예: 123-45-67890"></div>
         <div class="fg"><label>대표 전화</label><input id="co-tel" placeholder="예: 010-1234-5678"></div>
+      </div>
+      <div class="frow">
         <div class="fg"><label>팩스</label><input id="co-fax" placeholder="예: 02-1234-5678"></div>
+        <div class="fg"><label>이메일</label><input id="co-email" placeholder="예: info@company.com"></div>
       </div>
       <div class="frow frow1">
         <div class="fg"><label>주소</label><input id="co-addr" placeholder="예: 서울시 강남구 테헤란로 123"></div>
+      </div>
+      <div class="frow frow1">
+        <div class="fg"><label>비고 / REMARK <span style="font-size:11px;color:#888;font-weight:400">(견적서 비고란에 표시될 내용)</span></label>
+          <textarea id="co-remark" rows="3" placeholder="예: 본 견적서는 발행일로부터 30일간 유효합니다. 상기 금액은 부가세 포함 금액입니다." style="resize:vertical;font:13px 'Noto Sans KR',sans-serif;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;width:100%;box-sizing:border-box"></textarea>
+        </div>
       </div>
       <div style="margin-top:20px;text-align:center">
         <button class="btn btn-primary" onclick="saveCompanyForm()" style="padding:12px 32px;font-size:15px">
@@ -580,29 +625,39 @@ input[type=number] { user-select:none; }
         </button>
         <span style="color:#888;margin-left:6px">카카오톡·문자로 고객에게 전송하세요</span>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
-        <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px 16px;text-align:center">
-          <div style="font-size:11px;color:#888;margin-bottom:6px">전체 응답</div>
-          <div style="font-size:24px;font-weight:800;color:var(--navy)" id="sv-total">0</div>
+      <!-- ★수정 #6: 상태 카운트 배지 – 취소/계약완료 추가 (6열) -->
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px">
+        <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 14px;text-align:center">
+          <div style="font-size:10.5px;color:#888;margin-bottom:5px">전체 응답</div>
+          <div style="font-size:22px;font-weight:800;color:var(--navy)" id="sv-total">0</div>
         </div>
-        <div style="background:#fff9f9;border:1px solid #fca5a5;border-radius:8px;padding:14px 16px;text-align:center">
-          <div style="font-size:11px;color:#dc2626;margin-bottom:6px">신규 (미확인)</div>
-          <div style="font-size:24px;font-weight:800;color:#dc2626" id="sv-new">0</div>
+        <div style="background:#fff9f9;border:1px solid #fca5a5;border-radius:8px;padding:12px 14px;text-align:center">
+          <div style="font-size:10.5px;color:#dc2626;margin-bottom:5px">🔴 신규</div>
+          <div style="font-size:22px;font-weight:800;color:#dc2626" id="sv-new">0</div>
         </div>
-        <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:14px 16px;text-align:center">
-          <div style="font-size:11px;color:#1d4ed8;margin-bottom:6px">확인중</div>
-          <div style="font-size:24px;font-weight:800;color:#1d4ed8" id="sv-checking">0</div>
+        <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:12px 14px;text-align:center">
+          <div style="font-size:10.5px;color:#1d4ed8;margin-bottom:5px">🔵 상담중</div>
+          <div style="font-size:22px;font-weight:800;color:#1d4ed8" id="sv-checking">0</div>
         </div>
-        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:14px 16px;text-align:center">
-          <div style="font-size:11px;color:#059669;margin-bottom:6px">미팅완료</div>
-          <div style="font-size:24px;font-weight:800;color:#059669" id="sv-done">0</div>
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px 14px;text-align:center">
+          <div style="font-size:10.5px;color:#059669;margin-bottom:5px">✅ 미팅완료</div>
+          <div style="font-size:22px;font-weight:800;color:#059669" id="sv-done">0</div>
+        </div>
+        <div style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:8px;padding:12px 14px;text-align:center">
+          <div style="font-size:10.5px;color:#7c3aed;margin-bottom:5px">🤝 계약완료</div>
+          <div style="font-size:22px;font-weight:800;color:#7c3aed" id="sv-contracted">0</div>
+        </div>
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 14px;text-align:center">
+          <div style="font-size:10.5px;color:#9f1239;margin-bottom:5px">⛔ 취소</div>
+          <div style="font-size:22px;font-weight:800;color:#9f1239" id="sv-canceled">0</div>
         </div>
       </div>
       <div class="survey-filter-tabs">
         <button class="sv-filter-btn active" onclick="setSurveyFilter('all',this)">전체</button>
         <button class="sv-filter-btn" onclick="setSurveyFilter('신규',this)">🔴 신규</button>
-        <button class="sv-filter-btn" onclick="setSurveyFilter('확인중',this)">🔵 확인중</button>
+        <button class="sv-filter-btn" onclick="setSurveyFilter('확인중',this)">🔵 상담중</button>
         <button class="sv-filter-btn" onclick="setSurveyFilter('미팅완료',this)">✅ 미팅완료</button>
+        <button class="sv-filter-btn" onclick="setSurveyFilter('취소',this)">⛔ 취소</button>
         <button class="sv-filter-btn" onclick="setSurveyFilter('계약완료',this)">🤝 계약완료</button>
       </div>
       <div id="survey-list-body">
@@ -613,7 +668,121 @@ input[type=number] { user-select:none; }
     </div>
   </div><!-- /tab-survey -->
 
+  <!-- ★수정 #13/#14: 계약서 템플릿 탭 패널 -->
+  <div id="tab-contract-tmpl" class="tab-panel">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header-with-action" style="margin-bottom:16px">
+        <h2 class="card-title"><i class="fas fa-file-contract" style="color:var(--navy);margin-right:6px"></i>계약서 템플릿</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-secondary" onclick="switchContractTmpl('interior')" id="tmpl-btn-interior" style="border-color:var(--navy);color:var(--navy)">
+            <i class="fas fa-paint-roller"></i> 인테리어 계약서
+          </button>
+          <button class="btn btn-secondary" onclick="switchContractTmpl('general')" id="tmpl-btn-general">
+            <i class="fas fa-file-alt"></i> 도급 계약서
+          </button>
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button class="btn btn-secondary" onclick="printContractTmpl()"><i class="fas fa-print"></i> 인쇄</button>
+            <button class="btn btn-primary" onclick="downloadContractPDF()"><i class="fas fa-file-pdf"></i> PDF 저장</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 공통 입력 폼 -->
+      <div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin-bottom:18px">
+        <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:12px"><i class="fas fa-edit" style="margin-right:4px"></i>계약 정보 입력</div>
+
+        <!-- 발주자(갑) -->
+        <div style="font-size:11px;font-weight:700;color:#888;margin:10px 0 6px;letter-spacing:.5px">▶ 발주자 (甲)</div>
+        <div class="frow">
+          <div class="fg"><label>성명 / 상호 <span class="req">*</span></label><input id="ct-client-name" placeholder="홍길동" oninput="renderContractTmpl()"></div>
+          <div class="fg"><label>주민/사업자번호</label><input id="ct-client-bizno" placeholder="000000-0000000 또는 000-00-00000" oninput="renderContractTmpl()"></div>
+        </div>
+        <div class="frow">
+          <div class="fg"><label>주소</label><input id="ct-client-addr" placeholder="서울시 서초구 잠원동 000-0" oninput="renderContractTmpl()"></div>
+          <div class="fg"><label>전화 / FAX</label><input id="ct-client-tel" placeholder="010-0000-0000 / 02-000-0000" oninput="renderContractTmpl()"></div>
+        </div>
+
+        <!-- 공사 내용 -->
+        <div style="font-size:11px;font-weight:700;color:#888;margin:14px 0 6px;letter-spacing:.5px">▶ 공사 내용</div>
+        <div class="frow">
+          <div class="fg"><label>공사 현장 주소 <span class="req">*</span></label><input id="ct-site-addr" placeholder="서울시 서초구 잠원동 000-0 000호" oninput="renderContractTmpl()"></div>
+          <div class="fg"><label>공사 목적물 (아파트명/평형)</label><input id="ct-site-name" placeholder="잠원 한신아파트 28평형" oninput="renderContractTmpl()"></div>
+        </div>
+        <div class="frow frow3">
+          <div class="fg"><label>도급 금액 (원) <span class="req">*</span></label><input id="ct-amount" type="number" placeholder="25000000" oninput="renderContractTmpl()"></div>
+          <div class="fg"><label>착공일</label><input id="ct-start" type="date" oninput="renderContractTmpl()"></div>
+          <div class="fg"><label>준공일</label><input id="ct-end" type="date" oninput="renderContractTmpl()"></div>
+        </div>
+
+        <!-- 대금 지급 스케줄 -->
+        <div style="font-size:11px;font-weight:700;color:#888;margin:14px 0 6px;letter-spacing:.5px">▶ 대금 지급 스케줄 <span style="font-weight:400;font-size:10px">(합계 100%가 되도록 설정)</span></div>
+        <div style="background:#fff;border:1px solid #e1e8f4;border-radius:7px;padding:12px 16px">
+          <div class="frow frow3" style="margin-bottom:0">
+            <div class="fg">
+              <label>계약금 (%)</label>
+              <input id="ct-pay1-pct" type="number" value="30" min="0" max="100" oninput="calcPayments()" style="width:60px;display:inline-block">
+              <span style="font-size:11px;color:#888;margin-left:4px">지급일: 계약 체결일</span>
+            </div>
+            <div class="fg">
+              <label>중도금 (%)</label>
+              <input id="ct-pay2-pct" type="number" value="40" min="0" max="100" oninput="calcPayments()" style="width:60px;display:inline-block">
+              <input id="ct-pay2-date" type="date" oninput="renderContractTmpl()" style="margin-left:6px;flex:1">
+            </div>
+            <div class="fg">
+              <label>잔금 (%)</label>
+              <input id="ct-pay3-pct" type="number" value="30" min="0" max="100" oninput="calcPayments()" style="width:60px;display:inline-block">
+              <span style="font-size:11px;color:#888;margin-left:4px">지급일: 준공 후</span>
+            </div>
+          </div>
+          <div id="ct-pay-preview" style="font-size:12px;color:#555;margin-top:8px;padding-top:8px;border-top:1px solid #f0f4f8"></div>
+        </div>
+
+        <!-- 수급인(을) -->
+        <div style="font-size:11px;font-weight:700;color:#888;margin:14px 0 6px;letter-spacing:.5px">▶ 수급인 (乙)</div>
+        <div class="frow">
+          <div class="fg"><label>상호 <span class="req">*</span></label><input id="ct-company" placeholder="정결 Design Studio" oninput="renderContractTmpl()"></div>
+          <div class="fg"><label>대표자</label><input id="ct-rep" placeholder="김정결" oninput="renderContractTmpl()"></div>
+        </div>
+        <div class="frow">
+          <div class="fg"><label>사업자등록번호</label><input id="ct-bizno" placeholder="000-00-00000" oninput="renderContractTmpl()"></div>
+          <div class="fg"><label>전화</label><input id="ct-tel" placeholder="010-0000-0000" oninput="renderContractTmpl()"></div>
+        </div>
+        <div class="frow">
+          <div class="fg"><label>팩스</label><input id="ct-fax" placeholder="02-000-0000" oninput="renderContractTmpl()"></div>
+          <div class="fg"><label>주소</label><input id="ct-co-addr" placeholder="서울시 강남구 테헤란로 123" oninput="renderContractTmpl()"></div>
+        </div>
+
+        <!-- 계약일 & 특약 -->
+        <div style="font-size:11px;font-weight:700;color:#888;margin:14px 0 6px;letter-spacing:.5px">▶ 기타</div>
+        <div class="frow">
+          <div class="fg"><label>계약일 <span class="req">*</span></label><input id="ct-date" type="date" oninput="renderContractTmpl()"></div>
+          <div class="fg"></div>
+        </div>
+        <div class="frow frow1">
+          <div class="fg"><label>특약 사항 (선택)</label>
+            <textarea id="ct-special" rows="3" placeholder="예: 기존 가구 이동 및 보양 포함 / 폐기물 처리 수급인 부담 / 하자보수 기간 2년" oninput="renderContractTmpl()" style="resize:vertical;font:13px 'Noto Sans KR',sans-serif;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;width:100%;box-sizing:border-box"></textarea>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <button class="btn btn-secondary" style="font-size:12px" onclick="autoFillContractFromEst()">
+            <i class="fas fa-magic"></i> 현재 견적서 정보로 자동 채우기
+          </button>
+        </div>
+      </div>
+
+      <!-- 계약서 미리보기 -->
+      <div id="contract-tmpl-preview" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#f0f4f8;padding:20px">
+        <div id="contract-tmpl-doc" style="max-width:794px;margin:0 auto;background:#fff;padding:52px 60px;font-family:'Noto Sans KR',sans-serif;font-size:13.5px;line-height:1.9;color:#24292e;box-shadow:0 2px 20px rgba(0,0,0,.1)">
+          <!-- JS로 렌더링 -->
+        </div>
+      </div>
+    </div>
+  </div><!-- /tab-contract-tmpl -->
+
 </div><!-- /admin-wrap -->
+
+<!-- ★수정 #13/#14: 계약서 PDF 캡처용 숨김 영역 -->
+<div id="contract-pdf-wrap" style="position:absolute;left:-9999px;width:794px;background:#fff"></div>
 
 <!-- ━━━ 고객 설문 상세 모달 ━━━ -->
 <div class="modal-backdrop" id="survey-detail-modal">
@@ -812,6 +981,9 @@ input[type=number] { user-select:none; }
 <!-- 파일 입력 (복원용) -->
 <input type="file" id="import-file" accept=".json" style="display:none" onchange="doImport(this)">
 
+<!-- PDF 생성 라이브러리 (메인 스크립트보다 먼저 로드) -->
+<script src="libs/html2canvas.min.js"></script>
+<script src="libs/jspdf.umd.min.js"></script>
 <script src="js/storage.js"></script>
 <script>
 /* ════════════════════════════════════════════════════════
@@ -918,14 +1090,20 @@ function sbCheckSession(token) {
 /* SELECT — 최신 200건 */
 function sbLoadSurveys() {
     return fetch(SB_URL + '/rest/v1/survey_responses?select=*&order=submitted_at.desc&limit=200', {
-        headers: sbHeaders({ 'Range': '0-199' })
+        headers: sbHeaders({ 'Range': '0-199', 'Prefer': 'count=none' })
     })
     .then(function(r) {
+        if (r.status === 401 || r.status === 403) throw new Error('AUTH_FAIL');
         if (!r.ok) throw new Error('조회 실패 ' + r.status);
         return r.json();
     })
     .then(function(rows) {
-        /* snake_case → camelCase 변환 */
+        /* ★수정: 응답이 배열인지 확인 (오류 객체가 올 수 있음) */
+        if (!Array.isArray(rows)) {
+            console.warn('sbLoadSurveys: 응답이 배열이 아님', rows);
+            return [];
+        }
+        /* snake_case → camelCase 변환 + JSON 배열 필드 안전 파싱 */
         return rows.map(function(r) { return sbToCamel(r); });
     });
 }
@@ -949,45 +1127,53 @@ function sbDeleteSurvey(id) {
     .then(function(r) { if (!r.ok) throw new Error('삭제 실패 ' + r.status); });
 }
 
-/* snake_case → camelCase 필드 매핑 */
+/* snake_case → camelCase 필드 매핑 + JSON 배열 안전 파싱 */
+function _parseArr(v) {
+    if (!v) return [];
+    if (Array.isArray(v)) return v;
+    if (typeof v === 'string') {
+        try { var p = JSON.parse(v); return Array.isArray(p) ? p : [v]; } catch(e) { return [v]; }
+    }
+    return [];
+}
 function sbToCamel(r) {
     return {
-        id              : r.id,
-        created_at      : r.created_at,
-        submittedAt     : r.submitted_at,
-        status          : r.status          || '신규',
-        adminStatus     : r.admin_status    || r.status || '신규',
-        adminMemo       : r.admin_memo      || '',
-        clientName      : r.client_name     || '',
-        clientPhone     : r.client_phone    || '',
-        purpose         : r.purpose         || [],
-        startDate       : r.start_date      || '',
-        moveInDate      : r.move_in_date    || '',
-        budget          : r.budget          || '',
-        priority1       : r.priority1       || '',
-        priority2       : r.priority2       || '',
-        improveSpaces   : r.improve_spaces  || '',
-        familyInfo      : r.family_info     || '',
-        siteAddress     : r.site_address    || '',
-        siteSize        : r.site_size       || '',
-        aptType         : r.apt_type        || '',
-        moveStatus      : r.move_status     || '',
-        constructionScope: r.construction_scope || [],
-        kitchenStyle    : r.kitchen_style   || '',
-        kitchenNotes    : r.kitchen_notes   || '',
-        bathroomCount   : r.bathroom_count  || '',
-        bathroomStyle   : r.bathroom_style  || '',
-        floorMaterial   : r.floor_material  || '',
-        wallStyle       : r.wall_style      || [],
-        lightingStyle   : r.lighting_style  || '',
-        overallStyle    : r.overall_style   || [],
-        colorPrefer     : r.color_prefer    || '',
-        customFurniture : r.custom_furniture|| [],
-        systemAC        : r.system_ac       || '',
-        floorHeating    : r.floor_heating   || '',
-        concerns        : r.concerns        || '',
-        referenceImages : r.reference_images|| '',
-        additionalNotes : r.additional_notes|| ''
+        id               : r.id,
+        created_at       : r.created_at,
+        submittedAt      : r.submitted_at   || r.created_at || '',
+        status           : r.status         || '신규',
+        adminStatus      : r.admin_status   || r.status || '신규',
+        adminMemo        : r.admin_memo     || '',
+        clientName       : r.client_name    || '',
+        clientPhone      : r.client_phone   || '',
+        purpose          : _parseArr(r.purpose),
+        startDate        : r.start_date     || '',
+        moveInDate       : r.move_in_date   || '',
+        budget           : r.budget         || '',
+        priority1        : r.priority1      || '',
+        priority2        : r.priority2      || '',
+        improveSpaces    : r.improve_spaces || '',
+        familyInfo       : r.family_info    || '',
+        siteAddress      : r.site_address   || '',
+        siteSize         : r.site_size      || '',
+        aptType          : r.apt_type       || '',
+        moveStatus       : r.move_status    || '',
+        constructionScope: _parseArr(r.construction_scope),
+        kitchenStyle     : r.kitchen_style  || '',
+        kitchenNotes     : r.kitchen_notes  || '',
+        bathroomCount    : r.bathroom_count || '',
+        bathroomStyle    : r.bathroom_style || '',
+        floorMaterial    : r.floor_material || '',
+        wallStyle        : _parseArr(r.wall_style),
+        lightingStyle    : r.lighting_style || '',
+        overallStyle     : _parseArr(r.overall_style),
+        colorPrefer      : r.color_prefer   || '',
+        customFurniture  : _parseArr(r.custom_furniture),
+        systemAC         : r.system_ac      || '',
+        floorHeating     : r.floor_heating  || '',
+        concerns         : r.concerns       || '',
+        referenceImages  : r.reference_images || '',
+        additionalNotes  : r.additional_notes || ''
     };
 }
 
@@ -1625,21 +1811,27 @@ function doImport(input) {
 function loadCompanyForm() {
     var co = loadCompany();
     var setVal = function(id, v) { var el = document.getElementById(id); if (el) el.value = v || ''; };
-    setVal('co-name', co.companyName);
-    setVal('co-rep',  co.repName);
-    setVal('co-tel',  co.companyTel);
-    setVal('co-fax',  co.companyFax);
-    setVal('co-addr', co.companyAddr);
+    setVal('co-name',   co.companyName);
+    setVal('co-rep',    co.repName);
+    setVal('co-bizno',  co.companyBizNo);
+    setVal('co-tel',    co.companyTel);
+    setVal('co-fax',    co.companyFax);
+    setVal('co-email',  co.companyEmail);
+    setVal('co-addr',   co.companyAddr);
+    setVal('co-remark', co.remarkText);
 }
 
 function saveCompanyForm() {
     var getVal = function(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
     var co = {
-        companyName : getVal('co-name'),
-        repName     : getVal('co-rep'),
-        companyTel  : getVal('co-tel'),
-        companyFax  : getVal('co-fax'),
-        companyAddr : getVal('co-addr')
+        companyName  : getVal('co-name'),
+        repName      : getVal('co-rep'),
+        companyBizNo : getVal('co-bizno'),
+        companyTel   : getVal('co-tel'),
+        companyFax   : getVal('co-fax'),
+        companyEmail : getVal('co-email'),
+        companyAddr  : getVal('co-addr'),
+        remarkText   : getVal('co-remark')
     };
     saveCompany(co); markSaved(); showToast('✅ 시공사 정보가 저장되었습니다.');
 }
@@ -1943,9 +2135,14 @@ function renderMonthGrid(monthItems, monthRev) {
                 var r = items[j];
                 var f = extractFinancials(r);
                 var dateStr = new Date(r.contractedAt).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'});
+                /* ── #1: 견적서 링크 버튼 추가 ── */
                 rowsHtml += '<div class="contract-row" onclick="showContractPreview(\'' + r.id + '\')">' +
                     '<div style="flex:1;min-width:0"><div class="cr-title" title="' + escHtml(r.title||r.siteName||'제목없음') + '">' + escHtml(r.title||r.siteName||'제목없음') + '</div>' +
-                    '<div style="font-size:10.5px;color:#aaa;margin-top:2px">' + escHtml(r.clientName||'') + ' · ' + dateStr + '</div></div>' +
+                    '<div style="font-size:10.5px;color:#aaa;margin-top:2px">' + escHtml(r.clientName||'') + ' · ' + dateStr + '</div>' +
+                    '<div style="margin-top:4px;display:flex;gap:4px">' +
+                    '<button onclick="event.stopPropagation();openEstimateFromContract(\'' + r.id + '\')" style="font-size:10px;padding:2px 7px;border:1px solid #1a3e72;border-radius:4px;background:#edf2fb;color:#1a3e72;cursor:pointer;" title="세부견적서 열기"><i class="fas fa-file-invoice-dollar"></i> 견적서</button>' +
+                    '<button onclick="event.stopPropagation();openScheduleFromContract(\'' + r.id + '\')" style="font-size:10px;padding:2px 7px;border:1px solid #059669;border-radius:4px;background:#f0fdf4;color:#059669;cursor:pointer;" title="공정표 열기"><i class="fas fa-calendar-alt"></i> 공정표</button>' +
+                    '</div></div>' +
                     '<div style="text-align:right;flex-shrink:0;margin-left:8px"><div class="cr-amt">' + won(f.fin) + '</div>' +
                     (f.profit !== 0 ? '<div style="font-size:10px;color:' + (f.profit>=0?'#059669':'#dc2626') + '">' + (f.profit>=0?'+':'') + won(f.profit) + '</div>' : '') +
                     '</div></div>';
@@ -1960,6 +2157,17 @@ function renderMonthGrid(monthItems, monthRev) {
             '</div>' + rowsHtml + '</div>';
     }
     grid.innerHTML = html;
+}
+
+/* ── #1: 세부견적서 열기 (새 탭으로 index.html + 해당 견적 로드) ── */
+function openEstimateFromContract(contractId) {
+    var recs = loadContractedEstimates();
+    var r = null;
+    for (var i = 0; i < recs.length; i++) if (recs[i].id === contractId) { r = recs[i]; break; }
+    if (!r) { showToast('견적서를 찾을 수 없습니다.'); return; }
+    /* 견적 ID를 URL 파라미터로 전달하여 index.html에서 자동 로드 */
+    var url = 'index.html?load_est_id=' + encodeURIComponent(contractId);
+    window.open(url, '_blank');
 }
 
 function renderContractList() {
@@ -2061,26 +2269,44 @@ function copySurveyUrl() {
 
 function loadSurveyResponses() {
     var body = document.getElementById('survey-list-body');
-    if (body) body.innerHTML = '<div style="text-align:center;padding:40px;color:#aaa"><i class="fas fa-spinner fa-spin" style="font-size:28px;display:block;margin-bottom:12px"></i>로딩 중…</div>';
+    if (body) body.innerHTML =
+        '<div style="text-align:center;padding:40px;color:#aaa">' +
+        '<i class="fas fa-spinner fa-spin" style="font-size:28px;display:block;margin-bottom:12px"></i>로딩 중…</div>';
     sbLoadSurveys()
         .then(function(rows) {
             _surveyRecords = rows;
-            updateSurveyBadge(); renderSurveyList(); initSurveyUrl();
+            updateSurveyBadge();
+            renderSurveyList();
+            initSurveyUrl();
         })
         .catch(function(e) {
-            if (body) body.innerHTML = '<div style="text-align:center;padding:40px;color:#dc2626"><i class="fas fa-exclamation-triangle" style="font-size:28px;display:block;margin-bottom:12px"></i>로딩 실패. 새로고침 버튼을 눌러주세요.<br><small style="font-size:11px;color:#999;margin-top:8px;display:block">' + (e.message||'') + '</small></div>';
+            var isAuth = (e.message === 'AUTH_FAIL');
+            var msg = isAuth
+                ? '⚠️ 인증이 만료되었습니다. 로그아웃 후 다시 로그인해 주세요.'
+                : '로딩 실패. 새로고침 버튼을 눌러주세요.';
+            var detail = isAuth ? '' : '<br><small style="font-size:11px;color:#999;margin-top:6px;display:block">' + escHtml(e.message||'') + '</small>';
+            if (body) body.innerHTML =
+                '<div style="text-align:center;padding:40px;color:#dc2626">' +
+                '<i class="fas fa-exclamation-triangle" style="font-size:28px;display:block;margin-bottom:12px"></i>' +
+                msg + detail + '</div>';
+            console.error('loadSurveyResponses 실패:', e.message);
         });
 }
 
+// ★수정 #6: updateSurveyBadge – 취소/계약완료 포함 전체 카운트 통합
 function updateSurveyBadge() {
-    var newCnt = _surveyRecords.filter(function(r) { return (r.adminStatus||r.status||'신규') === '신규'; }).length;
+    var recs   = _surveyRecords || [];
+    var st     = function(r) { return r.adminStatus || r.status || '신규'; };
+    var newCnt = recs.filter(function(r){ return st(r)==='신규'; }).length;
     var badge  = document.getElementById('survey-new-count');
-    if (badge) badge.textContent = newCnt;
-    var setEl = function(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
-    setEl('sv-total',    _surveyRecords.length);
-    setEl('sv-new',      _surveyRecords.filter(function(r){ return (r.adminStatus||'신규')==='신규'; }).length);
-    setEl('sv-checking', _surveyRecords.filter(function(r){ return (r.adminStatus||'신규')==='확인중'; }).length);
-    setEl('sv-done',     _surveyRecords.filter(function(r){ return (r.adminStatus||'신규')==='미팅완료'; }).length);
+    if (badge) badge.textContent = newCnt > 0 ? newCnt : '0';
+    var setEl  = function(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
+    setEl('sv-total',      recs.length);
+    setEl('sv-new',        recs.filter(function(r){ return st(r)==='신규';    }).length);
+    setEl('sv-checking',   recs.filter(function(r){ return st(r)==='확인중';  }).length);
+    setEl('sv-done',       recs.filter(function(r){ return st(r)==='미팅완료';}).length);
+    setEl('sv-contracted', recs.filter(function(r){ return st(r)==='계약완료';}).length);
+    setEl('sv-canceled',   recs.filter(function(r){ return st(r)==='취소';    }).length);
 }
 
 function setSurveyFilter(f, btn) {
@@ -2093,8 +2319,11 @@ function setSurveyFilter(f, btn) {
 
 function renderSurveyList() {
     var kw  = ((document.getElementById('survey-search') || {}).value || '').toLowerCase();
+    /* ★수정: _surveyRecords 가 아직 비어있으면 로딩 중 메시지 유지 후 종료 */
+    if (!Array.isArray(_surveyRecords)) return;
     var list = _surveyRecords.filter(function(r) {
-        if (_surveyFilter !== 'all' && (r.adminStatus||r.status||'신규') !== _surveyFilter) return false;
+        var status = r.adminStatus || r.status || '신규';
+        if (_surveyFilter !== 'all' && status !== _surveyFilter) return false;
         if (kw) {
             var hay = ((r.clientName||'')+(r.clientPhone||'')+(r.siteAddress||'')).toLowerCase();
             if (hay.indexOf(kw) < 0) return false;
@@ -2104,35 +2333,45 @@ function renderSurveyList() {
     var body = document.getElementById('survey-list-body');
     if (!body) return;
     if (!list.length) {
-        body.innerHTML = '<div style="text-align:center;padding:48px;color:#aaa"><i class="fas fa-inbox" style="font-size:36px;display:block;margin-bottom:12px;opacity:.4"></i>응답이 없습니다.</div>';
+        body.innerHTML = '<div style="text-align:center;padding:48px;color:#aaa"><i class="fas fa-inbox" style="font-size:36px;display:block;margin-bottom:12px;opacity:.4"></i>' +
+            (_surveyRecords.length === 0 ? '아직 설문 응답이 없습니다.' : '해당 조건의 응답이 없습니다.') + '</div>';
         return;
     }
     var html = '';
     for (var i = 0; i < list.length; i++) {
         var r = list[i];
-        var st    = r.adminStatus || r.status || '신규';
-        var stCls = st==='신규'?'new':st==='확인중'?'check':st==='계약완료'?'contract':'done';
-        var stIcon= st==='신규'?'🔴':st==='확인중'?'🔵':st==='미팅완료'?'✅':'🤝';
-        var date  = (r.submittedAt || r.created_at) ? new Date(r.submittedAt||r.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'}) : '—';
+        var st     = r.adminStatus || r.status || '신규';
+        var stCls  = st==='신규'?'new':st==='확인중'?'check':st==='계약완료'?'contract':st==='취소'?'canceled':'done';
+        var stIcon = st==='신규'?'🔴':st==='확인중'?'🔵':st==='미팅완료'?'✅':st==='취소'?'⛔':'🤝';
+        var cardCls= stCls==='new'?'new-response':stCls==='check'?'confirmed':stCls==='canceled'?'sv-canceled-card':(stCls==='done'||stCls==='contract')?'completed':'';
+        var date   = (r.submittedAt || r.created_at)
+            ? new Date(r.submittedAt||r.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'})
+            : '—';
         var scope   = Array.isArray(r.constructionScope) ? r.constructionScope.join(', ') : (r.constructionScope||'');
-        var purpose = Array.isArray(r.purpose) ? r.purpose.join(', ') : (r.purpose||'');
-        html += '<div class="survey-card ' + (stCls==='new'?'new-response':stCls==='check'?'confirmed':stCls==='done'||stCls==='contract'?'completed':'') + '" onclick="openSurveyDetail(\'' + r.id + '\')">' +
+        var purpose = Array.isArray(r.purpose)           ? r.purpose.join(', ')           : (r.purpose||'');
+        /* ★수정: onclick ID는 data-attribute로 안전하게 전달 (이스케이프 문제 방지) */
+        html += '<div class="survey-card ' + cardCls + '" data-sid="' + escHtml(r.id) + '" onclick="openSurveyDetail(this.dataset.sid)">' +
             '<div class="sv-header">' +
-            '<div><span class="sv-name">' + escHtml(r.clientName||'이름없음') + '</span><span class="sv-phone">' + escHtml(r.clientPhone||'—') + '</span></div>' +
+            '<div><span class="sv-name">' + escHtml(r.clientName||'이름없음') + '</span>' +
+            '<span class="sv-phone">' + escHtml(r.clientPhone||'—') + '</span></div>' +
             '<span class="sv-date">' + date + '</span></div>' +
             '<div class="sv-badges">' +
-            '<span class="sv-badge ' + stCls + '">' + stIcon + ' ' + st + '</span>' +
-            (r.budget ? '<span class="sv-badge budget">💰 ' + escHtml(r.budget) + '</span>' : '') +
+            '<span class="sv-badge ' + stCls + '">' + stIcon + ' ' + escHtml(st) + '</span>' +
+            (r.budget   ? '<span class="sv-badge budget">💰 '                              + escHtml(r.budget)   + '</span>' : '') +
             (r.siteSize ? '<span class="sv-badge" style="background:#f1f5f9;color:#475569">📐 ' + escHtml(r.siteSize) + '</span>' : '') +
-            (scope ? '<span class="sv-badge scope">🔧 ' + escHtml(scope.length>30?scope.slice(0,30)+'…':scope) + '</span>' : '') +
+            (scope      ? '<span class="sv-badge scope">🔧 '                               + escHtml(scope.length>30?scope.slice(0,30)+'…':scope) + '</span>' : '') +
             '</div>' +
             '<div class="sv-body">' +
             (r.siteAddress ? '<div><strong>주소:</strong> ' + escHtml(r.siteAddress) + '</div>' : '') +
-            (purpose ? '<div><strong>목적:</strong> ' + escHtml(purpose) + '</div>' : '') +
-            (r.concerns ? '<div><strong>불편사항:</strong> ' + escHtml(r.concerns.slice(0,60)) + (r.concerns.length>60?'…':'') + '</div>' : '') +
+            (purpose       ? '<div><strong>목적:</strong> ' + escHtml(purpose)       + '</div>' : '') +
+            (r.concerns    ? '<div><strong>불편사항:</strong> ' + escHtml(r.concerns.slice(0,60)) + (r.concerns.length>60?'…':'') + '</div>' : '') +
             '</div>' +
             '<div style="padding:8px 0 0;border-top:1px solid #f0f4f8;margin-top:8px">' +
-            '<button class="btn btn-secondary" style="font-size:12px;padding:4px 12px;color:#1a3e72" onclick="event.stopPropagation();openScheduleFromSurvey(\'' + escHtml(r.clientName||'') + '\',\'' + escHtml(r.siteAddress||'') + '\')">' +
+            /* ★수정: 공정표 버튼도 data-attribute 사용 */
+            '<button class="btn btn-secondary" style="font-size:12px;padding:4px 12px;color:#1a3e72"' +
+            ' data-client="' + escHtml(r.clientName||'')   + '"' +
+            ' data-site="'   + escHtml(r.siteAddress||'')  + '"' +
+            ' onclick="event.stopPropagation();openScheduleFromSurvey(this.dataset.client,this.dataset.site)">' +
             '<i class="fas fa-calendar-alt"></i> 공정표 작성</button>' +
             '</div>' +
             '</div>';
@@ -2148,7 +2387,20 @@ function openSurveyDetail(id) {
     document.getElementById('survey-detail-title').textContent = (r.clientName||'—') + ' 님 설문 상세';
     var st  = r.adminStatus || r.status || '신규';
     var sel = document.getElementById('sv-status-select');
-    if (sel) sel.value = st;
+    if (sel) {
+        // ★수정 #21: 취소·계약완료 옵션 없으면 동적 추가
+        var opts = ['신규','확인중','미팅완료','계약완료','취소'];
+        opts.forEach(function(v) {
+            if (!sel.querySelector('option[value="' + v + '"]')) {
+                var op = document.createElement('option');
+                op.value = v;
+                var icons = {'신규':'🔴 ','확인중':'🔵 ','미팅완료':'✅ ','계약완료':'🤝 ','취소':'⛔ '};
+                op.textContent = (icons[v]||'') + v;
+                sel.appendChild(op);
+            }
+        });
+        sel.value = st;
+    }
     var fld = function(l, v, cls) {
         return v ? '<div class="sd-row ' + (cls||'') + '"><span class="sd-label">' + l + '</span><span class="sd-value">' + escHtml(String(v)) + '</span></div>' : '';
     };
@@ -2172,7 +2424,7 @@ function openSurveyDetail(id) {
         '<div class="sd-section"><div class="sd-section-title"><i class="fas fa-couch" style="margin-right:4px"></i>PART 4. 맞춤 가구 계획</div>' +
         '<div class="sd-grid">' + fld('맞춤 가구', arr(r.customFurniture), 'sd-full') + '</div></div>' +
         '<div class="sd-section"><div class="sd-section-title"><i class="fas fa-cogs" style="margin-right:4px"></i>PART 5. 설비 & 기타</div>' +
-        '<div class="sd-grid">' + fld('시스템 에어컨', r.systemAC) + fld('난방 관련', arr(r.heating)) + fld('현재 불편한 점', r.concerns, 'sd-full') + fld('레퍼런스', r.referenceImages, 'sd-full') + fld('추가 요청사항', r.additionalNotes, 'sd-full') + '</div></div>' +
+        '<div class="sd-grid">' + fld('시스템 에어컨', r.systemAC) + fld('난방 관련', r.floorHeating) + fld('현재 불편한 점', r.concerns, 'sd-full') + fld('레퍼런스', r.referenceImages, 'sd-full') + fld('추가 요청사항', r.additionalNotes, 'sd-full') + '</div></div>' +
         '<div class="sd-section"><div class="sd-section-title"><i class="fas fa-sticky-note" style="margin-right:4px"></i>관리자 메모</div>' +
         '<textarea class="sd-memo-area" id="sv-memo-input" placeholder="통화 내용, 미팅 일정, 특이사항 등을 메모하세요…">' + escHtml(r.adminMemo||'') + '</textarea></div>';
     openModal('survey-detail-modal');
@@ -2287,13 +2539,19 @@ function initPage() {
     var cnt   = loadContractedEstimates().length;
     var badge = document.getElementById('contract-count');
     if (badge) badge.textContent = cnt;
-    /* 설문 신규 건수 배지 — Supabase */
+    /* ★수정: 설문 데이터를 _surveyRecords에 저장하고 배지·목록 모두 초기화 */
     sbLoadSurveys()
         .then(function(rows) {
-            var newCnt  = rows.filter(function(r) { return (r.adminStatus||r.status||'신규') === '신규'; }).length;
-            var svBadge = document.getElementById('survey-new-count');
-            if (svBadge) svBadge.textContent = newCnt > 0 ? newCnt : '0';
-        }).catch(function() {});
+            _surveyRecords = rows;          /* ← 핵심: 전역 배열에 저장 */
+            updateSurveyBadge();            /* 탭 배지 카운트 갱신 */
+            initSurveyUrl();                /* 설문 URL 표시 */
+            /* 설문 탭이 이미 열려 있으면 목록도 즉시 렌더 */
+            var surveyPanel = document.getElementById('tab-survey');
+            if (surveyPanel && surveyPanel.classList.contains('active')) {
+                renderSurveyList();
+            }
+        })
+        .catch(function() {});
 }
 
 /* ── 헤더에 로그아웃 버튼 추가 ── */
@@ -2340,6 +2598,732 @@ if (document.readyState === 'loading') {
 } else {
     startApp();
 }
+
+/* ════════════════════════════════════════════════════════
+   #2 + #8 통합: saveProc 패치
+   - BroadcastChannel으로 다른 탭(index.html) 알림 (#2)
+   - 공정명 변경 시 저장된 견적 detailRows.category 동기화 (#8)
+════════════════════════════════════════════════════════ */
+(function patchSaveProcAll() {
+    var _orig = window.saveProc;
+    window.saveProc = function() {
+        /* ① 변경 전 이름 미리 캡처 */
+        var editId  = (document.getElementById('proc-edit-id') || {}).value || '';
+        var newName = (document.getElementById('pf-name')      || {}).value.trim();
+        var oldName = '';
+        if (editId) {
+            var procs = loadProcesses();
+            for (var i = 0; i < procs.length; i++) {
+                if (procs[i].id === editId) { oldName = procs[i].name; break; }
+            }
+        }
+        /* ② 원본 저장 실행 */
+        _orig && _orig.apply(this, arguments);
+        /* ③ BroadcastChannel 알림 */
+        try {
+            var bc = new BroadcastChannel('iq_proc_update');
+            if (oldName && newName && oldName !== newName) {
+                syncEstimatesProcName(oldName, newName);
+                bc.postMessage({ type: 'proc_renamed', oldName: oldName, newName: newName, ts: Date.now() });
+            } else {
+                bc.postMessage({ type: 'proc_changed', ts: Date.now() });
+            }
+            bc.close();
+        } catch(e) {}
+    };
+})();
+
+/* ════════════════════════════════════════════════════════
+   #6: setSurveyFilter – '상담중' → '확인중' 매핑
+   HTML 버튼 onclick 값이 이미 '확인중'이므로 실제 매핑은
+   필요 없지만, 혹시 '상담중'으로 호출되는 경우를 방어함.
+   ※ 중복 래핑 방지: 이미 패치된 경우 재패치하지 않음
+════════════════════════════════════════════════════════ */
+(function patchSurveyFilter() {
+    var _orig = window.setSurveyFilter;
+    if (_orig && _orig._patched) return;   /* 이미 패치됨 → 스킵 */
+    var _wrapped = function(f, btn) {
+        var mapped = (f === '상담중') ? '확인중' : f;
+        _orig && _orig.call(this, mapped, btn);
+    };
+    _wrapped._patched = true;
+    window.setSurveyFilter = _wrapped;
+})();
+
+/* ════════════════════════════════════════════════════════
+   #8: localStorage 견적서 카테고리명 동기화 함수
+════════════════════════════════════════════════════════ */
+
+function syncEstimatesProcName(oldName, newName) {
+    try {
+        var ests = JSON.parse(localStorage.getItem('iq_estimates') || '[]');
+        var changed = false;
+        for (var i = 0; i < ests.length; i++) {
+            var rows = ests[i].detailRows || [];
+            for (var j = 0; j < rows.length; j++) {
+                if (rows[j].category === oldName) { rows[j].category = newName; changed = true; }
+            }
+        }
+        if (changed) localStorage.setItem('iq_estimates', JSON.stringify(ests));
+    } catch(e) {}
+}
+
+/* ════════════════════════════════════════════════════════
+   #10: 관리자 시공정보(계약 상세) – 비고란 직접 편집/저장
+   showContractPreview 내 adminMemo 란을 편집 가능하게 패치
+════════════════════════════════════════════════════════ */
+(function patchContractPreview() {
+    var _orig = window.showContractPreview;
+    window.showContractPreview = function(id) {
+        _orig && _orig.apply(this, arguments);
+        /* 기존 adminMemo 표시부를 편집 textarea로 교체 */
+        var cpBody = document.getElementById('cp-body');
+        if (!cpBody) return;
+        var existing = cpBody.querySelector('.admin-memo-edit-block');
+        if (existing) return; /* 이미 추가됨 */
+
+        var all = loadContractedEstimates();
+        var record = null;
+        for (var i = 0; i < all.length; i++) if (all[i].id === id) { record = all[i]; break; }
+        if (!record) return;
+
+        var memoBlock = document.createElement('div');
+        memoBlock.className = 'admin-memo-edit-block';
+        memoBlock.style.cssText = 'background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:12px 16px;margin-top:12px';
+        memoBlock.innerHTML =
+            '<div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:8px">' +
+            '<i class="fas fa-sticky-note" style="margin-right:4px"></i>관리자 메모 (편집 가능)</div>' +
+            '<textarea id="cp-admin-memo" style="width:100%;min-height:80px;padding:8px 10px;border:1.5px solid #fcd34d;border-radius:6px;font:13px \'Noto Sans KR\',sans-serif;resize:vertical;box-sizing:border-box;background:#fff8e6">' +
+            escHtml((record.fields && record.fields.adminMemo) || '') + '</textarea>' +
+            '<div style="margin-top:8px;text-align:right">' +
+            '<button onclick="saveContractMemo(\'' + id + '\')" style="padding:6px 18px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font:600 12.5px \'Noto Sans KR\',sans-serif;cursor:pointer">' +
+            '<i class="fas fa-save"></i> 메모 저장</button></div>';
+        cpBody.appendChild(memoBlock);
+    };
+})();
+
+function saveContractMemo(id) {
+    var ta = document.getElementById('cp-admin-memo');
+    if (!ta) return;
+    var memo = ta.value;
+    try {
+        var ests = JSON.parse(localStorage.getItem('iq_estimates') || '[]');
+        for (var i = 0; i < ests.length; i++) {
+            if (ests[i].id === id) {
+                if (!ests[i].fields) ests[i].fields = {};
+                ests[i].fields.adminMemo = memo;
+                break;
+            }
+        }
+        localStorage.setItem('iq_estimates', JSON.stringify(ests));
+        showToast('✅ 메모가 저장되었습니다.');
+    } catch(e) { showToast('저장 실패: ' + e.message); }
+}
+
+/* ════════════════════════════════════════════════════════
+   #13/#14: 계약서 템플릿 (인테리어 계약서 / 도급 계약서)
+════════════════════════════════════════════════════════ */
+var _currentTmplType = 'interior'; // 'interior' | 'general'
+
+function switchContractTmpl(type) {
+    _currentTmplType = type;
+    var bi = document.getElementById('tmpl-btn-interior');
+    var bg = document.getElementById('tmpl-btn-general');
+    if (bi) { bi.style.borderColor = type==='interior'?'var(--navy)':'var(--border)'; bi.style.color = type==='interior'?'var(--navy)':'#555'; bi.style.background = type==='interior'?'var(--navy-bg)':'#fff'; }
+    if (bg) { bg.style.borderColor = type==='general'?'var(--navy)':'var(--border)';  bg.style.color = type==='general'?'var(--navy)':'#555';  bg.style.background = type==='general'?'var(--navy-bg)':'#fff'; }
+    renderContractTmpl();
+}
+
+/* 입력값 수집 헬퍼 */
+function ctVal(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function ctFmt(n) {
+    var num = parseInt(n || '0', 10);
+    if (isNaN(num)) return '0';
+    return num.toLocaleString();
+}
+function ctDate(id) {
+    var v = ctVal(id);
+    if (!v) return '____년 __월 __일';
+    var d = new Date(v);
+    return d.getFullYear() + '년 ' + (d.getMonth()+1) + '월 ' + d.getDate() + '일';
+}
+function ctBlank(v, placeholder) { return v || placeholder || '________________'; }
+
+/* ── 대금 지급 계산 (폼 입력값 기반) ── */
+function calcPayments() {
+    var amt   = parseFloat(ctVal('ct-amount')) || 0;
+    var p1    = parseFloat(document.getElementById('ct-pay1-pct') ? document.getElementById('ct-pay1-pct').value : 30) || 30;
+    var p2    = parseFloat(document.getElementById('ct-pay2-pct') ? document.getElementById('ct-pay2-pct').value : 40) || 40;
+    var p3    = parseFloat(document.getElementById('ct-pay3-pct') ? document.getElementById('ct-pay3-pct').value : 30) || 30;
+    var sum   = p1 + p2 + p3;
+    var prev  = document.getElementById('ct-pay-preview');
+    if (prev) {
+        if (amt > 0) {
+            var v1 = Math.round(amt * p1 / 100);
+            var v2 = Math.round(amt * p2 / 100);
+            var v3 = amt - v1 - v2;
+            prev.innerHTML =
+                '계약금 ' + p1 + '% = <strong>' + v1.toLocaleString() + '원</strong>' +
+                ' &nbsp;|&nbsp; 중도금 ' + p2 + '% = <strong>' + v2.toLocaleString() + '원</strong>' +
+                ' &nbsp;|&nbsp; 잔금 ' + p3 + '% = <strong>' + v3.toLocaleString() + '원</strong>' +
+                (Math.abs(sum - 100) > 0.1 ? ' &nbsp;<span style="color:#dc2626">⚠ 합계 ' + sum + '%</span>' : ' &nbsp;<span style="color:#16a34a">✔ 합계 100%</span>');
+        } else {
+            prev.innerHTML = '<span style="color:#aaa">도급 금액을 입력하면 각 회차 금액이 표시됩니다.</span>';
+        }
+    }
+    renderContractTmpl();
+}
+
+/* 인테리어 표준계약서 HTML 생성 (공정위 표준 기반) */
+function buildInteriorContract() {
+    var clientName   = ctBlank(ctVal('ct-client-name'),   '(갑)');
+    var clientBizNo  = ctVal('ct-client-bizno');
+    var clientAddr   = ctBlank(ctVal('ct-client-addr'),   '________');
+    var clientTel    = ctBlank(ctVal('ct-client-tel'),    '________');
+    var siteName     = ctBlank(ctVal('ct-site-name'),     '________');
+    var siteAddr     = ctBlank(ctVal('ct-site-addr'),     '________');
+    var amount       = ctVal('ct-amount');
+    var amountNum    = amount ? parseInt(amount) : 0;
+    var amountFmt    = amount ? ('금 ' + ctFmt(amount) + '원 (부가세 포함)') : '금 ___________원 (부가세 포함)';
+    var amountKor    = amount ? (numberToKorean(amountNum) + '원정') : '일금 ___________원정';
+    var startDate    = ctDate('ct-start');
+    var endDate      = ctDate('ct-end');
+    var company      = ctBlank(ctVal('ct-company'),       '정결 Design Studio');
+    var rep          = ctBlank(ctVal('ct-rep'),           '________');
+    var tel          = ctBlank(ctVal('ct-tel'),           '________');
+    var fax          = ctVal('ct-fax')   || '—';
+    var bizNo        = ctVal('ct-bizno') || '___-__-_____';
+    var coAddr       = ctBlank(ctVal('ct-co-addr'),       '________');
+    var contractDate = ctDate('ct-date');
+    var special      = ctVal('ct-special');
+
+    /* 대금 지급 스케줄 */
+    var p1Pct = parseFloat((document.getElementById('ct-pay1-pct')||{}).value || 30);
+    var p2Pct = parseFloat((document.getElementById('ct-pay2-pct')||{}).value || 40);
+    var p3Pct = 100 - p1Pct - p2Pct;
+    if (p3Pct < 0) p3Pct = 0;
+    var pay2Date = ctDate('ct-pay2-date');
+    var v1 = amountNum ? Math.round(amountNum * p1Pct / 100) : 0;
+    var v2 = amountNum ? Math.round(amountNum * p2Pct / 100) : 0;
+    var v3 = amountNum ? (amountNum - v1 - v2) : 0;
+    var fmtWon = function(n) { return n > 0 ? n.toLocaleString() + '원' : '___________원'; };
+    var pay2DateStr = ctVal('ct-pay2-date') ? pay2Date : '공사 착공 후 50% 공정 완료 시';
+
+    return '<div style="text-align:center;margin-bottom:30px">' +
+      '<div style="font-size:26px;font-weight:900;letter-spacing:5px;color:#1a3e72;margin-bottom:4px">인테리어 표준계약서</div>' +
+      '<div style="font-size:11.5px;color:#999;letter-spacing:2px;margin-bottom:8px">Interior Standard Contract (공정거래위원회 표준약관 준용)</div>' +
+      '<div style="width:80px;height:3px;background:#1a3e72;margin:0 auto"></div>' +
+    '</div>' +
+
+    /* ── 계약 당사자 테이블 ── */
+    '<table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:20px">' +
+      '<thead><tr>' +
+        '<th style="background:#1a3e72;color:#fff;padding:7px 12px;text-align:center;border:1px solid #1a3e72;width:14%">구분</th>' +
+        '<th style="background:#1a3e72;color:#fff;padding:7px 12px;text-align:center;border:1px solid #1a3e72;width:18%">항목</th>' +
+        '<th style="background:#1a3e72;color:#fff;padding:7px 12px;text-align:center;border:1px solid #1a3e72">내용</th>' +
+      '</tr></thead>' +
+      '<tbody>' +
+        '<tr><td rowspan="4" style="text-align:center;font-weight:700;border:1px solid #c8d5e8;background:#eef2f8;color:#1a3e72">발주자<br>(甲)</td>' +
+          '<td style="padding:6px 10px;border:1px solid #c8d5e8;background:#f8fafc;font-weight:600">성명(상호)</td>' +
+          '<td style="padding:6px 10px;border:1px solid #c8d5e8">' + clientName + '</td></tr>' +
+        '<tr><td style="padding:6px 10px;border:1px solid #c8d5e8;background:#f8fafc;font-weight:600">주민(사업자)번호</td>' +
+          '<td style="padding:6px 10px;border:1px solid #c8d5e8">' + (clientBizNo || '______-_______') + '</td></tr>' +
+        '<tr><td style="padding:6px 10px;border:1px solid #c8d5e8;background:#f8fafc;font-weight:600">주소</td>' +
+          '<td style="padding:6px 10px;border:1px solid #c8d5e8">' + clientAddr + '</td></tr>' +
+        '<tr><td style="padding:6px 10px;border:1px solid #c8d5e8;background:#f8fafc;font-weight:600">전화/FAX</td>' +
+          '<td style="padding:6px 10px;border:1px solid #c8d5e8">' + clientTel + '</td></tr>' +
+        '<tr><td rowspan="5" style="text-align:center;font-weight:700;border:1px solid #c8d5e8;background:#eef2f8;color:#1a3e72">시공자<br>(乙)</td>' +
+          '<td style="padding:6px 10px;border:1px solid #c8d5e8;background:#f8fafc;font-weight:600">상호</td>' +
+          '<td style="padding:6px 10px;border:1px solid #c8d5e8">' + company + '</td></tr>' +
+        '<tr><td style="padding:6px 10px;border:1px solid #c8d5e8;background:#f8fafc;font-weight:600">대표자</td>' +
+          '<td style="padding:6px 10px;border:1px solid #c8d5e8">' + rep + '</td></tr>' +
+        '<tr><td style="padding:6px 10px;border:1px solid #c8d5e8;background:#f8fafc;font-weight:600">사업자번호</td>' +
+          '<td style="padding:6px 10px;border:1px solid #c8d5e8">' + bizNo + '</td></tr>' +
+        '<tr><td style="padding:6px 10px;border:1px solid #c8d5e8;background:#f8fafc;font-weight:600">전화/FAX</td>' +
+          '<td style="padding:6px 10px;border:1px solid #c8d5e8">' + tel + ' / ' + fax + '</td></tr>' +
+        '<tr><td style="padding:6px 10px;border:1px solid #c8d5e8;background:#f8fafc;font-weight:600">주소</td>' +
+          '<td style="padding:6px 10px;border:1px solid #c8d5e8">' + coAddr + '</td></tr>' +
+      '</tbody>' +
+    '</table>' +
+
+    /* ── 공사 개요 테이블 ── */
+    '<table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:22px">' +
+      '<tr><td style="background:#1a3e72;color:#fff;font-weight:700;padding:7px 14px;border:1px solid #1a3e72;width:22%">공사명</td>' +
+        '<td style="padding:7px 14px;border:1px solid #c8d5e8">' + siteName + ' 인테리어 공사</td></tr>' +
+      '<tr><td style="background:#1a3e72;color:#fff;font-weight:700;padding:7px 14px;border:1px solid #1a3e72">공사 장소</td>' +
+        '<td style="padding:7px 14px;border:1px solid #c8d5e8">' + siteAddr + '</td></tr>' +
+      '<tr><td style="background:#1a3e72;color:#fff;font-weight:700;padding:7px 14px;border:1px solid #1a3e72">도급 금액</td>' +
+        '<td style="padding:7px 14px;border:1px solid #c8d5e8"><strong>' + amountFmt + '</strong>&nbsp;&nbsp;<span style="font-size:12px;color:#555">(' + amountKor + ')</span></td></tr>' +
+      '<tr><td style="background:#1a3e72;color:#fff;font-weight:700;padding:7px 14px;border:1px solid #1a3e72">공사 기간</td>' +
+        '<td style="padding:7px 14px;border:1px solid #c8d5e8">' + startDate + ' ~ ' + endDate + '</td></tr>' +
+      '<tr><td style="background:#1a3e72;color:#fff;font-weight:700;padding:7px 14px;border:1px solid #1a3e72">계약일</td>' +
+        '<td style="padding:7px 14px;border:1px solid #c8d5e8">' + contractDate + '</td></tr>' +
+    '</table>' +
+
+    '<p style="font-size:12.5px;line-height:2;margin-bottom:18px;text-indent:1em">위 발주자(이하 "갑"이라 한다)와 시공자(이하 "을"이라 한다)는 위 공사에 관하여 공정거래위원회 표준약관 제10015호를 준용하여 다음과 같이 계약을 체결한다.</p>' +
+
+    /* ── 조항 ── */
+    artH('제 1 조 (계약의 목적)') +
+    '<p style="margin-bottom:12px;font-size:12.5px;line-height:1.95">을은 위에 표시한 공사(이하 "공사"라 한다)를 완성하고, 갑은 그 대가를 지급할 것을 약정한다. 본 계약의 부속 서류인 상세견적서는 계약서의 일부를 구성하며 계약 내용이 상충하는 경우 계약서 본문이 우선한다.</p>' +
+
+    artH('제 2 조 (공사 범위)') +
+    '<p style="margin-bottom:8px;font-size:12.5px;line-height:1.95">① 을은 상세견적서에 명시된 공종 및 내역에 따라 공사를 시공하여야 한다.</p>' +
+    '<p style="margin-bottom:12px;font-size:12.5px;line-height:1.95">② 견적서에 없는 추가·변경 공사는 갑과 을이 서면으로 합의한 경우에 한하여 별도 정산한다.</p>' +
+
+    artH('제 3 조 (도급 금액 및 대금 지급)') +
+    '<p style="margin-bottom:8px;font-size:12.5px;line-height:1.95">① 갑은 공사 대금 <strong>' + amountFmt + '</strong>을 다음과 같이 지급한다.</p>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px">' +
+      '<thead><tr style="background:#f0f4fa">' +
+        '<th style="border:1px solid #c8d5e8;padding:6px 10px;text-align:center">구분</th>' +
+        '<th style="border:1px solid #c8d5e8;padding:6px 10px;text-align:center">비율</th>' +
+        '<th style="border:1px solid #c8d5e8;padding:6px 10px;text-align:center">금액</th>' +
+        '<th style="border:1px solid #c8d5e8;padding:6px 10px;text-align:center">지급 시기</th>' +
+      '</tr></thead>' +
+      '<tbody>' +
+        '<tr><td style="border:1px solid #c8d5e8;padding:6px 10px;text-align:center;font-weight:600">계약금</td>' +
+          '<td style="border:1px solid #c8d5e8;padding:6px 10px;text-align:center">' + p1Pct + '%</td>' +
+          '<td style="border:1px solid #c8d5e8;padding:6px 10px;text-align:right"><strong>' + fmtWon(v1) + '</strong></td>' +
+          '<td style="border:1px solid #c8d5e8;padding:6px 10px;text-align:center">계약 체결일</td></tr>' +
+        '<tr><td style="border:1px solid #c8d5e8;padding:6px 10px;text-align:center;font-weight:600">중도금</td>' +
+          '<td style="border:1px solid #c8d5e8;padding:6px 10px;text-align:center">' + p2Pct + '%</td>' +
+          '<td style="border:1px solid #c8d5e8;padding:6px 10px;text-align:right"><strong>' + fmtWon(v2) + '</strong></td>' +
+          '<td style="border:1px solid #c8d5e8;padding:6px 10px;text-align:center">' + pay2DateStr + '</td></tr>' +
+        '<tr><td style="border:1px solid #c8d5e8;padding:6px 10px;text-align:center;font-weight:600">잔금</td>' +
+          '<td style="border:1px solid #c8d5e8;padding:6px 10px;text-align:center">' + p3Pct + '%</td>' +
+          '<td style="border:1px solid #c8d5e8;padding:6px 10px;text-align:right"><strong>' + fmtWon(v3) + '</strong></td>' +
+          '<td style="border:1px solid #c8d5e8;padding:6px 10px;text-align:center">준공 검사 완료 후</td></tr>' +
+      '</tbody>' +
+    '</table>' +
+    '<p style="margin-bottom:12px;font-size:12.5px;line-height:1.95">② 갑이 대금 지급을 지체할 경우, 지체 일수에 대하여 연 12%의 지연이자를 가산하여 지급하여야 한다.</p>' +
+
+    artH('제 4 조 (공사 기간)') +
+    '<p style="margin-bottom:8px;font-size:12.5px;line-height:1.95">① 을은 <strong>' + startDate + '</strong>에 착공하여 <strong>' + endDate + '</strong>까지 공사를 완성하여야 한다.</p>' +
+    '<p style="margin-bottom:8px;font-size:12.5px;line-height:1.95">② 다음 각 호의 경우 갑·을 합의 하에 공사 기간을 연장할 수 있다.</p>' +
+    '<ol style="font-size:12.5px;line-height:2;margin:0 0 12px 22px"><li>갑의 귀책사유로 인한 공사 지연</li><li>천재지변·재해·불가항력적 사유</li><li>설계 변경 또는 추가 공사 발생</li><li>민원·행정 처리 등으로 인한 불가피한 공사 중단</li></ol>' +
+
+    artH('제 5 조 (설계 변경 및 추가 공사)') +
+    '<p style="margin-bottom:8px;font-size:12.5px;line-height:1.95">① 공사 진행 중 설계 변경이나 추가 공사가 발생하는 경우, 갑과 을은 사전에 서면 합의 후 진행하며 그 금액 및 기간을 별도로 정한다.</p>' +
+    '<p style="margin-bottom:12px;font-size:12.5px;line-height:1.95">② 갑의 일방적 지시로 인한 추가 공사 비용은 갑이 부담한다.</p>' +
+
+    artH('제 6 조 (재료 및 시공)') +
+    '<p style="margin-bottom:8px;font-size:12.5px;line-height:1.95">① 을은 견적서에 명시된 재료와 동등 이상의 품질로 시공하여야 하며, 재료를 변경할 경우 사전에 갑의 서면 동의를 얻어야 한다.</p>' +
+    '<p style="margin-bottom:12px;font-size:12.5px;line-height:1.95">② 을은 공사 중 발생하는 폐기물을 관련 법령에 따라 처리하여야 한다.</p>' +
+
+    artH('제 7 조 (하자 담보 책임)') +
+    '<p style="margin-bottom:8px;font-size:12.5px;line-height:1.95">① 을은 준공일로부터 아래 기간 동안 공사 하자에 대하여 무상으로 보수할 책임을 진다.</p>' +
+    '<ul style="font-size:12.5px;line-height:2;margin:0 0 8px 22px"><li>마감재(도배·장판·타일 등): <strong>1년</strong></li><li>목공사·창호 및 기타 공사: <strong>2년</strong></li><li>방수 공사: <strong>3년</strong></li></ul>' +
+    '<p style="margin-bottom:12px;font-size:12.5px;line-height:1.95">② 다음 각 호는 하자담보 책임에서 제외한다.<br>&nbsp;&nbsp;&nbsp;1. 갑의 사용 부주의 또는 변형으로 인한 훼손<br>&nbsp;&nbsp;&nbsp;2. 정상적인 마모 및 노화로 인한 손상<br>&nbsp;&nbsp;&nbsp;3. 갑이 임의로 수리·개조하여 발생한 하자</p>' +
+
+    artH('제 8 조 (검사 및 인도)') +
+    '<p style="margin-bottom:8px;font-size:12.5px;line-height:1.95">① 을이 공사를 완성한 때에는 지체 없이 갑에게 통보하고, 갑은 통보받은 날로부터 7일 이내에 준공 검사를 하여야 한다.</p>' +
+    '<p style="margin-bottom:12px;font-size:12.5px;line-height:1.95">② 갑이 검사 결과 이상이 없음을 확인한 경우 즉시 목적물을 인도받고 잔금을 지급하여야 한다.</p>' +
+
+    artH('제 9 조 (안전 관리)') +
+    '<p style="margin-bottom:12px;font-size:12.5px;line-height:1.95">을은 공사 중 산업안전보건법 등 관련 법령을 준수하고, 공사장 내 안전사고 예방에 최선을 다하여야 한다. 을의 과실로 인한 안전사고 및 재산상 피해에 대한 책임은 을이 부담한다.</p>' +
+
+    artH('제 10 조 (계약 해제 및 손해 배상)') +
+    '<p style="margin-bottom:8px;font-size:12.5px;line-height:1.95">① 갑 또는 을이 본 계약 조항을 위반한 경우, 상대방은 14일 이상의 유예 기간을 두고 서면으로 계약 해제를 통보할 수 있다.</p>' +
+    '<p style="margin-bottom:12px;font-size:12.5px;line-height:1.95">② 귀책 당사자는 상대방이 입은 실손해를 배상하여야 한다.</p>' +
+
+    artH('제 11 조 (분쟁 해결)') +
+    '<p style="margin-bottom:18px;font-size:12.5px;line-height:1.95">본 계약에 관한 분쟁은 갑·을 상호 협의로 해결하며, 협의가 이루어지지 않을 경우 공사 현장 소재지를 관할하는 법원을 관할 법원으로 한다.</p>' +
+
+    /* ── 특약 ── */
+    (special
+        ? '<div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;padding:14px 18px;margin:16px 0">' +
+            '<div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:8px">특 약 사 항</div>' +
+            '<div style="font-size:12.5px;line-height:2;white-space:pre-wrap">' + special + '</div>' +
+          '</div>'
+        : '<div style="margin-bottom:20px"></div>') +
+
+    /* ── 부속서류 ── */
+    '<div style="background:#f0f4f8;border:1px solid #c8d5e8;border-radius:7px;padding:10px 16px;margin-bottom:18px;font-size:12px">' +
+      '<strong>【첨부 서류】</strong> &nbsp; ① 인테리어 상세견적서 1부 &nbsp;② 공사 일정표 1부' +
+    '</div>' +
+
+    /* ── 맺음말 ── */
+    '<p style="text-align:center;font-size:12.5px;margin:20px 0 6px">본 계약의 성립을 증명하기 위하여 계약서 2통을 작성하고, 甲·乙이 각각 서명·날인 후 1통씩 보관한다.</p>' +
+    '<p style="text-align:center;font-size:14px;font-weight:700;margin:10px 0 24px">' + contractDate + '</p>' +
+
+    /* ── 서명란 ── */
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:28px">' +
+      '<div style="border:1.5px solid #c8d5e8;border-radius:8px;padding:18px 22px">' +
+        '<div style="font-size:12px;font-weight:700;color:#1a3e72;border-bottom:1px solid #e1e8f4;padding-bottom:6px;margin-bottom:12px">발 주 자 (甲)</div>' +
+        '<table style="width:100%;font-size:12px">' +
+          '<tr><td style="padding:5px 0;color:#666;width:90px">성명(상호)</td><td style="padding:5px 0;border-bottom:1px solid #e8edf4">' + clientName + ' &nbsp;<span style="color:#aaa">(인)</span></td></tr>' +
+          '<tr><td style="padding:5px 0;color:#666">주소</td><td style="padding:5px 0;border-bottom:1px solid #e8edf4">' + clientAddr + '</td></tr>' +
+          '<tr><td style="padding:5px 0;color:#666">주민(사업자)번호</td><td style="padding:5px 0;border-bottom:1px solid #e8edf4">' + (clientBizNo || '______-_______') + '</td></tr>' +
+          '<tr><td style="padding:5px 0;color:#666">전화/FAX</td><td style="padding:5px 0;border-bottom:1px solid #e8edf4">' + clientTel + '</td></tr>' +
+        '</table>' +
+      '</div>' +
+      '<div style="border:1.5px solid #c8d5e8;border-radius:8px;padding:18px 22px">' +
+        '<div style="font-size:12px;font-weight:700;color:#1a3e72;border-bottom:1px solid #e1e8f4;padding-bottom:6px;margin-bottom:12px">시 공 자 (乙)</div>' +
+        '<table style="width:100%;font-size:12px">' +
+          '<tr><td style="padding:5px 0;color:#666;width:90px">상호</td><td style="padding:5px 0;border-bottom:1px solid #e8edf4">' + company + '</td></tr>' +
+          '<tr><td style="padding:5px 0;color:#666">대표자</td><td style="padding:5px 0;border-bottom:1px solid #e8edf4">' + rep + ' &nbsp;<span style="color:#aaa">(인)</span></td></tr>' +
+          '<tr><td style="padding:5px 0;color:#666">사업자번호</td><td style="padding:5px 0;border-bottom:1px solid #e8edf4">' + bizNo + '</td></tr>' +
+          '<tr><td style="padding:5px 0;color:#666">전화/FAX</td><td style="padding:5px 0;border-bottom:1px solid #e8edf4">' + tel + ' / ' + fax + '</td></tr>' +
+          '<tr><td style="padding:5px 0;color:#666">주소</td><td style="padding:5px 0;border-bottom:1px solid #e8edf4">' + coAddr + '</td></tr>' +
+        '</table>' +
+      '</div>' +
+    '</div>';
+}
+
+/* 조항 헤더 헬퍼 */
+function artH(title) {
+    return '<div style="font-size:13.5px;font-weight:800;color:#1a3e72;border-left:4px solid #1a3e72;padding:3px 0 3px 10px;margin:18px 0 8px">' + title + '</div>';
+}
+
+/* 일반 도급 계약서 HTML 생성 */
+function buildGeneralContract() {
+    var clientName = ctBlank(ctVal('ct-client-name'), '(갑)');
+    var clientAddr = ctBlank(ctVal('ct-client-addr'), '________');
+    var siteName   = ctBlank(ctVal('ct-site-name'), '________');
+    var siteAddr   = ctBlank(ctVal('ct-site-addr'), '________');
+    var amount     = ctVal('ct-amount');
+    var amountFmt  = amount ? ctFmt(amount) + '원' : '금 ___________원';
+    var amountKor  = amount ? numberToKorean(parseInt(amount)) + '원정' : '일금 ___________원정';
+    var startDate  = ctDate('ct-start');
+    var endDate    = ctDate('ct-end');
+    var company    = ctBlank(ctVal('ct-company'), '정결 Design Studio');
+    var rep        = ctBlank(ctVal('ct-rep'), '________');
+    var tel        = ctBlank(ctVal('ct-tel'), '________');
+    var contractDate = ctDate('ct-date');
+    var special    = ctVal('ct-special');
+
+    return `<div style="text-align:center;margin-bottom:40px">
+  <div style="font-size:28px;font-weight:900;letter-spacing:6px;color:#1a3e72;margin-bottom:4px">공 사 도 급 계 약 서</div>
+  <div style="font-size:12px;color:#aaa;letter-spacing:2px">Construction Contract Agreement</div>
+</div>
+
+<div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:18px 24px;margin-bottom:28px">
+  <table style="width:100%;font-size:13.5px;border-collapse:collapse">
+    <tr><td style="padding:6px 0;font-weight:700;color:#555;width:130px">공 사 명</td><td style="padding:6px 0;border-bottom:1px solid #e8edf4">${siteName} 실내건축공사</td></tr>
+    <tr><td style="padding:6px 0;font-weight:700;color:#555">공 사 장 소</td><td style="padding:6px 0;border-bottom:1px solid #e8edf4">${siteAddr}</td></tr>
+    <tr><td style="padding:6px 0;font-weight:700;color:#555">도 급 금 액</td><td style="padding:6px 0;border-bottom:1px solid #e8edf4"><strong>${amountFmt}</strong> &nbsp; (${amountKor})</td></tr>
+    <tr><td style="padding:6px 0;font-weight:700;color:#555">공 사 기 간</td><td style="padding:6px 0;border-bottom:1px solid #e8edf4">${startDate} ~ ${endDate}</td></tr>
+  </table>
+</div>
+
+<p style="margin-bottom:20px;line-height:2">
+  발주자 <strong>${clientName}</strong>(이하 "갑"이라 칭함)와 수급인 <strong>${company}</strong> 대표자 <strong>${rep}</strong>(이하 "을"이라 칭함)는
+  위 공사에 대하여 다음과 같이 도급계약을 체결한다.
+</p>
+
+<div style="font-size:14px;font-weight:900;border-bottom:2px solid #1a3e72;padding-bottom:4px;margin:22px 0 12px;color:#1a3e72">제1조 (목적)</div>
+<p style="margin-bottom:14px">본 계약은 위에 표시한 공사(이하 "공사"라 한다)의 완성을 목적으로 한다.</p>
+
+<div style="font-size:14px;font-weight:900;border-bottom:2px solid #1a3e72;padding-bottom:4px;margin:22px 0 12px;color:#1a3e72">제2조 (도급금액 및 지급)</div>
+<p style="margin-bottom:8px">① 갑은 을에게 도급금액 <strong>${amountFmt}</strong>을 다음과 같이 지급한다.</p>
+<ul style="margin:0 0 14px 20px;line-height:2.2">
+  <li>계약금 (30%): 계약 체결일에 지급</li>
+  <li>중도금 (40%): 공정 50% 완료 시 지급</li>
+  <li>잔  금 (30%): 준공검사 완료 후 지급</li>
+</ul>
+<p style="margin-bottom:14px">② 갑이 대금 지급을 지체할 경우, 지체 일수에 연 12%의 지연이자를 가산한다.</p>
+
+<div style="font-size:14px;font-weight:900;border-bottom:2px solid #1a3e72;padding-bottom:4px;margin:22px 0 12px;color:#1a3e72">제3조 (공사 기간)</div>
+<p style="margin-bottom:14px">① 을은 ${startDate}에 착공하여 ${endDate}까지 공사를 완성하여야 한다.<br>
+② 갑의 귀책사유, 설계 변경, 천재지변 등 불가항력적 사유로 인한 지연은 양 당사자 합의 하에 기간을 연장할 수 있다.</p>
+
+<div style="font-size:14px;font-weight:900;border-bottom:2px solid #1a3e72;padding-bottom:4px;margin:22px 0 12px;color:#1a3e72">제4조 (설계변경 및 추가공사)</div>
+<p style="margin-bottom:14px">공사 진행 중 설계 변경 또는 추가 공사가 발생할 경우, 갑과 을은 별도의 서면 합의로 금액 및 기간을 조정한다.</p>
+
+<div style="font-size:14px;font-weight:900;border-bottom:2px solid #1a3e72;padding-bottom:4px;margin:22px 0 12px;color:#1a3e72">제5조 (하자담보 책임)</div>
+<p style="margin-bottom:14px">을은 준공일로부터 1년간 공사 하자에 대하여 무상으로 보수할 책임을 진다. 단, 갑의 귀책사유 또는 정상적인 마모에 의한 경우는 제외한다.</p>
+
+<div style="font-size:14px;font-weight:900;border-bottom:2px solid #1a3e72;padding-bottom:4px;margin:22px 0 12px;color:#1a3e72">제6조 (안전 관리)</div>
+<p style="margin-bottom:14px">을은 공사 중 산업안전보건법 등 관련 법령을 준수하고, 공사장 내 안전사고 예방에 최선을 다하여야 한다.</p>
+
+<div style="font-size:14px;font-weight:900;border-bottom:2px solid #1a3e72;padding-bottom:4px;margin:22px 0 12px;color:#1a3e72">제7조 (계약 해제 및 손해배상)</div>
+<p style="margin-bottom:14px">① 갑 또는 을이 본 계약을 위반할 경우, 상대방은 14일 이상의 유예기간을 두고 서면으로 계약 해제를 통보할 수 있다.<br>
+② 귀책 당사자는 상대방이 입은 손해를 배상하여야 한다.</p>
+
+<div style="font-size:14px;font-weight:900;border-bottom:2px solid #1a3e72;padding-bottom:4px;margin:22px 0 12px;color:#1a3e72">제8조 (분쟁 해결)</div>
+<p style="margin-bottom:22px">본 계약에 관한 분쟁은 상호 협의로 해결하며, 협의가 이루어지지 않을 경우 공사 현장 소재지를 관할하는 법원을 관할 법원으로 한다.</p>
+
+${special ? `<div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;padding:16px 20px;margin:18px 0 28px">
+  <div style="font-size:13px;font-weight:800;color:#92400e;margin-bottom:10px">특 약 사 항</div>
+  <div style="font-size:13px;line-height:2;white-space:pre-wrap">${special}</div>
+</div>` : '<div style="margin-bottom:28px"></div>'}
+
+<p style="margin-bottom:6px;text-align:center">본 계약의 성립을 증명하기 위하여 계약서 2통을 작성하고, 갑·을이 각각 서명날인 후 1통씩 보관한다.</p>
+<p style="text-align:center;font-size:15px;font-weight:700;margin:20px 0 32px">${contractDate}</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:40px">
+  <div style="border-top:2px solid #1a3e72;padding-top:16px">
+    <div style="font-size:13px;font-weight:700;color:#1a3e72;margin-bottom:14px">발 주 자 (甲)</div>
+    <table style="width:100%;font-size:13px">
+      <tr><td style="padding:6px 0;color:#666;width:70px">성 명</td><td style="padding:6px 0;border-bottom:1px solid #e1e4e8">${clientName}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#aaa">(인)</span></td></tr>
+      <tr><td style="padding:6px 0;color:#666">주 소</td><td style="padding:6px 0;border-bottom:1px solid #e1e4e8">${clientAddr}</td></tr>
+    </table>
+  </div>
+  <div style="border-top:2px solid #1a3e72;padding-top:16px">
+    <div style="font-size:13px;font-weight:700;color:#1a3e72;margin-bottom:14px">수 급 인 (乙)</div>
+    <table style="width:100%;font-size:13px">
+      <tr><td style="padding:6px 0;color:#666;width:70px">상 호</td><td style="padding:6px 0;border-bottom:1px solid #e1e4e8">${company}</td></tr>
+      <tr><td style="padding:6px 0;color:#666">대표자</td><td style="padding:6px 0;border-bottom:1px solid #e1e4e8">${rep}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#aaa">(인)</span></td></tr>
+      <tr><td style="padding:6px 0;color:#666">연락처</td><td style="padding:6px 0;border-bottom:1px solid #e1e4e8">${tel}</td></tr>
+    </table>
+  </div>
+</div>`;
+}
+
+/* 금액 한글 변환 */
+function numberToKorean(n) {
+    if (!n || isNaN(n)) return '일금 ___________';
+    var units = ['', '만', '억', '조'];
+    var nums  = ['', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
+    var pos   = ['', '십', '백', '천'];
+    if (n === 0) return '영';
+    var result = '일금 ';
+    var groups = [];
+    while (n > 0) { groups.push(n % 10000); n = Math.floor(n / 10000); }
+    for (var g = groups.length - 1; g >= 0; g--) {
+        var group = groups[g];
+        if (!group) continue;
+        var str = '';
+        var tmp = String(group).padStart(4, '0');
+        for (var i = 0; i < 4; i++) {
+            var d = parseInt(tmp[i]);
+            if (d) str += (d === 1 && i > 0 ? '' : nums[d]) + pos[3 - i];
+        }
+        result += str + units[g];
+    }
+    return result;
+}
+
+/* 렌더링 */
+function renderContractTmpl() {
+    var doc = document.getElementById('contract-tmpl-doc');
+    if (!doc) return;
+    doc.innerHTML = _currentTmplType === 'general' ? buildGeneralContract() : buildInteriorContract();
+}
+
+/* ★수정 #13: 자동 채우기 – savedAt 기준 최신 견적 우선 */
+function autoFillContractFromEst() {
+    try {
+        var ests = JSON.parse(localStorage.getItem('iq_estimates') || '[]');
+        if (!ests.length) { showToast('저장된 견적서가 없습니다.'); return; }
+        /* savedAt(최신 저장) 기준으로 내림차순 정렬 → 가장 최근 것 사용 */
+        ests.sort(function(a, b) { return (b.savedAt || 0) - (a.savedAt || 0); });
+        var est  = ests[0];
+        var fld  = est.fields || {};
+        var snap = est.costSnapshot || {};
+        /* 시공사 정보 로드 */
+        var co   = (typeof loadCompanyInfo === 'function') ? (loadCompanyInfo() || {}) : {};
+        var setV = function(id, v) { var el = document.getElementById(id); if (el && v) el.value = v; };
+        /* 발주자 */
+        setV('ct-client-name',  fld.clientName);
+        setV('ct-client-addr',  fld.siteAddress);
+        setV('ct-client-tel',   fld.clientPhone || '');
+        /* 공사 */
+        setV('ct-site-addr',    fld.siteAddress);
+        setV('ct-site-name',    fld.siteName);
+        /* 금액 */
+        if (snap && snap.fin) setV('ct-amount', String(snap.fin));
+        /* 공사 기간: constDays 기준 오늘부터 N일 */
+        if (fld.constDays && !document.getElementById('ct-start').value) {
+            var s = new Date();
+            var e = new Date(s.getTime() + (fld.constDays - 1) * 86400000);
+            document.getElementById('ct-start').value = s.toISOString().slice(0,10);
+            document.getElementById('ct-end').value   = e.toISOString().slice(0,10);
+        }
+        /* 수급인 */
+        setV('ct-company',  fld.companyName  || co.companyName  || '');
+        setV('ct-rep',      fld.repName      || co.repName      || '');
+        setV('ct-tel',      fld.companyTel   || co.companyTel   || '');
+        setV('ct-fax',      fld.companyFax   || co.companyFax   || '');
+        setV('ct-bizno',    co.companyBizNo  || '');
+        setV('ct-co-addr',  fld.companyAddr  || co.companyAddr  || '');
+        /* 계약일 기본값 */
+        var dateEl = document.getElementById('ct-date');
+        if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().slice(0,10);
+        calcPayments();
+        renderContractTmpl();
+        showToast('✅ 최신 견적서 정보를 채웠습니다. (' + (est.title || fld.siteName || '제목없음') + ')');
+    } catch(e) { showToast('오류: ' + e.message); }
+}
+
+/* 인쇄 */
+function printContractTmpl() {
+    var doc = document.getElementById('contract-tmpl-doc');
+    if (!doc) return;
+    var w = window.open('', '_blank', 'width=900,height=700');
+    w.document.write('<html><head><meta charset="UTF-8"><title>계약서<\/title>' +
+        '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">' +
+        '<style>body{font-family:\'Noto Sans KR\',sans-serif;font-size:13.5px;line-height:1.9;color:#24292e;padding:48px 60px;max-width:794px;margin:0 auto}@media print{body{padding:20mm 18mm}}<\/style>' +
+        '<\/head><body>' + doc.innerHTML + '<\/body><\/html>');
+    w.document.close();
+    setTimeout(function() { w.focus(); w.print(); }, 600);
+}
+
+/* PDF 다운로드 (html2canvas + jsPDF) ★수정 #14 */
+async function downloadContractPDF() {
+    var doc = document.getElementById('contract-tmpl-doc');
+    if (!doc) { showToast('계약서 미리보기가 없습니다.'); return; }
+
+    /* jsPDF 네임스페이스 안전 탐색 (UMD 빌드는 window.jspdf.jsPDF 에 위치) */
+    var JsPDF = (window.jspdf && window.jspdf.jsPDF)
+              || window.jsPDF
+              || null;
+    if (!JsPDF) {
+        showToast('⏳ jsPDF 로딩 중입니다. 잠시 후 다시 눌러 주세요.');
+        return;
+    }
+    if (!window.html2canvas) {
+        showToast('⏳ html2canvas 로딩 중입니다. 잠시 후 다시 눌러 주세요.');
+        return;
+    }
+
+    /* ── 숨김 캡처용 래퍼에 계약서 HTML 복사 ── */
+    var wrap = document.getElementById('contract-pdf-wrap');
+    if (!wrap) { showToast('PDF 캡처 영역을 찾을 수 없습니다.'); return; }
+    wrap.innerHTML = '';
+    var inner = document.createElement('div');
+    /* A4 794px 폭 기준, 여백 포함 */
+    inner.style.cssText = [
+        'width:794px',
+        'padding:48px 56px',
+        'box-sizing:border-box',
+        'font-family:\'Noto Sans KR\',sans-serif',
+        'font-size:12.5px',
+        'line-height:1.85',
+        'color:#24292e',
+        'background:#fff'
+    ].join(';');
+    inner.innerHTML = doc.innerHTML;
+    wrap.appendChild(inner);
+
+    showToast('📄 PDF 생성 중… 잠시만 기다려 주세요.');
+    try {
+        /* 폰트 완전 로드 대기 후 렌더링 안정화 */
+        if (document.fonts && document.fonts.ready) await document.fonts.ready;
+        await new Promise(function(res) { setTimeout(res, 700); });
+
+        /* html2canvas 캡처 (scale=2 → 고해상도) */
+        var canvas = await html2canvas(inner, {
+            scale          : 2,
+            useCORS        : true,
+            allowTaint     : false,
+            backgroundColor: '#ffffff',
+            logging        : false,
+            width          : 794,
+            windowWidth    : 794
+        });
+
+        /* ── A4 치수 (mm) ── */
+        var A4_W = 210;   /* mm */
+        var A4_H = 297;   /* mm */
+        /* px → mm 비율: 캔버스 너비(px) = 794*scale = 1588px → 210mm */
+        var pxPerMm = canvas.width / A4_W;   /* ~7.56 px/mm */
+
+        /* A4 한 페이지 높이 = 297 * pxPerMm */
+        var pageH_px  = Math.round(A4_H * pxPerMm);
+        var totalPages = Math.ceil(canvas.height / pageH_px);
+
+        /* jsPDF 인스턴스 */
+        var pdf = new JsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+        for (var p = 0; p < totalPages; p++) {
+            if (p > 0) pdf.addPage();
+
+            var sy   = p * pageH_px;
+            var sh   = Math.min(pageH_px, canvas.height - sy);
+            if (sh <= 0) break;
+
+            /* 페이지 슬라이스 캔버스 */
+            var slice = document.createElement('canvas');
+            slice.width  = canvas.width;
+            slice.height = Math.ceil(sh);
+            var ctx = slice.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, slice.width, slice.height);
+            ctx.drawImage(
+                canvas,
+                0, Math.floor(sy), canvas.width, Math.ceil(sh),
+                0, 0,              slice.width,  Math.ceil(sh)
+            );
+
+            /* 슬라이스 실제 mm 높이 (마지막 페이지는 짧을 수 있음) */
+            var sliceH_mm = (Math.ceil(sh) / pxPerMm);
+
+            pdf.addImage(
+                slice.toDataURL('image/jpeg', 0.93),
+                'JPEG',
+                0, 0,
+                A4_W, sliceH_mm
+            );
+        }
+
+        /* ── 파일명: 인테리어계약서_홍길동.pdf ── */
+        var clientRaw = ctVal('ct-client-name') || '계약';
+        var clientSafe = clientRaw.replace(/[\\/:*?"<>|\s]/g, '_');
+        var prefix   = (_currentTmplType === 'interior') ? '인테리어계약서' : '도급계약서';
+        var fileName  = prefix + '_' + clientSafe + '.pdf';
+
+        pdf.save(fileName);
+        showToast('✅ PDF 저장 완료: ' + fileName);
+
+    } catch(err) {
+        console.error('downloadContractPDF 오류:', err);
+        showToast('⚠️ PDF 오류: ' + (err.message || String(err)));
+    } finally {
+        /* 캡처 래퍼 비우기 */
+        wrap.innerHTML = '';
+    }
+}
+
+/* ════════════════════════════════════════════════════════
+   DOMContentLoaded – 단일 통합 초기화 핸들러
+   (중복 리스너 방지: 모든 DOM 의존 초기화를 여기서 처리)
+════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', function() {
+
+    /* ① 설문 상태 드롭다운 – 취소 옵션 보완 */
+    var sel = document.getElementById('sv-status-select');
+    if (sel && !sel.querySelector('option[value="취소"]')) {
+        var opt = document.createElement('option');
+        opt.value = '취소'; opt.textContent = '⛔ 취소';
+        sel.appendChild(opt);
+    }
+
+    /* ② 계약서 템플릿 초기화 ('interior' 기본값) */
+    if (typeof switchContractTmpl === 'function') {
+        switchContractTmpl('interior');
+    }
+
+    /* ③ switchTab 패치 – 계약서 탭 열릴 때 회사정보·날짜 자동 주입 */
+    var _origSwitchTab = window.switchTab;
+    window.switchTab = function(tabId, btn) {
+        /* 원본 탭 전환 실행 */
+        _origSwitchTab && _origSwitchTab.apply(this, arguments);
+        /* 계약서 템플릿 탭인 경우 추가 동작 */
+        if (tabId === 'tab-contract-tmpl') {
+            var comp = {};
+            try { comp = (typeof loadCompanyInfo === 'function') ? (loadCompanyInfo() || {}) : {}; } catch(e) {}
+            var setIfEmpty = function(id, v) {
+                var el = document.getElementById(id);
+                if (el && !el.value && v) el.value = v;
+            };
+            /* 수급인 정보 자동 주입 */
+            setIfEmpty('ct-company',  comp.companyName);
+            setIfEmpty('ct-rep',      comp.repName);
+            setIfEmpty('ct-tel',      comp.companyTel);
+            setIfEmpty('ct-fax',      comp.companyFax);
+            setIfEmpty('ct-bizno',    comp.companyBizNo);
+            setIfEmpty('ct-co-addr',  comp.companyAddr);
+            /* 오늘 날짜를 계약일 기본값으로 */
+            var todayEl = document.getElementById('ct-date');
+            if (todayEl && !todayEl.value) {
+                todayEl.value = new Date().toISOString().slice(0, 10);
+            }
+            /* 대금 계산 후 계약서 미리보기 즉시 렌더링 */
+            if (typeof calcPayments === 'function') calcPayments();
+            else if (typeof renderContractTmpl === 'function') renderContractTmpl();
+        }
+    };
+});
 </script>
 </body>
 </html>
