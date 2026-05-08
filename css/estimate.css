@@ -373,6 +373,16 @@
     font-weight: 700 !important;
 }
 
+/* ── PDF 비견적 행 (※참고 – 합계 미포함) ──── */
+.pdf-nonest-row td {
+    color: #9ca3af !important;
+    font-style: italic !important;
+    background: #fafafa !important;
+}
+.pdf-nonest-row td.r {
+    text-decoration: none;
+}
+
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    행 잘림 방지 (PDF·인쇄 공통)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */

@@ -1716,7 +1716,8 @@ function buildEstDoc() {
        3. 공정 헤더는 반드시 첫 번째 데이터 행과 같이 이동 (고아 헤더 방지)
        4. 소계 행도 마지막 데이터 행과 같은 페이지에 배치
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-    let grandTotal = 0;
+    let grandTotal    = 0;
+    let grandNonEstCount = 0;  // 전체 비견적 항목 수 (합계 행 안내용)
 
     // ── .est-page 의 실제 내부 폭 (padding 48px×2 제외) ──
     const PAGE_INNER_W = 794 - 48 - 48;  // 698px
@@ -1747,45 +1748,65 @@ function buildEstDoc() {
         const rows = groups[cat];
         if (!rows || rows.length === 0) return null;
         let catMatTotal = 0, catLabTotal = 0;
-        // ★수정 #20: 비견적(isNonEst) 항목은 PDF 합계·내역에서 제외
-        const visibleRows = rows.filter(r => !r.isNonEst);
-        if (visibleRows.length === 0) return null; // 공정 내 visible 행 없으면 섹션 제외
-        visibleRows.forEach(r => {
+        // 비견적(isNonEst) 항목: PDF에 표시하되 합계 미포함 (고객 설명용 참고 항목)
+        // 일반 행 → 합계 포함 / 비견적 행 → 단가 표시 + 합계 열에 "참고" 표기
+        const visibleRows = rows.filter(r => !r.isAdminOnly); // 관리자전용만 완전 제외
+        if (visibleRows.length === 0) return null;
+
+        // 합계 계산: 비견적 항목은 제외
+        visibleRows.filter(r => !r.isNonEst).forEach(r => {
             catMatTotal += (r.matPrice || 0) * (r.qty || 0);
             catLabTotal += (r.labPrice || 0) * (r.qty || 0);
         });
         const catTotal = catMatTotal + catLabTotal;
-        grandTotal     += catTotal;
-        grandTotalMat  += catMatTotal;
-        grandTotalLab  += catLabTotal;
+        grandTotal        += catTotal;
+        grandTotalMat     += catMatTotal;
+        grandTotalLab     += catLabTotal;
+        grandNonEstCount  += visibleRows.filter(r => r.isNonEst).length;
 
         const dataRows = visibleRows.map(r => {
-            const rm = (r.matPrice || 0) * (r.qty || 0);
-            const rl = (r.labPrice || 0) * (r.qty || 0);
-            const rt = rm + rl;
-            // 행 타입별 색상: 서비스(붉은색) / 관리자전용(주황색) / 일반(기본)
-            const isAdminOnly = !!r.isAdminOnly;
+            const rm       = (r.matPrice || 0) * (r.qty || 0);
+            const rl       = (r.labPrice || 0) * (r.qty || 0);
+            const rt       = rm + rl;
+            const isNonEst = !!r.isNonEst;
+
+            // 행 타입별 색상: 서비스(붉은색) / 비견적(회색) / 일반(기본)
             let rowColor = '';
-            if (r.isService)   rowColor = 'color:#dc2626;font-weight:700';  // 서비스 – 빨강
-            else if (isAdminOnly) rowColor = 'color:#d97706;font-weight:700'; // 관리자 – 주황
+            if (r.isService)  rowColor = 'color:#dc2626;font-weight:700'; // 서비스 – 빨강
+            else if (isNonEst) rowColor = 'color:#9ca3af;font-style:italic'; // 비견적 – 회색 이탤릭
             const cellStyle = rowColor ? `style="${rowColor}"` : '';
-            const trClass   = r.isService ? 'class="pdf-service-row"' : (isAdminOnly ? 'class="pdf-admin-row"' : '');
-            // SVC 텍스트 제거 – 색상만으로 구분
+            const trClass   = r.isService  ? 'class="pdf-service-row"'
+                            : isNonEst     ? 'class="pdf-nonest-row"' : '';
+
+            // 합계 열: 비견적은 취소선 금액 + "(참고)" 표기
+            const totalCell = isNonEst
+                ? `<td class="r" style="color:#9ca3af;font-style:italic;font-size:10px">
+                     <span style="text-decoration:line-through">${won(rt)}</span>
+                     <span style="display:block;font-size:9px;font-weight:600;color:#6b7280">※참고</span>
+                   </td>`
+                : `<td class="r bold" ${cellStyle}>${won(rt)}</td>`;
+
             return `<tr ${trClass}>
               <td class="name-cell" ${cellStyle}>${esc(r.name)}</td>
               <td class="brand-cell" ${cellStyle}>${esc(r.brand || '-')}</td>
               <td class="c">${esc(r.unit)}</td>
-              <td class="r">${r.qty}</td>
+              <td class="r" ${cellStyle}>${r.qty}</td>
               <td class="r" ${cellStyle}>${r.matPrice ? won(r.matPrice) : '-'}</td>
               <td class="r" ${cellStyle}>${r.labPrice ? won(r.labPrice) : '-'}</td>
-              <td class="r bold" ${cellStyle}>${won(rt)}</td>
+              ${totalCell}
             </tr>`;
         });
+
+        // 비견적 항목 수 계산 (소계 행 안내용)
+        const nonEstCount = visibleRows.filter(r => r.isNonEst).length;
+        const nonEstNote  = nonEstCount > 0
+            ? `<span style="font-size:9px;color:#9ca3af;font-weight:400;margin-left:6px">(※참고 ${nonEstCount}건 제외)</span>`
+            : '';
 
         // 공종 소계: 자재비 / 노무비 / 합계 3개 열
         const subtotalRow = `<tr class="subtotal-tr">
           <td colspan="4" style="text-align:right;font-weight:700;font-size:11px">
-            ${getProcNum(cat)} ${esc(cat)} &nbsp;소 계
+            ${getProcNum(cat)} ${esc(cat)} &nbsp;소 계${nonEstNote}
           </td>
           <td class="r" style="font-size:11px;color:#1a3e72">${won(catMatTotal)}</td>
           <td class="r" style="font-size:11px;color:#059669">${won(catLabTotal)}</td>
@@ -1797,6 +1818,7 @@ function buildEstDoc() {
                    <span class="proc-num">${getProcNum(cat)}</span>
                    ${esc(cat)}
                    <span class="proc-total-badge">소계 ${won(catTotal)}</span>
+                   ${nonEstCount > 0 ? `<span style="font-size:10px;color:#9ca3af;font-weight:400;margin-left:4px">(※참고항목 ${nonEstCount}건 합계제외)</span>` : ''}
                  </div>`,
                  thead: detailThead };
     }).filter(Boolean);
@@ -1920,9 +1942,12 @@ function buildEstDoc() {
         const titleHtml = pg.isFirst
             ? `<div class="page-title">세 부 내 역 서</div>`
             : `<div class="page-title" style="font-size:15px;letter-spacing:4px;margin-bottom:10px">세 부 내 역 서 (계속)</div>`;
+        const nonEstFooterNote = grandNonEstCount > 0
+            ? `<span style="font-size:10px;color:#9ca3af;font-weight:400;margin-left:8px">(※참고항목 ${grandNonEstCount}건 합계 미포함)</span>`
+            : '';
         const footerHtml = isLast
             ? `<div class="grand-total-row">
-                 <span>직접공사비 합계</span>
+                 <span>직접공사비 합계${nonEstFooterNote}</span>
                  <span style="display:flex;gap:24px;align-items:center">
                    <span style="font-size:11px;opacity:.85">자재 ${won(grandTotalMat)}</span>
                    <span style="font-size:11px;opacity:.85">노무 ${won(grandTotalLab)}</span>
