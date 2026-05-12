@@ -3692,7 +3692,7 @@ function renderConsultList() {
     var list  = _clAllLogs.filter(function(l) {
         var match = true;
         if (q) {
-            var hay = (l.client_name||'') + (l.client_phone||'') + (l.address_dong||'') + (l.address_ho||'');
+            var hay = (l.customer_name||'') + (l.contact||'') + (l.address_dong||'') + (l.address_ho||'');
             match = hay.toLowerCase().indexOf(q.toLowerCase()) !== -1;
         }
         if (year && match) {
@@ -3722,7 +3722,7 @@ function renderConsultList() {
         try { var items = typeof l.items === 'string' ? JSON.parse(l.items) : (l.items||{}); Object.keys(items).forEach(function(k){ if(items[k].checked && items[k].checked.length) cats.push(k); }); } catch(e){}
         html += '<div class="cl-item' + isActive + '" onclick="clOpenItem(\'' + l.id + '\')" data-id="' + l.id + '">';
         html += '<div class="cl-item-left">';
-        html += '<div class="cl-item-title">' + escHtml(l.client_name||'(이름없음)') + ' <span style="font-weight:400;color:#888;font-size:12px">' + escHtml(l.client_phone||'') + '</span></div>';
+        html += '<div class="cl-item-title">' + escHtml(l.customer_name||'(이름없음)') + ' <span style="font-weight:400;color:#888;font-size:12px">' + escHtml(l.contact||'') + '</span></div>';
         html += '<div class="cl-item-sub">' + dateStr + ' &nbsp;|&nbsp; ' + escHtml((l.address_dong||'') + ' ' + (l.address_ho||'')) ;
         if (cats.length) html += ' &nbsp;|&nbsp; <span style="color:var(--navy2)">' + cats.slice(0,4).join(' · ') + (cats.length>4?' 외':'') + '</span>';
         html += '</div></div>';
@@ -3799,15 +3799,15 @@ function clOpenItem(id) {
     clInitTable();
     document.getElementById('cl-id').value = id;
     document.getElementById('cl-date').value = log.visit_date || '';
-    document.getElementById('cl-name').value = log.client_name || '';
-    document.getElementById('cl-phone').value = log.client_phone || '';
-    document.getElementById('cl-work-from').value = log.work_from || '';
-    document.getElementById('cl-work-to').value = log.work_to || '';
-    document.getElementById('cl-email').value = log.client_email || '';
+    document.getElementById('cl-name').value = log.customer_name || '';
+    document.getElementById('cl-phone').value = log.contact || '';
+    document.getElementById('cl-work-from').value = log.construction_start || '';
+    document.getElementById('cl-work-to').value = log.construction_end || '';
+    document.getElementById('cl-email').value = log.email || '';
     document.getElementById('cl-addr-dong').value = log.address_dong || '';
     document.getElementById('cl-addr-ho').value = log.address_ho || '';
-    document.getElementById('cl-addr-size').value = log.address_size || '';
-    document.getElementById('cl-memo').value = log.memo || '';
+    document.getElementById('cl-addr-size').value = log.address_area || '';
+    document.getElementById('cl-memo').value = log.request_notes || '';
 
     /* 삭제 버튼 표시 */
     var del = document.getElementById('cl-delete-btn');
@@ -3815,14 +3815,14 @@ function clOpenItem(id) {
 
     /* 폼 제목 업데이트 */
     var heading = document.getElementById('cl-form-heading');
-    if (heading) heading.innerHTML = '<i class="fas fa-edit" style="margin-right:6px;color:var(--navy2)"></i>' + escHtml(log.client_name||'상담일지') + ' 수정';
+    if (heading) heading.innerHTML = '<i class="fas fa-edit" style="margin-right:6px;color:var(--navy2)"></i>' + escHtml(log.customer_name||'상담일지') + ' 수정';
 
     /* 연동 견적서 표시 */
     var lsec = document.getElementById('cl-linked-est-section');
     var linfo = document.getElementById('cl-linked-est-info');
-    if (log.linked_estimate_id && lsec && linfo) {
+    if (log.estimate_id && lsec && linfo) {
         lsec.style.display = '';
-        linfo.innerHTML = '<i class="fas fa-link" style="margin-right:6px"></i>견적서 ID: ' + escHtml(log.linked_estimate_id) + (log.linked_estimate_title ? ' / ' + escHtml(log.linked_estimate_title) : '');
+        linfo.innerHTML = '<i class="fas fa-link" style="margin-right:6px"></i>연동 견적서: ' + escHtml(log.estimate_id);
     } else if (lsec) { lsec.style.display = 'none'; }
 
     /* 체크박스 / 제품번호 복원 */
@@ -3875,25 +3875,24 @@ function clSave() {
     if (!date) { alert('방문일을 입력해주세요.'); document.getElementById('cl-date').focus(); return; }
 
     var payload = {
-        visit_date    : date,
-        client_name   : name,
-        client_phone  : (document.getElementById('cl-phone').value || '').trim(),
-        work_from     : (document.getElementById('cl-work-from').value || '').trim(),
-        work_to       : (document.getElementById('cl-work-to').value || '').trim(),
-        client_email  : (document.getElementById('cl-email').value || '').trim(),
-        address_dong  : (document.getElementById('cl-addr-dong').value || '').trim(),
-        address_ho    : (document.getElementById('cl-addr-ho').value || '').trim(),
-        address_size  : (document.getElementById('cl-addr-size').value || '').trim(),
-        memo          : (document.getElementById('cl-memo').value || '').trim(),
-        items         : clCollectItems()
+        visit_date         : date,
+        customer_name      : name,
+        contact            : (document.getElementById('cl-phone').value || '').trim(),
+        construction_start : (document.getElementById('cl-work-from').value || '').trim() || null,
+        construction_end   : (document.getElementById('cl-work-to').value || '').trim() || null,
+        email              : (document.getElementById('cl-email').value || '').trim(),
+        address_dong       : (document.getElementById('cl-addr-dong').value || '').trim(),
+        address_ho         : (document.getElementById('cl-addr-ho').value || '').trim(),
+        address_area       : (document.getElementById('cl-addr-size').value || '').trim(),
+        request_notes      : (document.getElementById('cl-memo').value || '').trim(),
+        items              : clCollectItems()
     };
 
     /* 기존 연동 견적서 유지 */
     var existId = document.getElementById('cl-id').value;
     var existLog = existId ? _clAllLogs.find(function(l){ return l.id === existId; }) : null;
-    if (existLog && existLog.linked_estimate_id) {
-        payload.linked_estimate_id    = existLog.linked_estimate_id;
-        payload.linked_estimate_title = existLog.linked_estimate_title;
+    if (existLog && existLog.estimate_id) {
+        payload.estimate_id = existLog.estimate_id;
     }
 
     var isNew = !existId;
@@ -3952,7 +3951,7 @@ function clDelete() {
     var id = document.getElementById('cl-id').value;
     if (!id) return;
     var log = _clAllLogs.find(function(l){ return l.id === id; });
-    var name = log ? (log.client_name || '항목') : '항목';
+    var name = log ? (log.customer_name || '항목') : '항목';
     if (!confirm(name + ' 상담일지를 삭제하시겠습니까?')) return;
 
     fetch(SB_URL + '/rest/v1/consultation_logs?id=eq.' + encodeURIComponent(id), {
@@ -3976,7 +3975,7 @@ function clDelete() {
 /* ── 견적서 연동 (계약완료 견적서 선택) ── */
 function clLoadEstimate() {
     /* Supabase: 고객 정보 전체 필드 포함하여 가져오기 */
-    fetch(SB_URL + '/rest/v1/estimates?select=id,title,client_name,client_phone,client_addr,client_ho,client_size,status&order=created_at.desc&limit=200', {
+    fetch(SB_URL + '/rest/v1/estimates?select=id,title,client_name,client_phone,client_addr,client_ho,client_size,status,updated_at&order=created_at.desc&limit=200', {
         headers: sbHeaders()
     })
     .then(function(r){ return r.json(); })
@@ -4041,7 +4040,7 @@ function clShowEstPicker(list) {
         var subLine = [];
         if (e.client_name)  subLine.push(escHtml(e.client_name));
         if (e.client_phone) subLine.push(escHtml(e.client_phone));
-        if (e.client_addr)  subLine.push(escHtml(e.client_addr));
+        if (e.client_addr || e.client_ho) subLine.push(escHtml((e.client_addr||'') + (e.client_ho ? ' '+e.client_ho : '')));
         html += '<div onclick="clSelectEst(' + idx + ')" ';
         html += 'style="padding:10px 12px;border:1px solid #e1e4e8;border-radius:7px;margin-bottom:7px;cursor:pointer;transition:.12s" ';
         html += 'onmouseover="this.style.background=\'#edf2fb\'" onmouseout="this.style.background=\'\'">';
@@ -4059,16 +4058,16 @@ function clSelectEst(idx) {
     var estId    = e.id    || '';
     var estTitle = e.title || '';
 
-    /* 견적서 ID/제목을 현재 로그에 임시 저장 */
+    /* 견적서 ID를 현재 로그에 임시 저장 (저장 시 estimate_id 컬럼에 반영) */
     var existId = document.getElementById('cl-id').value;
     if (existId) {
         var log = _clAllLogs.find(function(l){ return l.id === existId; });
-        if (log) { log.linked_estimate_id = estId; log.linked_estimate_title = estTitle; }
+        if (log) { log.estimate_id = estId; }
     }
 
-    /* ── 고객 정보 전체 자동입력 (항상 덮어씀) ── */
-    var setVal = function(id, val) {
-        var el = document.getElementById(id);
+    /* ── 고객 정보 전체 자동입력 ── */
+    var setVal = function(elId, val) {
+        var el = document.getElementById(elId);
         if (el && val) el.value = val;
     };
     setVal('cl-name',      e.client_name);
