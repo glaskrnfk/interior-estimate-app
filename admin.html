@@ -197,6 +197,51 @@
 .unit-tag:hover { border-color:#2563b0; background:#dce7f5; }
 /* 모달 number input */
 input[type=number] { user-select:none; }
+/* ━━━ 상담일지 탭 스타일 ━━━ */
+.cl-toolbar { display:flex; align-items:center; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+.cl-toolbar button { white-space:nowrap; }
+.cl-list-wrap { margin-bottom:28px; }
+.cl-item { display:flex; align-items:center; justify-content:space-between; padding:11px 16px;
+           background:#fff; border:1px solid var(--border); border-radius:8px; margin-bottom:7px;
+           cursor:pointer; transition:.15s; gap:12px; flex-wrap:wrap; }
+.cl-item:hover { border-color:var(--navy2); background:var(--navy-bg); }
+.cl-item.active-item { border-color:var(--navy2); background:#dce7f5; }
+.cl-item-left { display:flex; flex-direction:column; gap:3px; }
+.cl-item-title { font-size:14px; font-weight:800; color:var(--navy); }
+.cl-item-sub { font-size:12px; color:#888; }
+.cl-item-right { display:flex; gap:6px; flex-shrink:0; }
+/* 상담일지 폼 */
+.cl-form-wrap { background:#fff; border:1px solid var(--border); border-radius:10px; padding:24px; }
+.cl-form-title { font-size:15px; font-weight:800; color:var(--navy); margin-bottom:18px;
+                 padding-bottom:10px; border-bottom:2px solid var(--navy); }
+.cl-section { margin-bottom:20px; }
+.cl-section-label { font-size:11.5px; font-weight:800; color:var(--navy2); letter-spacing:.8px;
+                    text-transform:uppercase; margin-bottom:10px; padding-bottom:5px;
+                    border-bottom:1px solid var(--border); }
+/* 상담내역 테이블 */
+.cl-consult-tbl { width:100%; border-collapse:collapse; font-size:12.5px; }
+.cl-consult-tbl th { background:var(--navy); color:#fff; padding:8px 10px; text-align:center;
+                     font-weight:700; white-space:nowrap; border:1px solid #1a3e72; }
+.cl-consult-tbl td { padding:7px 8px; border:1px solid var(--border); vertical-align:middle; }
+.cl-consult-tbl tr:hover td { background:#f8fbff; }
+.cl-tbl-cat  { font-weight:700; color:var(--navy); text-align:center; white-space:nowrap;
+               background:#f4f7fb; }
+.cl-check-group { display:flex; flex-wrap:wrap; gap:4px; }
+.cl-check-group label { display:inline-flex; align-items:center; gap:3px; font-size:11.5px;
+                        color:#444; cursor:pointer; white-space:nowrap;
+                        padding:2px 6px; border-radius:4px; border:1px solid #e1e4e8;
+                        background:#fafafa; transition:.12s; }
+.cl-check-group label:hover { border-color:var(--navy2); background:var(--navy-bg); }
+.cl-check-group input[type=checkbox] { margin:0; cursor:pointer; }
+.cl-prod-input { width:100%; max-width:180px; padding:5px 8px; border:1.5px solid var(--border);
+                 border-radius:5px; font:12px 'Noto Sans KR',sans-serif; }
+.cl-prod-input:focus { outline:none; border-color:var(--navy2); }
+.cl-memo-input { width:100%; padding:9px 11px; border:1.5px solid var(--border); border-radius:7px;
+                 font:13px 'Noto Sans KR',sans-serif; resize:vertical; min-height:60px; }
+.cl-memo-input:focus { outline:none; border-color:var(--navy2); }
+/* ━━━ 상담일지: 화면용 숨김 영역 (팝업 출력 방식 – admin CSS 간섭 없음) ━━━ */
+#cl-print-area { display:none; }
+
 @media print {
   .tab-bar, #unsaved-banner, .admin-header, .modal-backdrop { display:none !important; }
   .tab-panel { display:block !important; }
@@ -321,6 +366,10 @@ input[type=number] { user-select:none; }
     <!-- ★수정 #13/#14: 계약서 탭 추가 -->
     <button class="tab-btn" onclick="switchTab('tab-contract-tmpl',this)">
       <i class="fas fa-file-contract"></i> 계약서 템플릿
+    </button>
+    <button class="tab-btn" onclick="switchTab('tab-consult',this)">
+      <i class="fas fa-book-open"></i> 상담일지
+      <span id="consult-count" class="cat-count">-</span>
     </button>
     <button class="tab-btn" onclick="window.open('schedule.html','_blank')" style="background:#1a3e72;color:#fff;border-radius:6px 6px 0 0">
       <i class="fas fa-calendar-alt"></i> 공정표 관리
@@ -792,7 +841,145 @@ input[type=number] { user-select:none; }
     </div>
   </div><!-- /tab-contract-tmpl -->
 
+  <!-- ━━━ 마감자재 상담일지 관리 ━━━ -->
+  <div id="tab-consult" class="tab-panel">
+    <div class="card">
+      <div class="card-header-with-action">
+        <h2 class="card-title"><i class="fas fa-book-open" style="color:#1a3e72;margin-right:6px"></i>마감자재 상담일지 관리</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-secondary" onclick="clPrint(true)"><i class="fas fa-print"></i> 공란 출력</button>
+          <button class="btn btn-primary" onclick="clNew()"><i class="fas fa-plus"></i> 새 상담일지</button>
+        </div>
+      </div>
+
+      <!-- 검색 툴바 -->
+      <div class="cl-toolbar">
+        <input type="text" id="cl-search" placeholder="고객명 / 주소 / 연락처 검색…"
+               style="padding:8px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;width:240px"
+               oninput="renderConsultList()">
+        <select id="cl-year-filter" onchange="renderConsultList()"
+                style="padding:8px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:13px">
+          <option value="">전체 연도</option>
+        </select>
+        <span id="consult-list-count" style="font-size:12.5px;color:#888;margin-left:4px"></span>
+      </div>
+
+      <!-- 목록 -->
+      <div class="cl-list-wrap">
+        <div id="cl-list-body">
+          <div style="text-align:center;color:#bbb;padding:32px;font-size:14px">
+            <i class="fas fa-book-open" style="font-size:32px;margin-bottom:10px;display:block"></i>
+            상담일지를 불러오는 중…
+          </div>
+        </div>
+      </div>
+
+      <!-- 폼 영역 -->
+      <div class="cl-form-wrap" id="cl-form-area">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+          <div class="cl-form-title" style="margin:0;border:none;padding:0" id="cl-form-heading">
+            <i class="fas fa-file-alt" style="margin-right:6px;color:var(--navy2)"></i>새 상담일지 작성
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary" id="cl-load-est-btn" onclick="clLoadEstimate()" title="계약완료 견적서에서 고객정보 불러오기">
+              <i class="fas fa-link"></i> 견적서 연동
+            </button>
+            <button class="btn btn-secondary" onclick="clPrint(false)"><i class="fas fa-print"></i> 작성내용 출력</button>
+            <button class="btn btn-danger" id="cl-delete-btn" onclick="clDelete()" style="display:none">
+              <i class="fas fa-trash"></i> 삭제
+            </button>
+            <button class="btn btn-primary" onclick="clSave()"><i class="fas fa-save"></i> 저장</button>
+          </div>
+        </div>
+
+        <input type="hidden" id="cl-id">
+
+        <!-- 기본 정보 -->
+        <div class="cl-section">
+          <div class="cl-section-label">기본 정보</div>
+          <div class="frow frow3" style="margin-bottom:12px">
+            <div class="fg">
+              <label>방문(상담)일 <span class="req">*</span></label>
+              <input type="date" id="cl-date">
+            </div>
+            <div class="fg">
+              <label>고객 성함 <span class="req">*</span></label>
+              <input type="text" id="cl-name" placeholder="홍길동">
+            </div>
+            <div class="fg">
+              <label>연락처</label>
+              <input type="text" id="cl-phone" placeholder="010-0000-0000">
+            </div>
+          </div>
+          <div class="frow" style="margin-bottom:12px">
+            <div class="fg">
+              <label>공사 희망일정</label>
+              <div style="display:flex;align-items:center;gap:6px">
+                <input type="text" id="cl-work-from" placeholder="예: 3/10" style="width:80px;padding:9px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px">
+                <span style="color:#888">~</span>
+                <input type="text" id="cl-work-to" placeholder="예: 3/20" style="width:80px;padding:9px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px">
+              </div>
+            </div>
+            <div class="fg">
+              <label>이메일</label>
+              <input type="email" id="cl-email" placeholder="example@email.com">
+            </div>
+          </div>
+          <div class="frow frow3" style="margin-bottom:0">
+            <div class="fg">
+              <label>주소 (동/아파트명)</label>
+              <input type="text" id="cl-addr-dong" placeholder="예: 청담동 한양아파트">
+            </div>
+            <div class="fg">
+              <label>호수</label>
+              <input type="text" id="cl-addr-ho" placeholder="예: 101동 504호">
+            </div>
+            <div class="fg">
+              <label>평형</label>
+              <input type="text" id="cl-addr-size" placeholder="예: 34평형">
+            </div>
+          </div>
+        </div>
+
+        <!-- 상담 내역 테이블 -->
+        <div class="cl-section">
+          <div class="cl-section-label">상담 내역</div>
+          <div style="overflow-x:auto">
+            <table class="cl-consult-tbl" id="cl-consult-tbl">
+              <thead>
+                <tr>
+                  <th style="width:70px">공종</th>
+                  <th>선택 항목</th>
+                  <th style="width:200px">제품번호 / 메모</th>
+                </tr>
+              </thead>
+              <tbody id="cl-tbl-body">
+                <!-- JS로 렌더링 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 요청사항 -->
+        <div class="cl-section">
+          <div class="cl-section-label">요청사항 / 특이사항</div>
+          <textarea class="cl-memo-input" id="cl-memo" rows="4" placeholder="고객 요청사항, 특이사항, 메모 등을 자유롭게 입력하세요…"></textarea>
+        </div>
+
+        <!-- 연동된 견적서 정보 -->
+        <div class="cl-section" id="cl-linked-est-section" style="display:none">
+          <div class="cl-section-label">연동 견적서</div>
+          <div id="cl-linked-est-info" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:13px;color:#065f46"></div>
+        </div>
+
+      </div><!-- /cl-form-wrap -->
+    </div><!-- /card -->
+  </div><!-- /tab-consult -->
+
 </div><!-- /admin-wrap -->
+
+<!-- ━━━ 상담일지 출력용 숨김 영역 ━━━ -->
+<div id="cl-print-area" style="display:none"></div>
 
 <!-- ★수정 #13/#14: 계약서 PDF 캡처용 숨김 영역 -->
 <div id="contract-pdf-wrap" style="position:absolute;left:-9999px;width:794px;background:#fff"></div>
@@ -3394,7 +3581,7 @@ document.addEventListener('DOMContentLoaded', function() {
         populateContractEstSelect();
     }
 
-    /* ③ switchTab 패치 – 계약서 탭 열릴 때 회사정보·날짜 자동 주입 */
+    /* ③ switchTab 패치 – 탭 열릴 때 추가 동작 */
     var _origSwitchTab = window.switchTab;
     window.switchTab = function(tabId, btn) {
         /* 원본 탭 전환 실행 */
@@ -3425,8 +3612,692 @@ document.addEventListener('DOMContentLoaded', function() {
             if (typeof calcPayments === 'function') calcPayments();
             else if (typeof renderContractTmpl === 'function') renderContractTmpl();
         }
+        /* 상담일지 탭 – 목록 로드 */
+        if (tabId === 'tab-consult') {
+            clInitTable();
+            loadConsultList();
+        }
     };
 });
+
+/* ════════════════════════════════════════════════════════
+   마감자재 상담일지 – 전체 기능
+   consultation_logs 테이블 (Supabase)
+════════════════════════════════════════════════════════ */
+
+/* ── 공종별 선택 항목 정의 ── */
+var CL_CATS = [
+    { key:'도배',         opts:['실크','합지','실크+합지','포인트 벽지','천장'] },
+    { key:'마루',         opts:['강마루','원목마루','LPL마루','강화마루','데코타일','카펫'] },
+    { key:'커튼&블라인드', opts:['암막커튼','린넨커튼','롤블라인드','버티컬','우드블라인드','허니콤'] },
+    { key:'싱크대',       opts:['상부장','하부장','키큰장','상판교체','전체교체','수전교체'] },
+    { key:'욕실',         opts:['타일','위생도기','수전','욕조','샤워부스','천장/벽','전체리모델링'] },
+    { key:'샷시',         opts:['발코니샷시','창문교체','중문','현관문','방문','단열샷시'] },
+    { key:'가구',         opts:['붙박이장','침실가구','거실가구','서재/책상','신발장','TV장','도어교체'] },
+    { key:'조명',         opts:['거실','침실','주방','욕실','현관','센서등','스마트조명','3000K(전구색)','4000K(주백색)','6500K(주광색)'] },
+    { key:'에어컨',       opts:['삼성','LG','배관교체','실외기설치','시스템에어컨','이전설치'] },
+    { key:'필름리폼',     opts:['창호틀','문·문틀','가구도어','기타'] },
+    { key:'발코니확장',   opts:['발코니확장','단열','마루','방수','확장샷시'] },
+    { key:'철거',         opts:['도배철거','마루철거','욕실철거','전체철거','부분철거'] },
+    { key:'도장',         opts:['내부도장','외부도장','천장도장','목공도장','에폭시'] }
+];
+
+/* ── 상담내역 테이블 초기화 ── */
+function clInitTable() {
+    var tbody = document.getElementById('cl-tbl-body');
+    if (!tbody || tbody.dataset.inited === '1') return;
+    tbody.dataset.inited = '1';
+    var html = '';
+    CL_CATS.forEach(function(cat, idx) {
+        html += '<tr data-cat="' + cat.key + '">';
+        html += '<td class="cl-tbl-cat">' + cat.key + '</td>';
+        html += '<td><div class="cl-check-group" id="cl-chk-' + idx + '">';
+        cat.opts.forEach(function(opt) {
+            var sid = 'cl_' + idx + '_' + opt.replace(/[^a-zA-Z0-9가-힣]/g,'_');
+            html += '<label><input type="checkbox" id="' + sid + '" data-cat="' + cat.key + '" data-opt="' + opt + '"> ' + opt + '</label>';
+        });
+        html += '</div></td>';
+        html += '<td><input type="text" class="cl-prod-input" id="cl-prod-' + idx + '" placeholder="제품번호 / 메모"></td>';
+        html += '</tr>';
+    });
+    tbody.innerHTML = html;
+}
+
+/* ── 연도 필터 채우기 ── */
+function clFillYearFilter(logs) {
+    var sel = document.getElementById('cl-year-filter');
+    if (!sel) return;
+    var years = {};
+    (logs || []).forEach(function(l) {
+        var y = (l.visit_date || '').slice(0,4);
+        if (y) years[y] = 1;
+    });
+    var cur = sel.value;
+    while (sel.options.length > 1) sel.remove(1);
+    Object.keys(years).sort().reverse().forEach(function(y) {
+        var o = document.createElement('option');
+        o.value = y; o.textContent = y + '년';
+        sel.appendChild(o);
+    });
+    if (cur) sel.value = cur;
+}
+
+/* ── 목록 렌더링 ── */
+var _clAllLogs = [];
+var _clCurrentId = null;
+
+function renderConsultList() {
+    var q     = (document.getElementById('cl-search') || {}).value || '';
+    var year  = (document.getElementById('cl-year-filter') || {}).value || '';
+    var list  = _clAllLogs.filter(function(l) {
+        var match = true;
+        if (q) {
+            var hay = (l.client_name||'') + (l.client_phone||'') + (l.address_dong||'') + (l.address_ho||'');
+            match = hay.toLowerCase().indexOf(q.toLowerCase()) !== -1;
+        }
+        if (year && match) {
+            match = (l.visit_date||'').slice(0,4) === year;
+        }
+        return match;
+    });
+
+    var cnt = document.getElementById('consult-list-count');
+    if (cnt) cnt.textContent = '총 ' + list.length + '건';
+    var badge = document.getElementById('consult-count');
+    if (badge) badge.textContent = _clAllLogs.length;
+
+    var body = document.getElementById('cl-list-body');
+    if (!body) return;
+    if (list.length === 0) {
+        body.innerHTML = '<div style="text-align:center;color:#bbb;padding:32px;font-size:14px"><i class="fas fa-inbox" style="font-size:32px;margin-bottom:10px;display:block"></i>상담일지가 없습니다</div>';
+        return;
+    }
+
+    var html = '';
+    list.sort(function(a,b){ return (b.visit_date||'').localeCompare(a.visit_date||''); });
+    list.forEach(function(l) {
+        var isActive = l.id === _clCurrentId ? ' active-item' : '';
+        var dateStr = l.visit_date ? l.visit_date.replace(/-/g,'.') : '-';
+        var cats = [];
+        try { var items = typeof l.items === 'string' ? JSON.parse(l.items) : (l.items||{}); Object.keys(items).forEach(function(k){ if(items[k].checked && items[k].checked.length) cats.push(k); }); } catch(e){}
+        html += '<div class="cl-item' + isActive + '" onclick="clOpenItem(\'' + l.id + '\')" data-id="' + l.id + '">';
+        html += '<div class="cl-item-left">';
+        html += '<div class="cl-item-title">' + escHtml(l.client_name||'(이름없음)') + ' <span style="font-weight:400;color:#888;font-size:12px">' + escHtml(l.client_phone||'') + '</span></div>';
+        html += '<div class="cl-item-sub">' + dateStr + ' &nbsp;|&nbsp; ' + escHtml((l.address_dong||'') + ' ' + (l.address_ho||'')) ;
+        if (cats.length) html += ' &nbsp;|&nbsp; <span style="color:var(--navy2)">' + cats.slice(0,4).join(' · ') + (cats.length>4?' 외':'') + '</span>';
+        html += '</div></div>';
+        html += '<div class="cl-item-right">';
+        html += '<button class="btn btn-secondary" style="font-size:11px;padding:4px 9px" onclick="event.stopPropagation();clOpenItem(\'' + l.id + '\');setTimeout(function(){clPrint(false)},300)"><i class="fas fa-print"></i></button>';
+        html += '</div>';
+        html += '</div>';
+    });
+    body.innerHTML = html;
+}
+
+/* ── Supabase 목록 로드 ── */
+function loadConsultList() {
+    var body = document.getElementById('cl-list-body');
+    if (body) body.innerHTML = '<div style="text-align:center;color:#bbb;padding:32px"><i class="fas fa-spinner fa-spin" style="font-size:28px"></i><br><br>불러오는 중…</div>';
+
+    fetch(SB_URL + '/rest/v1/consultation_logs?select=*&order=visit_date.desc&limit=200', {
+        headers: sbHeaders({ 'Prefer': 'return=representation' })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+        _clAllLogs = Array.isArray(data) ? data : [];
+        clFillYearFilter(_clAllLogs);
+        renderConsultList();
+    })
+    .catch(function(e) {
+        console.error('상담일지 로드 실패', e);
+        if (body) body.innerHTML = '<div style="text-align:center;color:#dc2626;padding:24px">불러오기 실패: ' + e.message + '</div>';
+    });
+}
+
+/* ── 폼 초기화 ── */
+function clNew() {
+    _clCurrentId = null;
+    document.getElementById('cl-id').value = '';
+    document.getElementById('cl-date').value = new Date().toISOString().slice(0,10);
+    document.getElementById('cl-name').value = '';
+    document.getElementById('cl-phone').value = '';
+    document.getElementById('cl-work-from').value = '';
+    document.getElementById('cl-work-to').value = '';
+    document.getElementById('cl-email').value = '';
+    document.getElementById('cl-addr-dong').value = '';
+    document.getElementById('cl-addr-ho').value = '';
+    document.getElementById('cl-addr-size').value = '';
+    document.getElementById('cl-memo').value = '';
+    var del = document.getElementById('cl-delete-btn');
+    if (del) del.style.display = 'none';
+    var lsec = document.getElementById('cl-linked-est-section');
+    if (lsec) lsec.style.display = 'none';
+    var heading = document.getElementById('cl-form-heading');
+    if (heading) heading.innerHTML = '<i class="fas fa-file-alt" style="margin-right:6px;color:var(--navy2)"></i>새 상담일지 작성';
+    /* 체크박스 초기화 */
+    clInitTable();
+    CL_CATS.forEach(function(cat, idx) {
+        cat.opts.forEach(function(opt) {
+            var sid = 'cl_' + idx + '_' + opt.replace(/[^a-zA-Z0-9가-힣]/g,'_');
+            var el = document.getElementById(sid);
+            if (el) el.checked = false;
+        });
+        var prod = document.getElementById('cl-prod-' + idx);
+        if (prod) prod.value = '';
+    });
+    /* 목록 하이라이트 해제 */
+    document.querySelectorAll('.cl-item').forEach(function(el){ el.classList.remove('active-item'); });
+    /* 폼으로 스크롤 */
+    document.getElementById('cl-form-area').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+/* ── 항목 불러와서 폼에 채우기 ── */
+function clOpenItem(id) {
+    var log = _clAllLogs.find(function(l){ return l.id === id; });
+    if (!log) return;
+    _clCurrentId = id;
+    clInitTable();
+    document.getElementById('cl-id').value = id;
+    document.getElementById('cl-date').value = log.visit_date || '';
+    document.getElementById('cl-name').value = log.client_name || '';
+    document.getElementById('cl-phone').value = log.client_phone || '';
+    document.getElementById('cl-work-from').value = log.work_from || '';
+    document.getElementById('cl-work-to').value = log.work_to || '';
+    document.getElementById('cl-email').value = log.client_email || '';
+    document.getElementById('cl-addr-dong').value = log.address_dong || '';
+    document.getElementById('cl-addr-ho').value = log.address_ho || '';
+    document.getElementById('cl-addr-size').value = log.address_size || '';
+    document.getElementById('cl-memo').value = log.memo || '';
+
+    /* 삭제 버튼 표시 */
+    var del = document.getElementById('cl-delete-btn');
+    if (del) del.style.display = 'inline-flex';
+
+    /* 폼 제목 업데이트 */
+    var heading = document.getElementById('cl-form-heading');
+    if (heading) heading.innerHTML = '<i class="fas fa-edit" style="margin-right:6px;color:var(--navy2)"></i>' + escHtml(log.client_name||'상담일지') + ' 수정';
+
+    /* 연동 견적서 표시 */
+    var lsec = document.getElementById('cl-linked-est-section');
+    var linfo = document.getElementById('cl-linked-est-info');
+    if (log.linked_estimate_id && lsec && linfo) {
+        lsec.style.display = '';
+        linfo.innerHTML = '<i class="fas fa-link" style="margin-right:6px"></i>견적서 ID: ' + escHtml(log.linked_estimate_id) + (log.linked_estimate_title ? ' / ' + escHtml(log.linked_estimate_title) : '');
+    } else if (lsec) { lsec.style.display = 'none'; }
+
+    /* 체크박스 / 제품번호 복원 */
+    var items = {};
+    try { items = typeof log.items === 'string' ? JSON.parse(log.items) : (log.items || {}); } catch(e){}
+    CL_CATS.forEach(function(cat, idx) {
+        var catData = items[cat.key] || {};
+        var checked = catData.checked || [];
+        cat.opts.forEach(function(opt) {
+            var sid = 'cl_' + idx + '_' + opt.replace(/[^a-zA-Z0-9가-힣]/g,'_');
+            var el = document.getElementById(sid);
+            if (el) el.checked = checked.indexOf(opt) !== -1;
+        });
+        var prod = document.getElementById('cl-prod-' + idx);
+        if (prod) prod.value = catData.product || '';
+    });
+
+    /* 목록 하이라이트 */
+    document.querySelectorAll('.cl-item').forEach(function(el){
+        el.classList.toggle('active-item', el.dataset.id === id);
+    });
+
+    /* 폼으로 스크롤 */
+    document.getElementById('cl-form-area').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+/* ── 폼에서 items 객체 수집 ── */
+function clCollectItems() {
+    var items = {};
+    CL_CATS.forEach(function(cat, idx) {
+        var checked = [];
+        cat.opts.forEach(function(opt) {
+            var sid = 'cl_' + idx + '_' + opt.replace(/[^a-zA-Z0-9가-힣]/g,'_');
+            var el = document.getElementById(sid);
+            if (el && el.checked) checked.push(opt);
+        });
+        var prod = (document.getElementById('cl-prod-' + idx) || {}).value || '';
+        if (checked.length || prod) {
+            items[cat.key] = { checked: checked, product: prod };
+        }
+    });
+    return items;
+}
+
+/* ── 저장 ── */
+function clSave() {
+    var name = (document.getElementById('cl-name').value || '').trim();
+    var date = (document.getElementById('cl-date').value || '').trim();
+    if (!name) { alert('고객 성함을 입력해주세요.'); document.getElementById('cl-name').focus(); return; }
+    if (!date) { alert('방문일을 입력해주세요.'); document.getElementById('cl-date').focus(); return; }
+
+    var payload = {
+        visit_date    : date,
+        client_name   : name,
+        client_phone  : (document.getElementById('cl-phone').value || '').trim(),
+        work_from     : (document.getElementById('cl-work-from').value || '').trim(),
+        work_to       : (document.getElementById('cl-work-to').value || '').trim(),
+        client_email  : (document.getElementById('cl-email').value || '').trim(),
+        address_dong  : (document.getElementById('cl-addr-dong').value || '').trim(),
+        address_ho    : (document.getElementById('cl-addr-ho').value || '').trim(),
+        address_size  : (document.getElementById('cl-addr-size').value || '').trim(),
+        memo          : (document.getElementById('cl-memo').value || '').trim(),
+        items         : clCollectItems()
+    };
+
+    /* 기존 연동 견적서 유지 */
+    var existId = document.getElementById('cl-id').value;
+    var existLog = existId ? _clAllLogs.find(function(l){ return l.id === existId; }) : null;
+    if (existLog && existLog.linked_estimate_id) {
+        payload.linked_estimate_id    = existLog.linked_estimate_id;
+        payload.linked_estimate_title = existLog.linked_estimate_title;
+    }
+
+    var isNew = !existId;
+    var url   = SB_URL + '/rest/v1/consultation_logs';
+    var method = 'POST';
+    if (!isNew) { url += '?id=eq.' + encodeURIComponent(existId); method = 'PATCH'; }
+
+    var hdrs = sbHeaders({ 'Prefer': 'return=representation' });
+
+    fetch(url, { method: method, headers: hdrs, body: JSON.stringify(payload) })
+    .then(function(r){
+        if (!r.ok) return r.text().then(function(t){ throw new Error(t); });
+        return r.json();
+    })
+    .then(function(data) {
+        var saved = Array.isArray(data) ? data[0] : data;
+        if (saved && saved.id) {
+            if (isNew) {
+                _clAllLogs.unshift(saved);
+                _clCurrentId = saved.id;
+                document.getElementById('cl-id').value = saved.id;
+                var del = document.getElementById('cl-delete-btn');
+                if (del) del.style.display = 'inline-flex';
+            } else {
+                var idx2 = _clAllLogs.findIndex(function(l){ return l.id === saved.id; });
+                if (idx2 !== -1) _clAllLogs[idx2] = saved;
+            }
+        }
+        clFillYearFilter(_clAllLogs);
+        renderConsultList();
+        /* 저장 후 해당 항목 하이라이트 유지 */
+        if (saved && saved.id) {
+            setTimeout(function(){
+                document.querySelectorAll('.cl-item').forEach(function(el){
+                    el.classList.toggle('active-item', el.dataset.id === saved.id);
+                });
+            }, 100);
+        }
+        /* 성공 피드백 */
+        var btn = document.querySelector('[onclick="clSave()"]');
+        if (btn) {
+            var orig = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> 저장됨';
+            btn.style.background = '#059669';
+            setTimeout(function(){ btn.innerHTML = orig; btn.style.background = ''; }, 1800);
+        }
+    })
+    .catch(function(e) {
+        console.error('상담일지 저장 실패', e);
+        alert('저장 실패: ' + e.message);
+    });
+}
+
+/* ── 삭제 ── */
+function clDelete() {
+    var id = document.getElementById('cl-id').value;
+    if (!id) return;
+    var log = _clAllLogs.find(function(l){ return l.id === id; });
+    var name = log ? (log.client_name || '항목') : '항목';
+    if (!confirm(name + ' 상담일지를 삭제하시겠습니까?')) return;
+
+    fetch(SB_URL + '/rest/v1/consultation_logs?id=eq.' + encodeURIComponent(id), {
+        method: 'DELETE',
+        headers: sbHeaders()
+    })
+    .then(function(r) {
+        if (!r.ok && r.status !== 204) return r.text().then(function(t){ throw new Error(t); });
+        _clAllLogs = _clAllLogs.filter(function(l){ return l.id !== id; });
+        _clCurrentId = null;
+        clFillYearFilter(_clAllLogs);
+        renderConsultList();
+        clNew();
+    })
+    .catch(function(e) {
+        console.error('상담일지 삭제 실패', e);
+        alert('삭제 실패: ' + e.message);
+    });
+}
+
+/* ── 견적서 연동 (계약완료 견적서 선택) ── */
+function clLoadEstimate() {
+    /* Supabase: 고객 정보 전체 필드 포함하여 가져오기 */
+    fetch(SB_URL + '/rest/v1/estimates?select=id,title,client_name,client_phone,client_addr,client_ho,client_size,status&order=created_at.desc&limit=200', {
+        headers: sbHeaders()
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+        var list = Array.isArray(data) ? data : [];
+        if (list.length === 0) {
+            /* localStorage fallback – 로컬 견적 전체 데이터 포함 */
+            try {
+                var ls = JSON.parse(localStorage.getItem('iq_estimates') || '[]');
+                list = ls.map(function(e) {
+                    return {
+                        id           : e.id,
+                        title        : e.title,
+                        client_name  : e.clientName  || e.client_name  || '',
+                        client_phone : e.clientPhone || e.client_phone || '',
+                        client_addr  : e.clientAddr  || e.client_addr  || '',
+                        client_ho    : e.clientHo    || e.client_ho    || '',
+                        client_size  : e.clientSize  || e.client_size  || '',
+                        status       : e.status || ''
+                    };
+                });
+            } catch(ex){}
+        }
+        if (list.length === 0) { alert('불러올 견적서가 없습니다.'); return; }
+        clShowEstPicker(list);
+    })
+    .catch(function(e) {
+        console.warn('견적서 목록 로드 오류, localStorage 시도:', e);
+        try {
+            var ls = JSON.parse(localStorage.getItem('iq_estimates') || '[]');
+            var list2 = ls.map(function(e) {
+                return {
+                    id           : e.id,
+                    title        : e.title,
+                    client_name  : e.clientName  || e.client_name  || '',
+                    client_phone : e.clientPhone || e.client_phone || '',
+                    client_addr  : e.clientAddr  || e.client_addr  || '',
+                    client_ho    : e.clientHo    || e.client_ho    || '',
+                    client_size  : e.clientSize  || e.client_size  || '',
+                    status       : e.status || ''
+                };
+            });
+            if (list2.length === 0) { alert('불러올 견적서가 없습니다.'); return; }
+            clShowEstPicker(list2);
+        } catch(ex) { alert('견적서 목록 로드 실패: ' + ex.message); }
+    });
+}
+
+/* picker용 임시 견적 목록 캐시 */
+var _clEstPickerList = [];
+
+function clShowEstPicker(list) {
+    _clEstPickerList = list; /* 선택 시 전체 객체 접근용 캐시 */
+    var html = '<div style="position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center" id="cl-est-picker">';
+    html += '<div style="background:#fff;border-radius:12px;width:min(560px,96vw);max-height:82vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)">';
+    html += '<div style="padding:16px 20px;border-bottom:1px solid #e1e4e8;display:flex;justify-content:space-between;align-items:center">';
+    html += '<span style="font-size:15px;font-weight:800;color:#1a3e72"><i class="fas fa-link" style="margin-right:6px"></i>견적서 선택 – 고객정보 자동입력</span>';
+    html += '<button onclick="document.getElementById(\'cl-est-picker\').remove()" style="border:none;background:none;font-size:20px;cursor:pointer;color:#888">×</button></div>';
+    html += '<div style="overflow-y:auto;padding:12px 16px;flex:1">';
+    list.forEach(function(e, idx) {
+        var statusBadge = e.status ? '<span style="font-size:10px;padding:1px 7px;border-radius:99px;background:#d1fae5;color:#065f46;font-weight:700;margin-left:6px">' + escHtml(e.status) + '</span>' : '';
+        var subLine = [];
+        if (e.client_name)  subLine.push(escHtml(e.client_name));
+        if (e.client_phone) subLine.push(escHtml(e.client_phone));
+        if (e.client_addr)  subLine.push(escHtml(e.client_addr));
+        html += '<div onclick="clSelectEst(' + idx + ')" ';
+        html += 'style="padding:10px 12px;border:1px solid #e1e4e8;border-radius:7px;margin-bottom:7px;cursor:pointer;transition:.12s" ';
+        html += 'onmouseover="this.style.background=\'#edf2fb\'" onmouseout="this.style.background=\'\'">';
+        html += '<div style="font-size:13px;font-weight:700;color:#1a3e72">' + escHtml(e.title||'(제목없음)') + statusBadge + '</div>';
+        if (subLine.length) html += '<div style="font-size:11.5px;color:#888;margin-top:3px">' + subLine.join(' &nbsp;|&nbsp; ') + '</div>';
+        html += '</div>';
+    });
+    html += '</div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function clSelectEst(idx) {
+    var e = _clEstPickerList[idx];
+    if (!e) return;
+    var estId    = e.id    || '';
+    var estTitle = e.title || '';
+
+    /* 견적서 ID/제목을 현재 로그에 임시 저장 */
+    var existId = document.getElementById('cl-id').value;
+    if (existId) {
+        var log = _clAllLogs.find(function(l){ return l.id === existId; });
+        if (log) { log.linked_estimate_id = estId; log.linked_estimate_title = estTitle; }
+    }
+
+    /* ── 고객 정보 전체 자동입력 (항상 덮어씀) ── */
+    var setVal = function(id, val) {
+        var el = document.getElementById(id);
+        if (el && val) el.value = val;
+    };
+    setVal('cl-name',      e.client_name);
+    setVal('cl-phone',     e.client_phone);
+    setVal('cl-addr-dong', e.client_addr);
+    setVal('cl-addr-ho',   e.client_ho);
+    setVal('cl-addr-size', e.client_size);
+
+    /* 연동 섹션 표시 */
+    var lsec  = document.getElementById('cl-linked-est-section');
+    var linfo = document.getElementById('cl-linked-est-info');
+    if (lsec)  lsec.style.display = '';
+    if (linfo) linfo.innerHTML = '<i class="fas fa-link" style="margin-right:6px"></i>연동: '
+        + escHtml(estTitle || estId)
+        + (e.client_name  ? ' &nbsp;|&nbsp; ' + escHtml(e.client_name)  : '')
+        + (e.client_phone ? ' &nbsp;' + escHtml(e.client_phone) : '');
+
+    /* picker 닫기 */
+    var picker = document.getElementById('cl-est-picker');
+    if (picker) picker.remove();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   clBuildPrintHTML - 팝업 창에 주입할 완전한 독립 HTML 생성
+   ★ script 블록 안에서 닫는 HTML 태그를 문자열로 쓰면 파서가
+     해당 위치에서 script를 강제 종료시키는 버그가 발생한다.
+     따라서 위험 태그는 모두 배열 join() 방식으로 우회한다.
+══════════════════════════════════════════════════════════════ */
+function clBuildPrintHTML(blank, compName, visitDate, cName, cPhone,
+                          wRange, cEmail, aDong, aHo, aSize, memo, items) {
+
+    var dateDisp = visitDate ? visitDate.replace(/-/g,'.') : '____.__.__ ';
+
+    /* ══════════════════════════════════════════════════════════
+     * A4 높이 레이아웃 계산 (96 dpi 기준: 1mm ≈ 3.7795px)
+     *
+     * A4 총 높이    : 297mm  ≈ 1122px
+     * padding 상하  : 8mm×2 = 16mm ≈  61px  (각 30.5px)
+     * ─────────────────────────────────────────────────────────
+     * 콘텐츠 순 높이 : 297 - 16 = 281mm ≈ 1061px
+     *
+     * 각 고정 요소:
+     *  #ttl       height:30px  + mb:3px          =  33px
+     *  #hdr       height:18px  + mb:4px          =  22px
+     *  .lbl(×3)   height:16px  + mt:3px + mb:2px =  21px × 3 = 63px
+     *  #ci-wrap   테이블 thead(20)+tbody(24×2)   =  68px
+     *  #memo      height:58px                    =  58px
+     *  #sign      height:34px  + mt:3px          =  37px
+     *  여유(border/gap)                           =  20px
+     *  소계                                       = 301px
+     *
+     * #ct-wrap 가용 높이 = 1061 - 301 = 760px
+     *  ├ thead 1행  : 20px
+     *  └ tbody 13행 : (760 - 20) / 13 ≈ 56px/행
+     * ══════════════════════════════════════════════════════════ */
+
+    /* ── 상담내역 행 (인라인 style로 높이 이중 잠금) ── */
+    var ROW_H = 56; /* tbody 행 높이 px */
+    var catRows = '';
+    CL_CATS.forEach(function(cat) {
+        var d       = items[cat.key] || {};
+        var checked = d.checked || [];
+        var product = d.product || '';
+        var opts = cat.opts.map(function(o) {
+            var box = (!blank && checked.indexOf(o) !== -1) ? '&#9745;' : '&#9744;';
+            return '<span style="white-space:nowrap;margin-right:4px">'
+                 + box + '&thinsp;' + escHtml(o) + '</span>';
+        }).join('');
+
+        var rStyle = 'height:' + ROW_H + 'px;max-height:' + ROW_H + 'px;overflow:hidden';
+        catRows += '<tr style="' + rStyle + '">'
+            + '<td style="width:62px;text-align:center;font-weight:800;'
+            +   'background:#e8e8e8;white-space:nowrap;overflow:hidden;'
+            +   'height:' + ROW_H + 'px;max-height:' + ROW_H + 'px">'
+            +   escHtml(cat.key)
+            + '</td>'
+            + '<td style="overflow:hidden;line-height:1.5;padding:2px 3px;'
+            +   'height:' + ROW_H + 'px;max-height:' + ROW_H + 'px;word-break:keep-all">'
+            +   opts
+            + '</td>'
+            + '<td style="width:108px;overflow:hidden;padding:2px 3px;'
+            +   'height:' + ROW_H + 'px;max-height:' + ROW_H + 'px">'
+            +   escHtml(product)
+            + '</td>'
+            + '</tr>';
+    });
+
+    /* ── 팝업 HTML 조립 ── */
+    /* 주의: script 블록 안에서 닫는 구조 태그(style/body/html 등)를
+       문자열로 직접 쓰면 브라우저 파서가 script를 강제 종료시킴.
+       따라서 모든 구조 태그는 배열 join() 변수로 우회한다.               */
+    var _s  = ['<','s','t','y','l','e','>'].join('');
+    var _es = ['<','/','s','t','y','l','e','>'].join('');
+    var _h  = ['<','h','e','a','d','>'].join('');
+    var _eh = ['<','/','h','e','a','d','>'].join('');
+    var _b  = ['<','b','o','d','y','>'].join('');
+    var _eb = ['<','/','b','o','d','y','>'].join('');
+    var _ht = ['<','h','t','m','l',' ','l','a','n','g','=','"','k','o','"','>'].join('');
+    var _eht= ['<','/','h','t','m','l','>'].join('');
+    var _dt = ['<','!','D','O','C','T','Y','P','E',' ','h','t','m','l','>'].join('');
+    var _mt = ['<','m','e','t','a',' ','c','h','a','r','s','e','t','=','"','U','T','F','-','8','"','>'].join('');
+    var _tt = ['<','t','i','t','l','e','>'].join('');
+    var _et = ['<','/','t','i','t','l','e','>'].join('');
+
+    var CSS = [
+        '*{margin:0;padding:0;box-sizing:border-box}',
+        '@page{size:A4 portrait;margin:0}',
+        '*{-webkit-print-color-adjust:exact;print-color-adjust:exact}',
+        'html{width:210mm;max-width:210mm;height:297mm;max-height:297mm;overflow:hidden}',
+        'body{width:210mm;max-width:210mm;height:297mm;max-height:297mm;overflow:hidden;background:#fff;font-family:"Noto Sans KR","Malgun Gothic",Arial,sans-serif;font-size:7.5pt;color:#000}',
+        '#page{position:fixed;top:0;left:0;width:210mm;height:297mm;padding:8mm 12mm;overflow:hidden;background:#fff}',
+        '#ttl{height:30px;max-height:30px;overflow:hidden;text-align:center;font-size:13pt;font-weight:900;letter-spacing:2px;border-bottom:2px solid #000;padding-bottom:2px;margin-bottom:3px;line-height:26px}',
+        '#hdr{height:18px;max-height:18px;overflow:hidden;display:flex;justify-content:space-between;align-items:center;font-size:8pt;margin-bottom:4px}',
+        '.lbl{height:16px;max-height:16px;overflow:hidden;font-size:7.5pt;font-weight:800;letter-spacing:.5px;border-bottom:1.5px solid #000;line-height:14px;margin-top:3px;margin-bottom:2px}',
+        'table{width:100%;border-collapse:collapse;font-size:7pt}',
+        'th{background:#e0e0e0;border:1px solid #555;padding:1px 3px;font-weight:800;text-align:center;white-space:nowrap;overflow:hidden}',
+        'td{border:1px solid #aaa;padding:1px 3px;vertical-align:middle;overflow:hidden}',
+        '#ci-wrap{overflow:hidden}',
+        '#ci tbody tr{height:24px;max-height:24px;overflow:hidden}',
+        '#ci td,#ci th{overflow:hidden}',
+        '#ct-wrap{height:760px;max-height:760px;overflow:hidden}',
+        '#ct-wrap table{height:760px;table-layout:fixed;border-collapse:collapse;width:100%}',
+        '#ct-wrap thead tr{height:20px;max-height:20px}',
+        '#ct-wrap td,#ct-wrap th{overflow:hidden}',
+        '#memo{border:1px solid #000;padding:2px 5px;height:58px;max-height:58px;overflow:hidden;font-size:7pt;line-height:1.4;white-space:pre-wrap}',
+        '#sign{display:grid;grid-template-columns:1fr 1fr;border:1px solid #000;margin-top:3px;height:34px;max-height:34px;overflow:hidden}',
+        '#sign .sc{height:34px;max-height:34px;overflow:hidden;padding:2px 12px;font-size:8pt;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:6px}',
+        '#sign .sc:first-child{border-right:1px solid #000}',
+        '#sign .sl{border-bottom:1px solid #888;flex:1;min-width:40px}',
+        'tr,td,th,div,table{page-break-inside:avoid!important;break-inside:avoid!important}'
+    ].join('');
+
+    var memoContent = blank ? '' : escHtml(memo).replace(/\n/g, '<br>');
+    var addrFull = escHtml(aDong + (aDong && aHo ? ' ' : '') + aHo);
+
+    var HTML =
+        _dt + _ht +
+        _h + _mt + _tt + '마감자재 상담일지' + _et + _s + CSS + _es + _eh +
+        _b +
+        '<div id="page">' +
+            '<div id="ttl">마감자재 상담일지</div>' +
+            '<div id="hdr"><span style="font-weight:800">' + escHtml(compName) + '</span>' +
+            '<span>상담일 : <strong>' + escHtml(dateDisp) + '</strong></span></div>' +
+            '<div class="lbl">고 객 정 보</div>' +
+            '<div id="ci-wrap"><table id="ci"><tbody>' +
+            '<tr>' +
+            '<th style="width:42px">성&nbsp;함</th><td style="width:17%">' + escHtml(cName) + '</td>' +
+            '<th style="width:42px">연락처</th><td style="width:22%">' + escHtml(cPhone) + '</td>' +
+            '<th style="width:50px">공사일정</th><td style="width:17%">' + escHtml(wRange) + '</td>' +
+            '<th style="width:34px">평형</th><td>' + escHtml(aSize) + '</td>' +
+            '</tr>' +
+            '<tr>' +
+            '<th>주&nbsp;&nbsp;소</th><td colspan="5">' + addrFull + '</td>' +
+            '<th>이메일</th><td>' + escHtml(cEmail) + '</td>' +
+            '</tr>' +
+            '</tbody></table></div>' +
+            '<div class="lbl">상 담 내 역</div>' +
+            '<div id="ct-wrap"><table>' +
+            '<thead><tr style="height:20px;max-height:20px">' +
+            '<th style="width:62px">공종</th>' +
+            '<th>선택 항목</th>' +
+            '<th style="width:108px">제품번호 / 메모</th>' +
+            '</tr></thead><tbody>' + catRows + '</tbody></table></div>' +
+            '<div class="lbl">요 청 사 항</div>' +
+            '<div id="memo">' + memoContent + '</div>' +
+            '<div id="sign">' +
+            '<div class="sc"><span>고 객 확 인</span><div class="sl"></div><span style="font-size:7pt;color:#444">(인)</span></div>' +
+            '<div class="sc"><span>담 당 자</span><div class="sl"></div><span style="font-size:7pt;color:#444">(인)</span></div>' +
+            '</div>' +
+        '</div>' +
+        _eb + _eht;
+
+    return HTML;
+}
+
+/* ── 출력 (공란 / 작성내용) ── */
+function clPrint(blank) {
+    var company = {};
+    try { company = (typeof loadCompanyInfo==='function') ? (loadCompanyInfo()||{}) : {}; } catch(e){}
+    var compName  = company.companyName || '정결 Design Studio';
+    var visitDate = blank ? '' : (document.getElementById('cl-date').value || '');
+    var cName     = blank ? '' : (document.getElementById('cl-name').value || '');
+    var cPhone    = blank ? '' : (document.getElementById('cl-phone').value || '');
+    var wFrom     = blank ? '' : (document.getElementById('cl-work-from').value || '');
+    var wTo       = blank ? '' : (document.getElementById('cl-work-to').value || '');
+    var cEmail    = blank ? '' : (document.getElementById('cl-email').value || '');
+    var aDong     = blank ? '' : (document.getElementById('cl-addr-dong').value || '');
+    var aHo       = blank ? '' : (document.getElementById('cl-addr-ho').value || '');
+    var aSize     = blank ? '' : (document.getElementById('cl-addr-size').value || '');
+    var memo      = blank ? '' : (document.getElementById('cl-memo').value || '');
+    var wRange    = (wFrom||wTo) ? (wFrom+' ~ '+wTo) : '';
+    var items     = blank ? {} : clCollectItems();
+
+    /* 완전 독립 HTML 생성 */
+    var docHtml = clBuildPrintHTML(
+        blank, compName, visitDate,
+        cName, cPhone, wRange, cEmail,
+        aDong, aHo, aSize, memo, items
+    );
+
+    /* ════ window.open() 팝업 방식 ════
+       admin.html 의 모든 CSS/스크립트와 완전히 격리
+       브라우저 인쇄 대화상자 = 팝업 창 단독 출력
+       → admin.html 의 레이아웃, 스크롤, 탭 등 100% 무관 */
+    var pw = window.open('', '_blank',
+        'width=900,height=700,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes');
+    if (!pw) {
+        alert('팝업이 차단되었습니다. 브라우저 팝업 허용 후 다시 시도하세요.');
+        return;
+    }
+    pw.document.open();
+    pw.document.write(docHtml);
+    pw.document.close();
+
+    /* 폰트 로드 후 자동 인쇄 실행 */
+    pw.onload = function() {
+        setTimeout(function() {
+            pw.focus();
+            pw.print();
+            /* 인쇄 완료 후 팝업 자동 닫기 (선택 가능 – 주석 처리하면 유지) */
+            /* pw.close(); */
+        }, 400);
+    };
+}
+
+/* ── HTML 이스케이프 헬퍼 (admin에 없을 경우 대비) ── */
+function escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 </script>
 </body>
 </html>

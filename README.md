@@ -11,14 +11,48 @@
 |------|--------|------|
 | 고객 설문 데이터 | **Supabase** `survey_responses` | 젠스파크 구독 독립적 |
 | 자재/노무비/공정 DB | localStorage | 브라우저 로컬 저장 |
-| 견적 데이터 | localStorage (`iq_estimates`) | 브라우저 로컬 저장 |
+| 견적 데이터 | **Supabase** `estimates` + localStorage | 클라우드 우선, 로컬 캐시 폴백 |
+| 상담일지 데이터 | **Supabase** `consultation_logs` | 클라우드 단독 저장 |
 | 관리자 로그인 | **Supabase Auth** | 이메일/패스워드 인증 |
 
 **Supabase 프로젝트:** https://isrimiwqqytzzqjovtot.supabase.co
 
 ---
 
-## 기능 구현 현황 (2026-05-07 기준)
+## 기능 구현 현황 (2026-05-12 기준)
+
+### ✅ 2026-05-12 최신 세션 완료 작업 — 마감자재 상담일지 기능 전체 구현
+
+| ID | 기능 | 파일 |
+|----|------|------|
+| #18-A | **상담일지 탭 추가** — 탭바에 `<i class="fas fa-book-open"> 상담일지` 버튼 추가, `switchTab('tab-consult', …)` 연결, 탭 열릴 때 자동으로 목록 로드 | admin.html |
+| #18-B | **상담일지 폼 UI** — 기본정보(방문일·성함·연락처·공사희망일정·이메일·동/아파트·호수·평형), 11개 공종 상담내역 테이블(체크박스+제품번호), 요청사항 메모란 | admin.html |
+| #18-C | **11개 공종 상담내역 테이블** — 도배·마루·커튼&블라인드·싱크대·욕실·샷시·가구·조명·발코니확장·철거·도장 각 항목별 세부 옵션 체크박스 + 제품번호/메모 입력란 (`CL_CATS` 배열로 동적 생성) | admin.html |
+| #18-D | **Supabase CRUD** — `loadConsultList()` (GET), `clSave()` (POST/PATCH), `clDelete()` (DELETE) + `consultation_logs` 테이블 연동. localStorage fallback 없이 클라우드 단독 저장 | admin.html |
+| #18-E | **목록 렌더링** — 방문일 역순 정렬, 고객명·연락처·주소 실시간 검색, 연도 필터, 전체 건수 뱃지 (`consult-count`), 목록 행 클릭 시 폼 자동 채우기 | admin.html |
+| #18-F | **견적서 연동** — `clLoadEstimate()` : Supabase `estimates` 테이블 우선 + localStorage 폴백. 인라인 picker에서 선택 시 고객명 자동 입력 + `linked_estimate_id/title` 저장 | admin.html |
+| #18-G | **공란 출력** — `clPrint(true)` : 폼 값 무시, 빈 칸 + 체크박스 미체크 상태로 흑백 A4 출력. `@media print` 전용 레이아웃으로 탭바/헤더 숨김 | admin.html |
+| #18-H | **작성내용 출력** — `clPrint(false)` : 현재 폼 내용 + 체크박스 ☑/☐ 표시 + 고객정보 테이블 + 요청사항 + 서명란으로 흑백 A4 1장 출력 | admin.html |
+| #18-I | **CSS 스타일** — `.cl-*` 전용 CSS + `@media print` 출력 전용 스타일 (흑백 라인 기반, `#cl-print-area` 격리 출력) | admin.html |
+| #18-J | **switchTab 패치 확장** — 기존 `tab-contract-tmpl` 패치 유지 + `tab-consult` 열릴 때 `clInitTable()` → `loadConsultList()` 자동 호출 추가 | admin.html |
+
+#### Supabase 테이블: `consultation_logs`
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| `id` | uuid (PK) | 자동 생성 |
+| `visit_date` | date | 방문(상담)일 |
+| `client_name` | text | 고객 성함 |
+| `client_phone` | text | 연락처 |
+| `work_from` / `work_to` | text | 공사 희망일정 |
+| `client_email` | text | 이메일 |
+| `address_dong` / `address_ho` / `address_size` | text | 주소 정보 |
+| `memo` | text | 요청사항/특이사항 |
+| `items` | jsonb | 공종별 체크박스+제품번호 `{공종: {checked:[], product:''}}` |
+| `linked_estimate_id` | text | 연동 견적서 ID |
+| `linked_estimate_title` | text | 연동 견적서 제목 |
+| `created_at` / `updated_at` | timestamptz | 자동 관리 |
+
+---
 
 ### ✅ 2026-05-07 최신 세션 완료 작업 (4차) — 계약서·영수증 UX 개선
 

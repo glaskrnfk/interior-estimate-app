@@ -87,45 +87,10 @@ window.addEventListener('DOMContentLoaded', () => {
     // 플로팅 네비게이션 초기화
     updateFloatingNav();
 
-    // ── 자동 임시저장: 30초 간격 ──
-    setInterval(() => {
-        if (typeof autoSaveDraft === 'function') autoSaveDraft();
-    }, 30000);
-
-    // ── 임시 저장본 복원 제안 ──
-    setTimeout(() => {
-        if (typeof loadAutoSaveDraft !== 'function') return;
-        const draft = loadAutoSaveDraft();
-        if (!draft) return;
-        const hasContent =
-            (draft.fields && (draft.fields.clientName || draft.fields.siteName)) ||
-            Object.keys(draft.selectedMats || {}).length > 0 ||
-            (draft.detailRows || []).length > 0;
-        if (!hasContent) return;
-
-        const date = new Date(draft.savedAt);
-        const dateStr = `${date.getMonth()+1}/${date.getDate()} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
-        const clientStr = (draft.fields && draft.fields.clientName) || '';
-        const siteStr   = (draft.fields && draft.fields.siteName)   || '';
-        const label = [clientStr, siteStr].filter(Boolean).join(' · ') || '작업 내용';
-
-        if (confirm(`🔄 이전 자동저장 내용이 있습니다.\n\n"${label}" (${dateStr})\n\n복원하시겠습니까?\n(취소하면 해당 임시저장이 삭제됩니다.)`)) {
-            if (typeof restoreState === 'function') {
-                restoreState(draft);
-                if (typeof renderMatBlocks  === 'function') renderMatBlocks();
-                if (typeof renderLabBlocks  === 'function') renderLabBlocks();
-                if (typeof updateSelCount   === 'function') updateSelCount();
-                if (typeof syncRateForm     === 'function') syncRateForm();
-                if (typeof updateVatToggleUI === 'function') updateVatToggleUI();
-                if (typeof renderEditTable  === 'function') renderEditTable();
-                if (typeof recalc           === 'function') recalc();
-                const targetStep = Math.min(Math.max(draft.step || 1, 1), 5);
-                goStep(targetStep);
-                showToast('✅ 임시저장 내용을 복원했습니다.');
-            }
-        }
-        clearAutoSave();
-    }, 1200);
+    // ── 자동 임시저장 / 복원 팝업 제거 ──
+    // 저장은 사용자가 직접 저장 버튼으로 관리
+    // 창 닫기 시 미저장 경고는 index.html beforeunload 에서 처리
+    if (typeof clearAutoSave === 'function') clearAutoSave(); // 기존 autosave 데이터 정리
 });
 
 /* ══════════════════════════════════════════════════════

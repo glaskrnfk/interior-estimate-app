@@ -1734,13 +1734,34 @@ function doNewEstimate() {
 
 /* save 완료 시 미저장 플래그 리셋 */
 (function patchSmartSave() {
-  const origSmart = window.smartSave;
   const origConfirm = window.confirmSave;
   window.confirmSave = function() {
     origConfirm && origConfirm.apply(this, arguments);
     _hasUnsavedChanges = false;
   };
 })();
+
+/* ════════════════════════════════════════════════════════
+   창 닫기 / 새로고침 시 미저장 경고 (beforeunload)
+   - 저장 버튼을 누른 경우(_hasUnsavedChanges=false) → 경고 없음
+   - 저장 없이 내용 작성 후 창 닫으면 → 브라우저 기본 경고 팝업
+════════════════════════════════════════════════════════ */
+window.addEventListener('beforeunload', (e) => {
+  // 미저장 변경사항 OR 세부내역 작성 내용이 있을 때만 경고
+  const hasDetail  = typeof detailRows !== 'undefined' && detailRows.length > 0;
+  const hasUnsaved = _hasUnsavedChanges;
+
+  // 현재 ID가 있고(저장된 적 있음) 미저장 변경 없으면 → 경고 안 함
+  const currentId = typeof _currentEstimateId !== 'undefined' ? _currentEstimateId : null;
+  if (currentId && !hasUnsaved) return;
+
+  // 아무 내용도 없으면 경고 안 함
+  if (!hasUnsaved && !hasDetail) return;
+
+  // 미저장 내용 있을 때 브라우저 기본 경고 표시
+  e.preventDefault();
+  e.returnValue = '저장하지 않은 견적 내용이 있습니다. 페이지를 나가시겠습니까?';
+});
 
 /* ════════════════════════════════════════════════════════
    #7: 시공일수 자동계산 (주말/공휴일 제외)
