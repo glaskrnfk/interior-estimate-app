@@ -888,7 +888,10 @@ input[type=number] { user-select:none; }
             <button class="btn btn-danger" id="cl-delete-btn" onclick="clDelete()" style="display:none">
               <i class="fas fa-trash"></i> 삭제
             </button>
-            <button class="btn btn-primary" onclick="clSave()"><i class="fas fa-save"></i> 저장</button>
+            <button class="btn btn-secondary" id="cl-savenew-btn" onclick="clSaveNew()" style="display:none">
+              <i class="fas fa-copy"></i> 새 항목으로 저장
+            </button>
+            <button class="btn btn-primary" id="cl-save-btn" onclick="clSave()"><i class="fas fa-save"></i> 저장</button>
           </div>
         </div>
 
@@ -3813,6 +3816,10 @@ function clOpenItem(id) {
     var del = document.getElementById('cl-delete-btn');
     if (del) del.style.display = 'inline-flex';
 
+    /* 새 항목으로 저장 버튼 표시 */
+    var newBtn = document.getElementById('cl-savenew-btn');
+    if (newBtn) newBtn.style.display = 'inline-flex';
+
     /* 폼 제목 업데이트 */
     var heading = document.getElementById('cl-form-heading');
     if (heading) heading.innerHTML = '<i class="fas fa-edit" style="margin-right:6px;color:var(--navy2)"></i>' + escHtml(log.customer_name||'상담일지') + ' 수정';
@@ -3867,19 +3874,14 @@ function clCollectItems() {
     return items;
 }
 
-/* ── 저장 ── */
-function clSave() {
-    var name = (document.getElementById('cl-name').value || '').trim();
-    var date = (document.getElementById('cl-date').value || '').trim();
-    if (!name) { alert('고객 성함을 입력해주세요.'); document.getElementById('cl-name').focus(); return; }
-    if (!date) { alert('방문일을 입력해주세요.'); document.getElementById('cl-date').focus(); return; }
-
-    var payload = {
-        visit_date         : date,
-        customer_name      : name,
+/* ── payload 수집 헬퍼 ── */
+function clBuildPayload() {
+    return {
+        visit_date         : (document.getElementById('cl-date').value || '').trim(),
+        customer_name      : (document.getElementById('cl-name').value || '').trim(),
         contact            : (document.getElementById('cl-phone').value || '').trim(),
-        construction_start : (document.getElementById('cl-work-from').value || '').trim() || null,
-        construction_end   : (document.getElementById('cl-work-to').value || '').trim() || null,
+        construction_start : (document.getElementById('cl-work-from').value || '').trim(),
+        construction_end   : (document.getElementById('cl-work-to').value || '').trim(),
         email              : (document.getElementById('cl-email').value || '').trim(),
         address_dong       : (document.getElementById('cl-addr-dong').value || '').trim(),
         address_ho         : (document.getElementById('cl-addr-ho').value || '').trim(),
@@ -3887,23 +3889,27 @@ function clSave() {
         request_notes      : (document.getElementById('cl-memo').value || '').trim(),
         items              : clCollectItems()
     };
+}
 
-    /* 기존 연동 견적서 유지 */
-    var existId = document.getElementById('cl-id').value;
-    var existLog = existId ? _clAllLogs.find(function(l){ return l.id === existId; }) : null;
-    if (existLog && existLog.estimate_id) {
-        payload.estimate_id = existLog.estimate_id;
-    }
+/* ── 중복 체크 (customer_name + visit_date, 현재 편집 중인 id 제외) ── */
+function clCheckDuplicate(name, date, excludeId) {
+    return _clAllLogs.find(function(l) {
+        return l.customer_name === name
+            && l.visit_date    === date
+            && l.id            !== excludeId;
+    });
+}
 
-    var isNew = !existId;
-    var url   = SB_URL + '/rest/v1/consultation_logs';
+/* ── 공통 저장 실행 함수 ── */
+function clDoSave(payload, isNew, targetId, btnEl) {
+    var url    = SB_URL + '/rest/v1/consultation_logs';
     var method = 'POST';
-    if (!isNew) { url += '?id=eq.' + encodeURIComponent(existId); method = 'PATCH'; }
+    if (!isNew) { url += '?id=eq.' + encodeURIComponent(targetId); method = 'PATCH'; }
 
     var hdrs = sbHeaders({ 'Prefer': 'return=representation' });
 
     fetch(url, { method: method, headers: hdrs, body: JSON.stringify(payload) })
-    .then(function(r){
+    .then(function(r) {
         if (!r.ok) return r.text().then(function(t){ throw new Error(t); });
         return r.json();
     })
@@ -3914,8 +3920,11 @@ function clSave() {
                 _clAllLogs.unshift(saved);
                 _clCurrentId = saved.id;
                 document.getElementById('cl-id').value = saved.id;
-                var del = document.getElementById('cl-delete-btn');
-                if (del) del.style.display = 'inline-flex';
+                /* 신규 저장 후 수정/삭제/새항목 버튼 표시 */
+                var delBtn  = document.getElementById('cl-delete-btn');
+                var newBtn  = document.getElementById('cl-savenew-btn');
+                if (delBtn) delBtn.style.display = 'inline-flex';
+                if (newBtn) newBtn.style.display = 'inline-flex';
             } else {
                 var idx2 = _clAllLogs.findIndex(function(l){ return l.id === saved.id; });
                 if (idx2 !== -1) _clAllLogs[idx2] = saved;
@@ -3923,7 +3932,6 @@ function clSave() {
         }
         clFillYearFilter(_clAllLogs);
         renderConsultList();
-        /* 저장 후 해당 항목 하이라이트 유지 */
         if (saved && saved.id) {
             setTimeout(function(){
                 document.querySelectorAll('.cl-item').forEach(function(el){
@@ -3932,18 +3940,62 @@ function clSave() {
             }, 100);
         }
         /* 성공 피드백 */
-        var btn = document.querySelector('[onclick="clSave()"]');
-        if (btn) {
-            var orig = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-check"></i> 저장됨';
-            btn.style.background = '#059669';
-            setTimeout(function(){ btn.innerHTML = orig; btn.style.background = ''; }, 1800);
+        if (btnEl) {
+            var orig = btnEl.innerHTML;
+            btnEl.innerHTML = '<i class="fas fa-check"></i> 저장됨';
+            btnEl.style.background = '#059669';
+            setTimeout(function(){ btnEl.innerHTML = orig; btnEl.style.background = ''; }, 1800);
         }
     })
     .catch(function(e) {
         console.error('상담일지 저장 실패', e);
         alert('저장 실패: ' + e.message);
     });
+}
+
+/* ── 저장 (기존 항목 덮어쓰기 / 신규 생성) ── */
+function clSave() {
+    var payload = clBuildPayload();
+    if (!payload.customer_name) { alert('고객 성함을 입력해주세요.'); document.getElementById('cl-name').focus(); return; }
+    if (!payload.visit_date)    { alert('방문일을 입력해주세요.');    document.getElementById('cl-date').focus(); return; }
+
+    var existId  = document.getElementById('cl-id').value;
+    var existLog = existId ? _clAllLogs.find(function(l){ return l.id === existId; }) : null;
+
+    /* 연동 견적서 유지 */
+    if (existLog && existLog.estimate_id) payload.estimate_id = existLog.estimate_id;
+
+    var isNew = !existId;
+
+    /* 신규 저장 시 중복 체크 */
+    if (isNew) {
+        var dup = clCheckDuplicate(payload.customer_name, payload.visit_date, null);
+        if (dup) {
+            if (!confirm('같은 고객명+방문일 기록이 이미 있습니다.\n(' + dup.customer_name + ' / ' + dup.visit_date + ')\n\n그래도 새로 저장하시겠습니까?')) return;
+        }
+    }
+
+    clDoSave(payload, isNew, existId, document.getElementById('cl-save-btn'));
+}
+
+/* ── 새 항목으로 저장 (기존 항목을 열어둔 채로 별도 레코드 생성) ── */
+function clSaveNew() {
+    var payload = clBuildPayload();
+    if (!payload.customer_name) { alert('고객 성함을 입력해주세요.'); document.getElementById('cl-name').focus(); return; }
+    if (!payload.visit_date)    { alert('방문일을 입력해주세요.');    document.getElementById('cl-date').focus(); return; }
+
+    /* 중복 체크 (현재 편집 중인 id는 제외) */
+    var currentId = document.getElementById('cl-id').value;
+    var dup = clCheckDuplicate(payload.customer_name, payload.visit_date, currentId);
+    if (dup) {
+        if (!confirm('같은 고객명+방문일 기록이 이미 있습니다.\n(' + dup.customer_name + ' / ' + dup.visit_date + ')\n\n그래도 새 항목으로 저장하시겠습니까?')) return;
+    }
+
+    /* id 초기화 → 강제 신규(POST) */
+    document.getElementById('cl-id').value = '';
+    _clCurrentId = null;
+
+    clDoSave(payload, true, null, document.getElementById('cl-savenew-btn'));
 }
 
 /* ── 삭제 ── */
@@ -3975,53 +4027,39 @@ function clDelete() {
 /* ── 견적서 연동 (계약완료 견적서 선택) ── */
 function clLoadEstimate() {
     /* Supabase: 고객 정보 전체 필드 포함하여 가져오기 */
-    fetch(SB_URL + '/rest/v1/estimates?select=id,title,client_name,client_phone,client_addr,client_ho,client_size,status,updated_at&order=created_at.desc&limit=200', {
-        headers: sbHeaders()
-    })
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-        var list = Array.isArray(data) ? data : [];
-        if (list.length === 0) {
-            /* localStorage fallback – 로컬 견적 전체 데이터 포함 */
-            try {
-                var ls = JSON.parse(localStorage.getItem('iq_estimates') || '[]');
-                list = ls.map(function(e) {
-                    return {
-                        id           : e.id,
-                        title        : e.title,
-                        client_name  : e.clientName  || e.client_name  || '',
-                        client_phone : e.clientPhone || e.client_phone || '',
-                        client_addr  : e.clientAddr  || e.client_addr  || '',
-                        client_ho    : e.clientHo    || e.client_ho    || '',
-                        client_size  : e.clientSize  || e.client_size  || '',
-                        status       : e.status || ''
-                    };
-                });
-            } catch(ex){}
-        }
-        if (list.length === 0) { alert('불러올 견적서가 없습니다.'); return; }
+    /* localStorage 에서 직접 읽기 (estimates는 localStorage 기반) */
+    /* Supabase estimates 테이블 컬럼: camelCase localStorage 키 사용 */
+    try {
+        var ls = JSON.parse(localStorage.getItem('iq_estimates') || '[]');
+        if (ls.length === 0) { alert('불러올 견적서가 없습니다.\n견적서를 먼저 작성해주세요.'); return; }
+
+        /* ─────────────────────────────────────────────────────────
+         * estimate-save.js 저장 구조:
+         *   record.clientName          ← 최상위 (고객명)
+         *   record.fields.siteAddress  ← 주소
+         *   record.fields.areaPyeong   ← 평형
+         *   record.fields.constStartDate / constEndDate ← 공사기간
+         * clientPhone 은 견적서에 없음 → 빈칸(관리자 수동입력)
+         * ───────────────────────────────────────────────────────── */
+        var list = ls.map(function(e) {
+            var f = e.fields || {};
+            return {
+                id           : e.id                          || '',
+                title        : e.title || e.siteName         || '(제목없음)',
+                client_name  : e.clientName                  || '',
+                client_phone : '',   /* 견적서에 연락처 없음 – 수동입력 */
+                client_addr  : f.siteAddress                 || '',
+                client_ho    : '',   /* 별도 호수 필드 없음 */
+                client_size  : (f.areaPyeong ? f.areaPyeong + '평' : ''),
+                work_from    : f.constStartDate              || '',
+                work_to      : f.constEndDate                || '',
+                status       : e.status                      || ''
+            };
+        });
         clShowEstPicker(list);
-    })
-    .catch(function(e) {
-        console.warn('견적서 목록 로드 오류, localStorage 시도:', e);
-        try {
-            var ls = JSON.parse(localStorage.getItem('iq_estimates') || '[]');
-            var list2 = ls.map(function(e) {
-                return {
-                    id           : e.id,
-                    title        : e.title,
-                    client_name  : e.clientName  || e.client_name  || '',
-                    client_phone : e.clientPhone || e.client_phone || '',
-                    client_addr  : e.clientAddr  || e.client_addr  || '',
-                    client_ho    : e.clientHo    || e.client_ho    || '',
-                    client_size  : e.clientSize  || e.client_size  || '',
-                    status       : e.status || ''
-                };
-            });
-            if (list2.length === 0) { alert('불러올 견적서가 없습니다.'); return; }
-            clShowEstPicker(list2);
-        } catch(ex) { alert('견적서 목록 로드 실패: ' + ex.message); }
-    });
+    } catch(ex) {
+        alert('견적서 목록 로드 실패: ' + ex.message);
+    }
 }
 
 /* picker용 임시 견적 목록 캐시 */
@@ -4066,15 +4104,26 @@ function clSelectEst(idx) {
     }
 
     /* ── 고객 정보 전체 자동입력 ── */
+    /* val 유무 관계없이 항상 덮어씀 — 없으면 공란으로 초기화 */
     var setVal = function(elId, val) {
         var el = document.getElementById(elId);
-        if (el && val) el.value = val;
+        if (el) el.value = val || '';
+    };
+    /* yyyy-mm-dd → MM/DD 변환 (공사 희망일정 형식 맞춤) */
+    var toMMDD = function(dateStr) {
+        if (!dateStr) return '';
+        var parts = dateStr.split('-');
+        if (parts.length >= 3) return parts[1] + '/' + parts[2];
+        return dateStr;
     };
     setVal('cl-name',      e.client_name);
-    setVal('cl-phone',     e.client_phone);
+    /* 연락처: 견적서에 원래 없으므로 건드리지 않음 */
+    /* setVal('cl-phone', e.client_phone); */
     setVal('cl-addr-dong', e.client_addr);
     setVal('cl-addr-ho',   e.client_ho);
     setVal('cl-addr-size', e.client_size);
+    setVal('cl-work-from', toMMDD(e.work_from));
+    setVal('cl-work-to',   toMMDD(e.work_to));
 
     /* 연동 섹션 표시 */
     var lsec  = document.getElementById('cl-linked-est-section');

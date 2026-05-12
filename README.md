@@ -21,7 +21,61 @@
 
 ## 기능 구현 현황 (2026-05-12 기준)
 
-### ✅ 2026-05-12 최신 세션 완료 작업 — 마감자재 상담일지 기능 전체 구현
+### ✅ 2026-05-12 최신 세션 완료 작업 (4차) — 견적서 연동 자동입력 버그 수정
+
+| ID | 기능 | 파일 |
+|----|------|------|
+| #21-A | **견적서 연동 시 빈 필드 공란 초기화** — `clSelectEst()` 내 `setVal` 함수를 `val`이 없어도 항상 `''`으로 덮어쓰도록 수정. 이전엔 견적서에 데이터 없는 필드가 이전 상담일지 값으로 유지되는 버그 수정 | admin.html |
+| #21-B | **공사 희망일정 날짜 형식 변환** — `constStartDate/constEndDate` (`yyyy-mm-dd`)를 `MM/DD` 형식으로 변환하는 `toMMDD()` 헬퍼 추가. 연락처는 견적서에 원래 없으므로 기존 입력값 유지 | admin.html |
+
+### ✅ 2026-05-12 최신 세션 완료 작업 (3차) — clOpenItem 버튼 표시 수정
+
+| ID | 기능 | 파일 |
+|----|------|------|
+| #20-A | **기존 항목 열기 시 "새 항목으로 저장" 버튼 표시** — `clOpenItem()` 내 `cl-delete-btn` 표시 로직 바로 아래에 `cl-savenew-btn` `display:inline-flex` 추가. 이전엔 신규 저장 후에만 버튼이 나타났으나, 목록에서 기존 항목을 클릭해 열 때도 정상 표시됨 | admin.html |
+
+### ✅ 2026-05-12 최신 세션 완료 작업 (2차) — 상담일지 버그 수정 · 저장 로직 개선
+
+| ID | 기능 | 파일 |
+|----|------|------|
+| #19-A | **PDF A4 1페이지 고정** — `position:fixed;top:0;left:0` + `#ct-wrap height:760px` px 하드코딩으로 33페이지 출력 버그 완전 해결 | admin.html |
+| #19-B | **JS 코드 화면 노출 버그 수정** — `clBuildPrintHTML()` 내 `</style>`, `</body>`, `</html>` 등 구조 태그를 배열 `join('')` 방식으로 완전 우회 (HTML 파서 트리거 차단) | admin.html |
+| #19-C | **Supabase 컬럼명 전면 교정** — `client_name→customer_name`, `client_phone→contact`, `address_size→address_area`, `memo→request_notes`, `work_from/to→construction_start/end` (TEXT 타입) | admin.html |
+| #19-D | **견적서 연동 필드 매핑 수정** — `clLoadEstimate()` 에서 `e.fields.siteAddress`, `e.fields.areaPyeong`, `e.fields.constStartDate/constEndDate` (nested fields 구조) 로 정확히 매핑 | admin.html |
+| #19-E | **공사기간 자동입력 추가** — `clSelectEst()` 에 `setVal('cl-work-from', e.work_from)`, `setVal('cl-work-to', e.work_to)` 추가. 이전엔 이름만 채워졌으나 주소·평형·공사기간 모두 자동입력됨 | admin.html |
+| #19-F | **저장 로직 분리** — `clSave()` (덮어쓰기) / `clSaveNew()` (항상 새 항목 POST) 분리. `clBuildPayload()` 공통 헬퍼, `clCheckDuplicate()` 중복방지 (customer_name + visit_date 조합) 추가 | admin.html |
+| #19-G | **"새 항목으로 저장" 버튼 추가** — `#cl-savenew-btn` 버튼 UI 추가. 기존 항목 열 때(`clOpenItem`) 및 저장 완료 후 자동 표시 | admin.html |
+
+#### Supabase 테이블: `consultation_logs` (교정된 최신 컬럼명)
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| `id` | uuid (PK) | 자동 생성 |
+| `visit_date` | date | 방문(상담)일 |
+| `customer_name` | text | 고객 성함 |
+| `contact` | text | 연락처 |
+| `construction_start` | **text** | 공사 희망 시작일 (자유 텍스트) |
+| `construction_end` | **text** | 공사 희망 종료일 (자유 텍스트) |
+| `email` | text | 이메일 |
+| `address_dong` | text | 단지/동 |
+| `address_ho` | text | 호수 |
+| `address_area` | text | 평형 |
+| `request_notes` | text | 요청사항/특이사항 |
+| `items` | jsonb | 공종별 체크박스+제품번호 `{공종: {checked:[], product:''}}` |
+| `estimate_id` | text | 연동 견적서 ID |
+| `created_at` / `updated_at` | timestamptz | 자동 관리 |
+
+> ⚠️ **DB 마이그레이션 필요 시 SQL**
+> ```sql
+> -- 컬럼 타입 변경 (DATE → TEXT)
+> ALTER TABLE consultation_logs ALTER COLUMN construction_start TYPE text;
+> ALTER TABLE consultation_logs ALTER COLUMN construction_end TYPE text;
+> -- schema cache 강제 갱신
+> NOTIFY pgrst, 'reload schema';
+> ```
+
+---
+
+### ✅ 2026-05-12 최신 세션 완료 작업 (1차) — 마감자재 상담일지 기능 전체 구현
 
 | ID | 기능 | 파일 |
 |----|------|------|
@@ -41,16 +95,17 @@
 |------|------|------|
 | `id` | uuid (PK) | 자동 생성 |
 | `visit_date` | date | 방문(상담)일 |
-| `client_name` | text | 고객 성함 |
-| `client_phone` | text | 연락처 |
-| `work_from` / `work_to` | text | 공사 희망일정 |
-| `client_email` | text | 이메일 |
-| `address_dong` / `address_ho` / `address_size` | text | 주소 정보 |
-| `memo` | text | 요청사항/특이사항 |
+| `customer_name` | text | 고객 성함 |
+| `contact` | text | 연락처 |
+| `construction_start` / `construction_end` | **text** | 공사 희망일정 (자유 텍스트) |
+| `email` | text | 이메일 |
+| `address_dong` / `address_ho` / `address_area` | text | 주소 정보 |
+| `request_notes` | text | 요청사항/특이사항 |
 | `items` | jsonb | 공종별 체크박스+제품번호 `{공종: {checked:[], product:''}}` |
-| `linked_estimate_id` | text | 연동 견적서 ID |
-| `linked_estimate_title` | text | 연동 견적서 제목 |
+| `estimate_id` | text | 연동 견적서 ID |
 | `created_at` / `updated_at` | timestamptz | 자동 관리 |
+
+> ℹ️ 최신 컬럼명은 위 **#19-C 교정 버전**을 기준으로 합니다.
 
 ---
 
@@ -320,6 +375,16 @@ libs/
 
 ---
 
+### 📋 상담일지 (admin.html > 상담일지 탭)
+- 방문일·고객명·연락처·공사희망일정·이메일·주소·평형 기본정보 입력
+- 11개 공종(도배·마루·커튼&블라인드·싱크대·욕실·샷시·가구·조명·발코니확장·철거·도장) 체크박스 + 제품번호 입력
+- **저장(덮어쓰기)** / **새 항목으로 저장(POST)** 버튼 분리 + 고객명+방문일 중복 방지
+- 견적서 연동: 선택 시 고객명·주소·평형·공사기간 자동입력
+- A4 1페이지 인쇄 (작성내용 출력 / 공란 출력)
+- Supabase `consultation_logs` 테이블 단독 저장
+
+---
+
 ### 📅 공정표 관리 (schedule.html) — v2.0 업그레이드
 
 **신규 기능:**
@@ -367,7 +432,7 @@ libs/
 
 ---
 
-## 현재 날짜: 2026-05-07
+## 현재 날짜: 2026-05-12
 
 ---
 
