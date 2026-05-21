@@ -540,15 +540,15 @@ body {
     <div class="brand-logo">JUNG KYUL DESIGN STUDIO</div>
     <div class="brand-subtitle">"공간의 결을 바로 세우다" 정결(正潔)</div>
     <div class="cover-divider"></div>
-    <div class="cover-title">나의 인테리어<br>스타일 진단</div>
+    <div class="cover-title">내 공사비,<br>지금 바로 확인해보세요</div>
     <p class="cover-desc">
-      8가지 질문으로 분석하는<br>
-      나만의 공간 취향과 예상 견적 범위
+      원하는 공사 항목만 선택하면<br>
+      예상 견적 범위를 즉시 알려드립니다
     </p>
     <div class="cover-badges">
-      <span class="cover-badge">✦ 약 3분 소요</span>
-      <span class="cover-badge">✦ 즉시 결과 확인</span>
-      <span class="cover-badge">✦ 무료 진단</span>
+      <span class="cover-badge">✦ 3분이면 충분</span>
+      <span class="cover-badge">✦ 견적 즉시 확인</span>
+      <span class="cover-badge">✦ 완전 무료</span>
     </div>
   </div>
 </div>
@@ -662,40 +662,47 @@ body {
   <!-- PART 03 -->
   <div class="part-header">
     <div class="part-num">PART 03</div>
-    <div class="part-title">공사 범위 & 예산</div>
-    <div class="part-subtitle">Scope & Budget — 대략적인 계획을 알려주세요</div>
+    <div class="part-title">공사 범위</div>
+    <div class="part-subtitle">Scope — 원하시는 공사 항목을 선택해 주세요</div>
   </div>
 
-  <!-- Q6 공사범위 -->
+  <!-- Q6 공사항목 체크박스 -->
   <div class="q-card" data-q="6">
-    <div class="q-label"><span class="q-num">6</span>공사 범위는 어느 정도 생각하고 계세요? <span class="q-required">*</span></div>
-    <div class="options-grid col1">
-      <label class="opt-item radio"><input type="radio" name="scope" value="부분공사 (1~2개 공간)"><span class="opt-box"><span class="opt-check"></span>부분 공사 (욕실·주방 등 1~2곳)</span></label>
-      <label class="opt-item radio"><input type="radio" name="scope" value="중규모 (3~4개 공간)"><span class="opt-box"><span class="opt-check"></span>중규모 (3~4개 공간 리모델링)</span></label>
-      <label class="opt-item radio"><input type="radio" name="scope" value="전체 올리모델링"><span class="opt-box"><span class="opt-check"></span>전체 올리모델링 (전 공간)</span></label>
-      <label class="opt-item radio"><input type="radio" name="scope" value="아직 미정"><span class="opt-box"><span class="opt-check"></span>아직 미정 (상담 후 결정)</span></label>
+    <div class="q-label"><span class="q-num">6</span>원하시는 공사 항목을 선택해 주세요 <span class="q-required">*</span></div>
+    <div class="q-hint">해당하는 항목을 모두 선택하시면 예상 견적 범위를 계산해 드립니다</div>
+    <div class="options-grid col2" id="scope-items">
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="확장공사/구조변경" data-calc="fixed:180"><span class="opt-box"><span class="opt-check"></span>확장공사 / 구조변경</span></label>
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="난방공사" data-calc="sqm:26"><span class="opt-box"><span class="opt-check"></span>난방공사</span></label>
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="목공사" data-calc="sqm:30"><span class="opt-box"><span class="opt-check"></span>목공사 (벽체·천장·단열)</span></label>
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="전기공사_단순교체" data-calc="sqm:3.5"><span class="opt-box"><span class="opt-check"></span>전기공사 (조명 단순교체)</span></label>
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="전기공사_신규배선" data-calc="sqm:7.5"><span class="opt-box"><span class="opt-check"></span>전기공사 (신규 배선)</span></label>
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="욕실공사_1개" data-calc="fixed:500"><span class="opt-box"><span class="opt-check"></span>욕실공사 (1개)</span></label>
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="욕실공사_2개" data-calc="fixed:1000"><span class="opt-box"><span class="opt-check"></span>욕실공사 (2개)</span></label>
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="타일공사" data-calc="fixed:45"><span class="opt-box"><span class="opt-check"></span>타일공사 (현관·베란다·세탁실)</span></label>
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="도장_세탁실베란다" data-calc="fixed:75"><span class="opt-box"><span class="opt-check"></span>도장 (세탁실·베란다)</span></label>
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="도장_전체" data-calc="sqm:15"><span class="opt-box"><span class="opt-check"></span>도장 (전체 공간)</span></label>
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="필름리폼" data-calc="fixed:40"><span class="opt-box"><span class="opt-check"></span>필름리폼</span></label>
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="바닥_마루" data-calc="sqm:15"><span class="opt-box"><span class="opt-check"></span>바닥 (마루)</span></label>
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="바닥_장판" data-calc="sqm:7.5"><span class="opt-box"><span class="opt-check"></span>바닥 (장판)</span></label>
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="도배_실크" data-calc="sqm:12"><span class="opt-box"><span class="opt-check"></span>도배 (실크)</span></label>
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="도배_합지" data-calc="sqm:8"><span class="opt-box"><span class="opt-check"></span>도배 (합지)</span></label>
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="주방가구" data-calc="fixed:800"><span class="opt-box"><span class="opt-check"></span>주방가구</span></label>
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="붙박이장/수납가구" data-calc="fixed:200"><span class="opt-box"><span class="opt-check"></span>붙박이장 / 수납가구</span></label>
+      <label class="opt-item"><input type="checkbox" name="scopeItem" value="준공청소" data-calc="sqm:1.5"><span class="opt-box"><span class="opt-check"></span>준공청소</span></label>
+    </div>
+    <!-- 실시간 합계 표시 -->
+    <div id="scope-total-box" style="display:none; margin-top:14px; padding:12px 16px; background:var(--jk-black); border-radius:8px; color:#fff;">
+      <div style="font-size:11px; color:var(--jk-gold); letter-spacing:1px; margin-bottom:4px;">선택 항목 합계 (예상)</div>
+      <div id="scope-total-value" style="font-family:'Noto Serif KR',serif; font-size:20px; font-weight:700;"></div>
+      <div style="font-size:10px; color:rgba(255,255,255,.45); margin-top:3px;">평수 입력 후 정확한 범위가 계산됩니다</div>
     </div>
   </div>
 
-  <!-- Q7 예산 -->
+  <!-- Q7 메모 -->
   <div class="q-card" data-q="7">
-    <div class="q-label"><span class="q-num">7</span>예상 예산의 마지노선은? <span class="q-required">*</span></div>
-    <div class="q-hint">가전·가구 제외 공사비 기준입니다</div>
-    <div class="budget-chips" id="budget-chips">
-      <div class="budget-chip" data-val="1500만원 미만" onclick="selectChip(this,'budget')">1,500만 미만</div>
-      <div class="budget-chip" data-val="1500~2500만원" onclick="selectChip(this,'budget')">1,500~2,500만</div>
-      <div class="budget-chip" data-val="2500~3500만원" onclick="selectChip(this,'budget')">2,500~3,500만</div>
-      <div class="budget-chip" data-val="3500~5000만원" onclick="selectChip(this,'budget')">3,500~5,000만</div>
-      <div class="budget-chip" data-val="5000만원 이상" onclick="selectChip(this,'budget')">5,000만 이상</div>
-    </div>
-    <input type="hidden" id="budget">
-  </div>
-
-  <!-- Q8 우선순위 -->
-  <div class="q-card" data-q="8">
-    <div class="q-label"><span class="q-num">8</span>가장 바꾸고 싶은 공간은 어디인가요?</div>
-    <div class="q-hint">가장 중요한 공간이나 이유를 간단히 적어주세요</div>
-    <textarea class="q-textarea" id="priority1" placeholder="예: 주방이 너무 좁아서 동선이 불편해요 / 욕실이 오래되어 곰팡이가 심해요"></textarea>
+    <div class="q-label"><span class="q-num">7</span>추가로 전달하고 싶은 내용이 있으신가요?</div>
+    <div class="q-hint">원하시는 공간이나 특이사항을 자유롭게 적어주세요</div>
+    <textarea class="q-textarea" id="priority1" placeholder="예: 욕실 두 곳 모두 교체하고 싶어요 / 오래된 아파트라 배선 교체가 필요할 것 같아요"></textarea>
   </div>
 
   <div class="section-intro">
@@ -804,6 +811,7 @@ function updateProgress() {
   if (getChecked('purpose').length) filled++;
   if (getChecked('style').length) filled++;
   if (getRadio('colorPrefer')) filled++;
+  if (getChecked('scopeItem').length > 0) filled++;
   if (getRadio('scope')) filled++;
   if (_chipVals.budget) filled++;
   if (vt('priority1')) filled++;
@@ -818,6 +826,7 @@ function updateProgress() {
 document.querySelectorAll('input,textarea').forEach(function(el) {
   el.addEventListener('input', updateProgress);
   el.addEventListener('change', updateProgress);
+  el.addEventListener('change', function(){ if(el.name==='scopeItem') calcScopeTotal(); });
 });
 
 /* ══ 유틸 ══ */
@@ -886,22 +895,58 @@ function diagnoseStyle(data) {
     }
   }
 
-  /* ─ 견적 계산 ─ */
-  var baseMin = 1500, baseMax = 2500;
-  if (sizeText.includes('10평'))      { baseMin = 800;  baseMax = 1500; }
-  else if (sizeText.includes('20평')) { baseMin = 1500; baseMax = 2800; }
-  else if (sizeText.includes('30평')) { baseMin = 2500; baseMax = 4500; }
-  else if (sizeText.includes('40평')) { baseMin = 4000; baseMax = 7000; }
+  /* ─ 견적 계산 (항목별 단가 × 평수 합산) ─ */
+  /* 평수 파싱 */
+  var sqm = 25; /* 기본값 25평 */
+  if (sizeText.includes('10평'))      sqm = 12;
+  else if (sizeText.includes('20평')) sqm = 22;
+  else if (sizeText.includes('30평')) sqm = 32;
+  else if (sizeText.includes('40평')) sqm = 45;
 
-  if (scope.includes('부분'))        { baseMin = Math.round(baseMin * 0.38); baseMax = Math.round(baseMax * 0.45); }
-  else if (scope.includes('중규모')) { baseMin = Math.round(baseMin * 0.65); baseMax = Math.round(baseMax * 0.75); }
-  else if (scope.includes('전체'))   { /* 그대로 */ }
+  /* 선택된 공사 항목 */
+  var scopeItems = data.construction_scope || [];
 
-  if (styleKey === 'wainscoting_classic') {
-    baseMin = Math.round(baseMin * 1.1); baseMax = Math.round(baseMax * 1.2);
+  /* 단가 테이블 (만원 기준) */
+  var UNIT = {
+    '확장공사/구조변경':  { type:'fixed', val:180  },
+    '난방공사':           { type:'sqm',   val:26   },
+    '목공사':             { type:'sqm',   val:30   },
+    '전기공사_단순교체':  { type:'sqm',   val:3.5  },
+    '전기공사_신규배선':  { type:'sqm',   val:7.5  },
+    '욕실공사_1개':       { type:'fixed', val:500  },
+    '욕실공사_2개':       { type:'fixed', val:1000 },
+    '타일공사':           { type:'fixed', val:45   },
+    '도장_세탁실베란다':  { type:'fixed', val:75   },
+    '도장_전체':          { type:'sqm',   val:15   },
+    '필름리폼':           { type:'fixed', val:40   },
+    '바닥_마루':          { type:'sqm',   val:15   },
+    '바닥_장판':          { type:'sqm',   val:7.5  },
+    '도배_실크':          { type:'sqm',   val:12   },
+    '도배_합지':          { type:'sqm',   val:8    },
+    '주방가구':           { type:'fixed', val:800  },
+    '붙박이장/수납가구':  { type:'fixed', val:200  },
+    '준공청소':           { type:'sqm',   val:1.5  }
+  };
+
+  var total = 0;
+  scopeItems.forEach(function(item) {
+    var u = UNIT[item];
+    if (!u) return;
+    total += u.type === 'sqm' ? u.val * sqm : u.val;
+  });
+
+  var estimateStr;
+  if (total === 0) {
+    /* 항목 미선택 시 평당 160~230만원 범위로 fallback */
+    var fbMin = Math.round(sqm * 160);
+    var fbMax = Math.round(sqm * 230);
+    estimateStr = fbMin.toLocaleString() + ' ~ ' + fbMax.toLocaleString() + '만원';
+  } else {
+    /* 합계 ±20% 범위 */
+    var estMin = Math.round(total * 0.8 / 10) * 10;
+    var estMax = Math.round(total * 1.2 / 10) * 10;
+    estimateStr = estMin.toLocaleString() + ' ~ ' + estMax.toLocaleString() + '만원';
   }
-
-  var estimateStr = baseMin.toLocaleString() + ' ~ ' + baseMax.toLocaleString() + '만원';
 
   /* ─ 실사 이미지 (추후 사진 준비 후 URL 입력) ─
      사진 4종 준비되면 아래 photos 배열에 URL 넣으면 자동 표시됨
@@ -960,8 +1005,8 @@ async function submitSurvey() {
   if (getChecked('purpose').length === 0) { showToast('리모델링 목적을 선택해 주세요.'); return; }
   if (getChecked('style').length === 0) { showToast('원하는 스타일을 선택해 주세요.'); return; }
   if (!getRadio('colorPrefer')) { showToast('선호 색상을 선택해 주세요.'); return; }
-  if (!getRadio('scope')) { showToast('공사 범위를 선택해 주세요.'); return; }
-  if (!_chipVals.budget) { showToast('예산 마지노선을 선택해 주세요.'); return; }
+  if (getChecked('scopeItem').length === 0) { showToast('공사 항목을 1개 이상 선택해 주세요.'); return; }
+  /* 예산 칩 제거됨 — 항목 합산으로 대체 */
 
   var overlay = document.getElementById('loading-overlay');
   var loadingText = document.getElementById('loading-text');
@@ -978,12 +1023,12 @@ async function submitSurvey() {
     client_name:        vt('clientName'),
     client_phone:       vt('clientPhone'),
     purpose:            getChecked('purpose'),
-    budget:             _chipVals.budget,
+    budget:             '',  /* 항목 합산으로 대체 */
     site_size:          _chipVals.size,
     apt_type:           getRadio('aptType'),
     overall_style:      getChecked('style'),
     color_prefer:       getRadio('colorPrefer'),
-    construction_scope: [getRadio('scopeRadio')],
+    construction_scope: getChecked('scopeItem'),
     priority1:          vt('priority1'),
     start_date:         '',
     move_in_date:       '',
