@@ -829,11 +829,11 @@ function showToast(msg) {
 
 /* ══ 스타일 진단 로직 ══ */
 function diagnoseStyle(data) {
-  var styles = data.overallStyle || [];
-  var color = data.colorPrefer || '';
-  var scope = data.constructionScope ? data.constructionScope[0] : '';
-  var budget = data.budget || '';
-  var sizeText = data.siteSize || '';
+  var styles = data.overall_style || [];
+  var color  = data.color_prefer || "";
+  var scope = data.construction_scope ? data.construction_scope[0] : '';
+  
+  var sizeText = data.site_size || "";
 
   /* 스타일 결정 */
   var styleName, styleSub, traits, materials;
@@ -959,39 +959,40 @@ async function submitSurvey() {
   loadingText.textContent = '답변을 분석하고 있습니다…';
 
   var payload = {
-    submittedAt: new Date().getTime(),
-    adminStatus: '신규',
-    adminMemo: '[홍보유입-스타일진단] ' + new Date().toLocaleDateString('ko-KR'),
-    clientName: vt('clientName'),
-    clientPhone: vt('clientPhone'),
-    purpose: getChecked('purpose'),
-    budget: _chipVals.budget,
-    siteSize: _chipVals.size,
-    aptType: getRadio('aptType'),
-    overallStyle: getChecked('style'),
-    colorPrefer: getRadio('colorPrefer'),
-    constructionScope: [getRadio('scope')],
-    priority1: vt('priority1'),
-    startDate: '',
-    moveInDate: '',
-    priority2: '',
-    improveSpaces: '',
-    familyInfo: '',
-    siteAddress: '',
-    moveStatus: '',
-    kitchenStyle: '',
-    kitchenNotes: '',
-    bathroomCount: '',
-    bathroomStyle: '',
-    floorMaterial: '',
-    wallStyle: [],
-    lightingStyle: '',
-    customFurniture: [],
-    systemAC: '',
-    heating: [],
-    concerns: '',
-    referenceImages: '',
-    additionalNotes: '홍보유입_스타일진단'
+    submitted_at:       new Date().toISOString(),
+    status:             '신규',
+    admin_status:       '홍보유입',
+    admin_memo:         '[스타일진단 홍보유입] ' + new Date().toLocaleDateString('ko-KR'),
+    client_name:        vt('clientName'),
+    client_phone:       vt('clientPhone'),
+    purpose:            getChecked('purpose'),
+    budget:             _chipVals.budget,
+    site_size:          _chipVals.size,
+    apt_type:           getRadio('aptType'),
+    overall_style:      getChecked('style'),
+    color_prefer:       getRadio('colorPrefer'),
+    construction_scope: [getRadio('scopeRadio')],
+    priority1:          vt('priority1'),
+    start_date:         '',
+    move_in_date:       '',
+    priority2:          '',
+    improve_spaces:     '',
+    family_info:        '',
+    site_address:       '',
+    move_status:        '',
+    kitchen_style:      '',
+    kitchen_notes:      '',
+    bathroom_count:     '',
+    bathroom_style:     '',
+    floor_material:     '',
+    wall_style:         [],
+    lighting_style:     '',
+    custom_furniture:   [],
+    system_ac:          '',
+    floor_heating:      '',
+    concerns:           '',
+    reference_images:   '',
+    additional_notes:   '홍보유입_스타일진단_' + new Date().toISOString().slice(0,10)
   };
 
   try {
@@ -1025,7 +1026,7 @@ async function submitSurvey() {
   } catch(e) {
     overlay.classList.remove('show');
     document.getElementById('btn-submit').disabled = false;
-    showToast('오류가 발생했습니다. 다시 시도해 주세요.');
+    var msg = e.message || '오류가 발생했습니다.'; showToast(msg.length > 60 ? '저장 오류: ' + msg.slice(0,60) + '...' : '오류: ' + msg);
   }
 }
 </script>
