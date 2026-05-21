@@ -639,12 +639,10 @@ body {
     <div class="q-label"><span class="q-num">4</span>원하는 인테리어 스타일은 무엇인가요? <span class="q-required">*</span></div>
     <div class="q-hint">가장 끌리는 것을 선택해 주세요 (복수 선택 가능)</div>
     <div class="options-grid col2">
-      <label class="opt-item"><input type="checkbox" name="style" value="모던/미니멀"><span class="opt-box"><span class="opt-check"></span>모던/미니멀</span></label>
-      <label class="opt-item"><input type="checkbox" name="style" value="내추럴/우드톤"><span class="opt-box"><span class="opt-check"></span>내추럴/우드톤</span></label>
-      <label class="opt-item"><input type="checkbox" name="style" value="호텔/럭셔리"><span class="opt-box"><span class="opt-check"></span>호텔/럭셔리</span></label>
-      <label class="opt-item"><input type="checkbox" name="style" value="빈티지/클래식"><span class="opt-box"><span class="opt-check"></span>빈티지/클래식</span></label>
-      <label class="opt-item"><input type="checkbox" name="style" value="스칸디나비안"><span class="opt-box"><span class="opt-check"></span>스칸디나비안</span></label>
-      <label class="opt-item"><input type="checkbox" name="style" value="미정/상담후결정"><span class="opt-box"><span class="opt-check"></span>잘 모르겠어요</span></label>
+      <label class="opt-item"><input type="checkbox" name="style" value="심플/미니멀"><span class="opt-box"><span class="opt-check"></span>심플 / 미니멀</span></label>
+      <label class="opt-item"><input type="checkbox" name="style" value="모던/그레이"><span class="opt-box"><span class="opt-check"></span>모던 / 그레이</span></label>
+      <label class="opt-item"><input type="checkbox" name="style" value="내추럴/젠스타일"><span class="opt-box"><span class="opt-check"></span>내추럴 / 젠스타일</span></label>
+      <label class="opt-item"><input type="checkbox" name="style" value="웨인스코팅/클래식"><span class="opt-box"><span class="opt-check"></span>웨인스코팅 / 클래식</span></label>
     </div>
   </div>
 
@@ -732,6 +730,10 @@ body {
       <div class="estimate-label">선택하신 조건 기준 예상 공사비</div>
       <div class="estimate-value" id="res-estimate">3,500 ~ 4,800만원</div>
       <div class="estimate-note" id="res-estimate-note">* 현장 실측 후 정확한 견적 산출 가능 / 가전·가구 별도</div>
+      <div style="margin-top:14px; padding:12px 14px; background:#f7f4ef; border-radius:8px; font-size:11.5px; color:var(--jk-gray); line-height:1.8; text-align:left;">
+        대면 상담을 진행하지 않고 가견적을 받을 시 실제 견적과 차이가 날 수 있어요.<br>
+        대면 상담 진행 시, 원하시는 조건에 따른 정확한 견적을 받아보실 수 있어요.
+      </div>
     </div>
   </div>
 
@@ -740,24 +742,34 @@ body {
     <div class="trait-list" id="res-traits"></div>
   </div>
 
-  <div class="result-card">
-    <div class="result-card-title">추천 마감재</div>
-    <div class="material-list" id="res-materials"></div>
-  </div>
+  <!-- 실사 이미지 섹션 — 사진 준비 후 활성화 -->
+  <!-- <div class="result-card" id="res-photo-card" style="display:none">
+    <div class="result-card-title">시공 사례</div>
+    <div id="res-photos"></div>
+  </div> -->
 
   <div class="cta-card">
     <div class="cta-inner">
       <div class="cta-name">JUNG KYUL DESIGN STUDIO</div>
-      <div class="cta-title">정확한 견적, 직접 상담드립니다</div>
-      <div class="cta-desc" id="res-cta-desc">
+      <div class="cta-title">정확한 견적, 대표가 직접 상담드립니다</div>
+      <div class="cta-desc">
         진단 결과를 바탕으로<br>
         정결 대표가 24시간 이내 직접 연락드립니다.<br>
         부담 없이 먼저 이야기해 보세요.
       </div>
       <a class="btn-cta" href="https://open.kakao.com/o/your-kakao-link" id="btn-kakao">
-        카카오로 바로 상담하기
+        💬&nbsp; 카카오로 바로 상담하기
+      </a>
+      <a class="btn-call" href="tel:010-0000-0000">
+        📞&nbsp; 전화 상담 신청
       </a>
     </div>
+  </div>
+
+  <div style="text-align:center; padding: 0 20px 8px;">
+    <button onclick="resetSurvey()" style="background:none; border:none; color:var(--jk-gray); font-size:13px; font-family:'Noto Sans KR',sans-serif; cursor:pointer; text-decoration:underline; padding:8px;">
+      ↺ 다시 진단하기
+    </button>
   </div>
 
   <div class="result-footer">— JUNG KYUL DESIGN STUDIO —</div>
@@ -829,97 +841,90 @@ function showToast(msg) {
 
 /* ══ 스타일 진단 로직 ══ */
 function diagnoseStyle(data) {
-  var styles = data.overall_style || [];
-  var color  = data.color_prefer || "";
-  var scope = data.construction_scope ? data.construction_scope[0] : '';
-  
-  var sizeText = data.site_size || "";
+  var styles  = data.overall_style || [];
+  var color   = data.color_prefer || '';
+  var scope   = data.construction_scope ? data.construction_scope[0] : '';
+  var sizeText = data.site_size || '';
 
-  /* 스타일 결정 */
-  var styleName, styleSub, traits, materials;
+  /* ─ 스타일 결정 (4종) ─ */
+  var styleName, styleSub, traits, styleKey;
 
-  if (styles.includes('모던/미니멀') || color.includes('그레이') || color.includes('화이트')) {
-    styleName = '모던 미니멀리스트';
-    styleSub = '불필요한 것은 덜어내고, 필요한 것만 남긴 깔끔한 공간을 추구합니다';
-    traits = ['군더더기 없는 라인', '수납 중심 설계', '무채색 베이스', '간접조명 선호', '오픈 수납 지양'];
-    materials = [
-      { icon: '🪵', name: '강마루 (화이트오크/애쉬)', desc: '밝고 넓어 보이는 효과. 미니멀 스타일에 가장 범용적' },
-      { icon: '🧱', name: '실크도배 (무광 화이트)', desc: '깔끔한 마감, 빛 반사 없어 공간이 더 정돈되어 보임' },
-      { icon: '💡', name: '매입 다운라이트 + 간접조명', desc: '천장을 깔끔하게 유지하면서 분위기 연출' }
-    ];
-  } else if (styles.includes('내추럴/우드톤') || color.includes('베이지') || color.includes('우드')) {
-    styleName = '내추럴 우드 러버';
-    styleSub = '따뜻하고 편안한 나무 소재의 자연스러운 공간을 원합니다';
-    traits = ['우드 소재 중심', '따뜻한 색온도 선호', '식물·그린 포인트', '텍스처 있는 마감', '아늑한 분위기'];
-    materials = [
-      { icon: '🌲', name: '원목마루 (월넛/오크)', desc: '자연스러운 결이 살아있어 내추럴 스타일의 핵심' },
-      { icon: '🤎', name: '합지도배 (베이지/웜톤)', desc: '포근한 분위기 연출. 원목과 색온도가 잘 맞음' },
-      { icon: '💛', name: '3000K 간접조명', desc: '노란 빛이 따뜻한 공간감을 극대화' }
-    ];
-  } else if (styles.includes('호텔/럭셔리') || color.includes('다크') || color.includes('블랙')) {
-    styleName = '호텔 럭셔리 감성';
-    styleSub = '품격 있고 고급스러운 호텔 같은 공간을 꿈꿉니다';
-    traits = ['대리석·포세린 타일', '다크 포인트 활용', '골드·블랙 하드웨어', '호텔식 욕실', '간접조명 레이어링'];
-    materials = [
-      { icon: '⬜', name: '대형 포세린 타일 (800×800~)', desc: '럭셔리 감성의 핵심. 줄눈 최소화로 넓어 보이는 효과' },
-      { icon: '🖤', name: '페인트 포인트 (다크 그레이·블랙)', desc: '한 면만 포인트 컬러로 공간에 깊이감 추가' },
-      { icon: '✨', name: '매립 간접조명 + 펜던트', desc: '호텔 분위기의 조명 레이어링' }
-    ];
-  } else if (styles.includes('빈티지/클래식')) {
-    styleName = '빈티지 클래식 감성';
-    styleSub = '세월의 흔적이 느껴지는 따뜻하고 감성적인 공간을 원합니다';
-    traits = ['헤링본 패턴 바닥', '몰딩 디테일', '따뜻한 조명', '패턴 포인트 도배', '앤틱 하드웨어'];
-    materials = [
-      { icon: '🏛️', name: '헤링본 마루 (오크/월넛)', desc: '빈티지 클래식의 상징. 공간에 리듬감과 품격을 더함' },
-      { icon: '🎨', name: '패턴/포인트 도배', desc: '클래식한 패턴으로 공간에 이야기를 담음' },
-      { icon: '🔆', name: '3000K 따뜻한 조명', desc: '빈티지 감성을 극대화하는 앤틱한 조명 색온도' }
-    ];
-  } else if (styles.includes('스칸디나비안')) {
-    styleName = '스칸디나비안 노르딕';
-    styleSub = '기능적이면서도 따뜻한 북유럽 감성의 공간을 추구합니다';
-    traits = ['화이트 베이스', '원목 소재', '심플한 가구', '그린·머스타드 포인트', '자연광 극대화'];
-    materials = [
-      { icon: '🌿', name: '화이트오크 강마루', desc: '밝고 자연스러운 북유럽 감성의 기본' },
-      { icon: '🤍', name: '무광 화이트 페인트 도장', desc: '스칸디나비안 스타일의 깨끗한 벽면' },
-      { icon: '☀️', name: '4000K 밝은 자연광 조명', desc: '일조량 부족한 북유럽을 반영한 밝은 실내' }
-    ];
+  if (styles.includes('심플/미니멀')) {
+    styleKey  = 'simple_minimal';
+    styleName = '심플 / 미니멀';
+    styleSub  = '꼭 필요한 것만 남긴, 여백이 아름다운 공간을 원하십니다';
+    traits    = ['깔끔한 직선 라인', '숨겨진 수납 설계', '화이트·오프화이트 베이스', '간접조명 중심', '군더더기 없는 마감'];
+  } else if (styles.includes('모던/그레이')) {
+    styleKey  = 'modern_gray';
+    styleName = '모던 / 그레이';
+    styleSub  = '세련된 무채색 톤으로 도시적인 감각을 담은 공간을 원하십니다';
+    traits    = ['그레이 계열 메인 컬러', '포인트 다크 라인', '무광 마감 선호', '심플한 하드웨어', '절제된 조명'];
+  } else if (styles.includes('내추럴/젠스타일')) {
+    styleKey  = 'natural_zen';
+    styleName = '내추럴 / 젠스타일';
+    styleSub  = '자연 소재의 따뜻함과 고요한 여백이 공존하는 공간을 원하십니다';
+    traits    = ['우드 & 자연 소재 중심', '따뜻한 베이지·브라운 톤', '여백의 미', '간접조명 + 자연광', '정돈된 포인트 그린'];
+  } else if (styles.includes('웨인스코팅/클래식')) {
+    styleKey  = 'wainscoting_classic';
+    styleName = '웨인스코팅 / 클래식';
+    styleSub  = '품격 있는 몰딩과 클래식한 디테일로 격조 있는 공간을 원하십니다';
+    traits    = ['웨인스코팅 벽면 디테일', '몰딩 포인트', '따뜻한 화이트·크림 톤', '앤틱 하드웨어', '우아한 조명'];
   } else {
-    styleName = '나만의 믹스 스타일';
-    styleSub = '여러 스타일을 조화롭게 섞은 개성 있는 공간을 원합니다';
-    traits = ['절충형 스타일', '실용성 중심', '편안한 분위기', '개성 있는 포인트'];
-    materials = [
-      { icon: '🪵', name: '강마루 (뉴트럴 컬러)', desc: '어떤 스타일과도 잘 어울리는 범용성 높은 선택' },
-      { icon: '🧱', name: '실크도배 (뉴트럴 베이지)', desc: '가구·소품과 코디하기 쉬운 중간 톤' },
-      { icon: '💡', name: '4000K 표준 조명', desc: '자연스럽고 편안한 일상 조명' }
-    ];
+    /* 스타일 미선택 시 색상으로 fallback */
+    if (color.includes('그레이') || color.includes('무채')) {
+      styleKey = 'modern_gray'; styleName = '모던 / 그레이';
+      styleSub = '세련된 무채색 톤으로 도시적인 감각을 담은 공간을 원하십니다';
+      traits   = ['그레이 계열 메인 컬러', '포인트 다크 라인', '무광 마감 선호', '심플한 하드웨어', '절제된 조명'];
+    } else if (color.includes('베이지') || color.includes('우드')) {
+      styleKey = 'natural_zen'; styleName = '내추럴 / 젠스타일';
+      styleSub = '자연 소재의 따뜻함과 고요한 여백이 공존하는 공간을 원하십니다';
+      traits   = ['우드 & 자연 소재 중심', '따뜻한 베이지·브라운 톤', '여백의 미', '간접조명 + 자연광', '정돈된 포인트 그린'];
+    } else {
+      styleKey = 'simple_minimal'; styleName = '심플 / 미니멀';
+      styleSub = '꼭 필요한 것만 남긴, 여백이 아름다운 공간을 원하십니다';
+      traits   = ['깔끔한 직선 라인', '숨겨진 수납 설계', '화이트·오프화이트 베이스', '간접조명 중심', '군더더기 없는 마감'];
+    }
   }
 
-  /* 견적 계산 */
+  /* ─ 견적 계산 ─ */
   var baseMin = 1500, baseMax = 2500;
-  if (sizeText.includes('10평')) { baseMin = 800; baseMax = 1500; }
+  if (sizeText.includes('10평'))      { baseMin = 800;  baseMax = 1500; }
   else if (sizeText.includes('20평')) { baseMin = 1500; baseMax = 2800; }
   else if (sizeText.includes('30평')) { baseMin = 2500; baseMax = 4500; }
   else if (sizeText.includes('40평')) { baseMin = 4000; baseMax = 7000; }
 
-  if (scope.includes('부분')) { baseMin = Math.round(baseMin * 0.4); baseMax = Math.round(baseMax * 0.5); }
-  else if (scope.includes('전체')) { baseMin = Math.round(baseMin * 1.0); baseMax = Math.round(baseMax * 1.1); }
+  if (scope.includes('부분'))        { baseMin = Math.round(baseMin * 0.38); baseMax = Math.round(baseMax * 0.45); }
   else if (scope.includes('중규모')) { baseMin = Math.round(baseMin * 0.65); baseMax = Math.round(baseMax * 0.75); }
+  else if (scope.includes('전체'))   { /* 그대로 */ }
 
-  if (styleName.includes('럭셔리') || styleName.includes('호텔')) {
-    baseMin = Math.round(baseMin * 1.3); baseMax = Math.round(baseMax * 1.4);
+  if (styleKey === 'wainscoting_classic') {
+    baseMin = Math.round(baseMin * 1.1); baseMax = Math.round(baseMax * 1.2);
   }
 
   var estimateStr = baseMin.toLocaleString() + ' ~ ' + baseMax.toLocaleString() + '만원';
 
-  return { styleName: styleName, styleSub: styleSub, traits: traits, materials: materials, estimate: estimateStr };
+  /* ─ 실사 이미지 (추후 사진 준비 후 URL 입력) ─
+     사진 4종 준비되면 아래 photos 배열에 URL 넣으면 자동 표시됨
+     photos: [ {url:'이미지URL', caption:'캡션'}, ... ]
+  */
+  var STYLE_PHOTOS = {
+    simple_minimal:      [], /* 예: [{url:'https://...jpg', caption:'심플 미니멀 거실'}] */
+    modern_gray:         [],
+    natural_zen:         [],
+    wainscoting_classic: []
+  };
+  var photos = STYLE_PHOTOS[styleKey] || [];
+
+  return { styleName, styleSub, traits, styleKey, photos, estimate: estimateStr };
 }
 
 /* ══ 결과 화면 렌더 ══ */
 function renderResult(result) {
   document.getElementById('res-style-name').textContent = result.styleName;
-  document.getElementById('res-style-sub').textContent = result.styleSub;
-  document.getElementById('res-estimate').textContent = result.estimate;
+  document.getElementById('res-style-sub').textContent  = result.styleSub;
+  document.getElementById('res-estimate').textContent   = result.estimate;
 
+  /* 스타일 특징 태그 */
   var traitEl = document.getElementById('res-traits');
   traitEl.innerHTML = '';
   result.traits.forEach(function(t) {
@@ -929,14 +934,21 @@ function renderResult(result) {
     traitEl.appendChild(span);
   });
 
-  var matEl = document.getElementById('res-materials');
-  matEl.innerHTML = '';
-  result.materials.forEach(function(m) {
-    matEl.innerHTML += '<div class="material-item">' +
-      '<div class="material-icon">' + m.icon + '</div>' +
-      '<div><div class="material-name">' + m.name + '</div>' +
-      '<div class="material-desc">' + m.desc + '</div></div></div>';
-  });
+  /* 실사 사진 — photos 배열에 데이터 있을 때만 표시 */
+  var photoCard = document.getElementById('res-photo-card');
+  if (result.photos && result.photos.length > 0 && photoCard) {
+    var photosEl = document.getElementById('res-photos');
+    photosEl.innerHTML = '';
+    result.photos.forEach(function(p) {
+      photosEl.innerHTML +=
+        '<div style="margin-bottom:10px;">' +
+        '<img src="' + p.url + '" alt="' + (p.caption||'') + '" ' +
+        'style="width:100%;border-radius:8px;display:block;">' +
+        (p.caption ? '<div style="font-size:11px;color:var(--jk-gray);margin-top:5px;text-align:center;">' + p.caption + '</div>' : '') +
+        '</div>';
+    });
+    photoCard.style.display = 'block';
+  }
 }
 
 /* ══ 제출 ══ */
@@ -1029,6 +1041,12 @@ async function submitSurvey() {
     var msg = e.message || '오류가 발생했습니다.'; showToast(msg.length > 60 ? '저장 오류: ' + msg.slice(0,60) + '...' : '오류: ' + msg);
   }
 }
+
+/* ══ 다시 진단하기 ══ */
+function resetSurvey() {
+  location.reload();
+}
+
 </script>
 </body>
 </html>
