@@ -860,11 +860,11 @@ function diagnoseStyle(data) {
 
   /* ─ 이미지 경로 (GitHub images/ 폴더) ─ */
   var STYLE_IMG = {
-    'simple_minimal':      'images/심플미니멀.png',
-    'modern_gray':         'images/모던그레이.png',
-    'natural_wood':        'images/내츄럴우드.png',
-    'zen':                 'images/젠스타일.png',
-    'wainscoting_classic': 'images/웨인스코팅_클래식.png'
+    'simple_minimal':      'images/style_simple.png',
+    'modern_gray':         'images/style_modern.png',
+    'natural_wood':        'images/style_natural.png',
+    'zen':                 'images/style_zen.png',
+    'wainscoting_classic': 'images/style_classic.png'
   };
 
   /* ─ 스타일 결정 (5종) ─ */
@@ -923,24 +923,24 @@ function diagnoseStyle(data) {
 
   var scopeItems = data.construction_scope || [];
   var UNIT = {
-    '확장공사/구조변경': {type:'fixed',val:180},
-    '난방공사':          {type:'sqm',  val:26 },
-    '목공사':            {type:'sqm',  val:30 },
-    '전기공사_단순교체': {type:'sqm',  val:3.5},
-    '전기공사_신규배선': {type:'sqm',  val:7.5},
-    '욕실공사_1개':      {type:'fixed',val:500},
-    '욕실공사_2개':      {type:'fixed',val:1000},
-    '타일공사':          {type:'fixed',val:45 },
-    '도장_세탁실베란다': {type:'fixed',val:75 },
-    '도장_전체':         {type:'sqm',  val:15 },
-    '필름리폼':          {type:'fixed',val:40 },
-    '바닥_마루':         {type:'sqm',  val:15 },
-    '바닥_장판':         {type:'sqm',  val:7.5},
-    '도배_실크':         {type:'sqm',  val:12 },
-    '도배_합지':         {type:'sqm',  val:8  },
-    '주방가구':          {type:'fixed',val:800},
-    '붙박이장/수납가구': {type:'fixed',val:200},
-    '준공청소':          {type:'sqm',  val:1.5}
+    '확장공사/구조변경': {type:'fixed',val:207},
+    '난방공사':          {type:'sqm',  val:29.9},
+    '목공사':            {type:'sqm',  val:34.5},
+    '전기공사_단순교체': {type:'sqm',  val:4.0},
+    '전기공사_신규배선': {type:'sqm',  val:8.6},
+    '욕실공사_1개':      {type:'fixed',val:575},
+    '욕실공사_2개':      {type:'fixed',val:1150},
+    '타일공사':          {type:'fixed',val:51.8},
+    '도장_세탁실베란다': {type:'fixed',val:86.3},
+    '도장_전체':         {type:'sqm',  val:17.3},
+    '필름리폼':          {type:'fixed',val:46 },
+    '바닥_마루':         {type:'sqm',  val:17.3},
+    '바닥_장판':         {type:'sqm',  val:8.6},
+    '도배_실크':         {type:'sqm',  val:13.8},
+    '도배_합지':         {type:'sqm',  val:9.2},
+    '주방가구':          {type:'fixed',val:920},
+    '붙박이장/수납가구': {type:'fixed',val:230},
+    '준공청소':          {type:'sqm',  val:1.7}
   };
 
   var total = 0;
@@ -951,8 +951,8 @@ function diagnoseStyle(data) {
 
   var estimateStr;
   if (total === 0) {
-    var fbMin = Math.round(sqm * 160);
-    var fbMax = Math.round(sqm * 230);
+    var fbMin = Math.round(sqm * 184);
+    var fbMax = Math.round(sqm * 265);
     estimateStr = fbMin.toLocaleString() + ' ~ ' + fbMax.toLocaleString() + '만원';
   } else {
     var estMin = Math.round(total * 0.8 / 10) * 10;
