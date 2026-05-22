@@ -540,7 +540,7 @@ body {
     <div class="brand-logo">JUNG KYUL DESIGN STUDIO</div>
     <div class="brand-subtitle">"공간의 결을 바로 세우다" 정결(正潔)</div>
     <div class="cover-divider"></div>
-    <div class="cover-title">내 공사비,<br>지금 바로 확인해보세요</div>
+    <div class="cover-title">우리 집 공사,<br>얼마나 들까요?</div>
     <p class="cover-desc">
       원하는 공사 항목만 선택하면<br>
       예상 견적 범위를 즉시 알려드립니다
@@ -793,41 +793,42 @@ var _chipVals = { size: '', budget: '' };
 
 function selectChip(el, group) {
   var groupEl = document.getElementById(group + '-chips');
-  groupEl.querySelectorAll('.budget-chip').forEach(function(c) { c.classList.remove('selected'); });
+  if (groupEl) {
+    groupEl.querySelectorAll('.budget-chip').forEach(function(c) { c.classList.remove('selected'); });
+  }
   el.classList.add('selected');
   _chipVals[group] = el.dataset.val;
-  if (group === 'budget') document.getElementById('budget').value = el.dataset.val;
-  if (group === 'size') document.getElementById('siteSize').value = el.dataset.val;
+  if (group === 'size') {
+    var sizeEl = document.getElementById('siteSize');
+    if (sizeEl) sizeEl.value = el.dataset.val;
+  }
   updateProgress();
 }
 
-/* ══ 진행률 ══ */
-var TOTAL_Q = 8;
+/* ══ 진행률 (실제 항목 9개 기준) ══ */
 function updateProgress() {
   var filled = 0;
-  if (vt('clientName')) filled++;
-  if (vt('clientPhone')) filled++;
-  if (getRadio('aptType')) filled++;
-  if (_chipVals.size) filled++;
-  if (getChecked('purpose').length) filled++;
-  if (getChecked('style').length) filled++;
-  if (getRadio('colorPrefer')) filled++;
-  if (getChecked('scopeItem').length > 0) filled++;
-  if (getRadio('scope')) filled++;
-  if (_chipVals.budget) filled++;
-  if (vt('priority1')) filled++;
+  if (vt('clientName'))                     filled++; /* 성함 */
+  if (vt('clientPhone'))                    filled++; /* 연락처 */
+  if (getRadio('aptType'))                  filled++; /* Q1 주거유형 */
+  if (_chipVals.size)                       filled++; /* Q2 평수 */
+  if (getChecked('purpose').length)         filled++; /* Q3 목적 */
+  if (getRadio('style'))                    filled++; /* Q4 스타일 */
+  if (getRadio('colorPrefer'))              filled++; /* Q5 색상 */
+  if (getChecked('scopeItem').length > 0)   filled++; /* Q6 공사항목 */
+  if (vt('priority1'))                      filled++; /* Q7 메모 */
 
-  var pct = Math.min(Math.round((filled / 10) * 100), 100);
+  var pct = Math.min(Math.round((filled / 9) * 100), 100);
   document.getElementById('progress-fill').style.width = pct + '%';
   document.getElementById('progress-pct').textContent = pct + '%';
   document.getElementById('progress-label').textContent =
     pct < 30 ? '작성 중…' : pct < 70 ? '잘 하고 계세요 ✦' : pct < 100 ? '거의 다 됐어요!' : '완성!';
+  if (typeof calcScopeTotal === 'function') calcScopeTotal();
 }
 
 document.querySelectorAll('input,textarea').forEach(function(el) {
   el.addEventListener('input', updateProgress);
   el.addEventListener('change', updateProgress);
-  el.addEventListener('change', function(){ if(el.name==='scopeItem') calcScopeTotal(); });
 });
 
 /* ══ 유틸 ══ */
@@ -982,10 +983,13 @@ function renderResult(result) {
   var photoCard = document.getElementById('res-photo-card');
   if (result.photoUrl && photoCard) {
     var photosEl = document.getElementById('res-photos');
-    photosEl.innerHTML =
-      '<img src="' + result.photoUrl + '" alt="' + result.styleName + '" ' +
-      'style="width:100%;border-radius:8px;display:block;" ' +
-      'onerror="this.parentElement.parentElement.style.display='none'">';
+    var img = document.createElement('img');
+    img.src = result.photoUrl;
+    img.alt = result.styleName;
+    img.style.cssText = 'width:100%;border-radius:8px;display:block;';
+    img.onerror = function() { photoCard.style.display = 'none'; };
+    photosEl.innerHTML = '';
+    photosEl.appendChild(img);
     photoCard.style.display = 'block';
   }
 }
@@ -1020,7 +1024,7 @@ async function submitSurvey() {
     budget:             '',  /* 항목 합산으로 대체 */
     site_size:          _chipVals.size,
     apt_type:           getRadio('aptType'),
-    overall_style:      getChecked('style'),
+    overall_style:      getRadio('style') ? [getRadio('style')] : [],
     color_prefer:       getRadio('colorPrefer'),
     construction_scope: getChecked('scopeItem'),
     priority1:          vt('priority1'),
