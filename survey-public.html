@@ -637,12 +637,13 @@ body {
   <!-- Q4 인테리어 스타일 -->
   <div class="q-card" data-q="4">
     <div class="q-label"><span class="q-num">4</span>원하는 인테리어 스타일은 무엇인가요? <span class="q-required">*</span></div>
-    <div class="q-hint">가장 끌리는 것을 선택해 주세요 (복수 선택 가능)</div>
+    <div class="q-hint">가장 원하는 스타일 하나를 선택해 주세요</div>
     <div class="options-grid col2">
-      <label class="opt-item"><input type="checkbox" name="style" value="심플/미니멀"><span class="opt-box"><span class="opt-check"></span>심플 / 미니멀</span></label>
-      <label class="opt-item"><input type="checkbox" name="style" value="모던/그레이"><span class="opt-box"><span class="opt-check"></span>모던 / 그레이</span></label>
-      <label class="opt-item"><input type="checkbox" name="style" value="내추럴/젠스타일"><span class="opt-box"><span class="opt-check"></span>내추럴 / 젠스타일</span></label>
-      <label class="opt-item"><input type="checkbox" name="style" value="웨인스코팅/클래식"><span class="opt-box"><span class="opt-check"></span>웨인스코팅 / 클래식</span></label>
+      <label class="opt-item radio"><input type="radio" name="style" value="심플/미니멀"><span class="opt-box"><span class="opt-check"></span>심플 / 미니멀</span></label>
+      <label class="opt-item radio"><input type="radio" name="style" value="모던/그레이"><span class="opt-box"><span class="opt-check"></span>모던 / 그레이</span></label>
+      <label class="opt-item radio"><input type="radio" name="style" value="내추럴/우드"><span class="opt-box"><span class="opt-check"></span>내추럴 / 우드</span></label>
+      <label class="opt-item radio"><input type="radio" name="style" value="젠스타일"><span class="opt-box"><span class="opt-check"></span>젠스타일</span></label>
+      <label class="opt-item radio"><input type="radio" name="style" value="웨인스코팅/클래식"><span class="opt-box"><span class="opt-check"></span>웨인스코팅 / 클래식</span></label>
     </div>
   </div>
 
@@ -749,11 +750,11 @@ body {
     <div class="trait-list" id="res-traits"></div>
   </div>
 
-  <!-- 실사 이미지 섹션 — 사진 준비 후 활성화 -->
-  <!-- <div class="result-card" id="res-photo-card" style="display:none">
-    <div class="result-card-title">시공 사례</div>
+  <!-- 실사 이미지 섹션 -->
+  <div class="result-card" id="res-photo-card" style="display:none">
+    <div class="result-card-title">이런 공간을 만들어 드립니다</div>
     <div id="res-photos"></div>
-  </div> -->
+  </div>
 
   <div class="cta-card">
     <div class="cta-inner">
@@ -850,44 +851,59 @@ function showToast(msg) {
 
 /* ══ 스타일 진단 로직 ══ */
 function diagnoseStyle(data) {
-  var styles  = data.overall_style || [];
-  var color   = data.color_prefer || '';
-  var scope   = data.construction_scope ? data.construction_scope[0] : '';
+  var rawStyle = data.overall_style || [];
+  var styleVal = Array.isArray(rawStyle) ? (rawStyle[0] || '') : String(rawStyle);
+  var color    = data.color_prefer || '';
+  var scope    = data.construction_scope ? data.construction_scope[0] : '';
   var sizeText = data.site_size || '';
 
-  /* ─ 스타일 결정 (4종) ─ */
+  /* ─ 이미지 경로 (GitHub images/ 폴더) ─ */
+  var STYLE_IMG = {
+    'simple_minimal':      'images/심플미니멀.png',
+    'modern_gray':         'images/모던그레이.png',
+    'natural_wood':        'images/내츄럴우드.png',
+    'zen':                 'images/젠스타일.png',
+    'wainscoting_classic': 'images/웨인스코팅_클래식.png'
+  };
+
+  /* ─ 스타일 결정 (5종) ─ */
   var styleName, styleSub, traits, styleKey;
 
-  if (styles.includes('심플/미니멀')) {
+  if (styleVal === '심플/미니멀') {
     styleKey  = 'simple_minimal';
     styleName = '심플 / 미니멀';
     styleSub  = '꼭 필요한 것만 남긴, 여백이 아름다운 공간을 원하십니다';
     traits    = ['깔끔한 직선 라인', '숨겨진 수납 설계', '화이트·오프화이트 베이스', '간접조명 중심', '군더더기 없는 마감'];
-  } else if (styles.includes('모던/그레이')) {
+  } else if (styleVal === '모던/그레이') {
     styleKey  = 'modern_gray';
     styleName = '모던 / 그레이';
     styleSub  = '세련된 무채색 톤으로 도시적인 감각을 담은 공간을 원하십니다';
     traits    = ['그레이 계열 메인 컬러', '포인트 다크 라인', '무광 마감 선호', '심플한 하드웨어', '절제된 조명'];
-  } else if (styles.includes('내추럴/젠스타일')) {
-    styleKey  = 'natural_zen';
-    styleName = '내추럴 / 젠스타일';
-    styleSub  = '자연 소재의 따뜻함과 고요한 여백이 공존하는 공간을 원하십니다';
-    traits    = ['우드 & 자연 소재 중심', '따뜻한 베이지·브라운 톤', '여백의 미', '간접조명 + 자연광', '정돈된 포인트 그린'];
-  } else if (styles.includes('웨인스코팅/클래식')) {
+  } else if (styleVal === '내추럴/우드') {
+    styleKey  = 'natural_wood';
+    styleName = '내추럴 / 우드';
+    styleSub  = '따뜻한 나무 소재와 자연스러운 색감이 어우러진 공간을 원하십니다';
+    traits    = ['우드 소재 중심', '따뜻한 베이지·브라운 톤', '자연 소재 마감', '간접조명 + 자연광', '편안하고 아늑한 분위기'];
+  } else if (styleVal === '젠스타일') {
+    styleKey  = 'zen';
+    styleName = '젠스타일';
+    styleSub  = '고요한 여백과 절제된 아름다움이 공존하는 공간을 원하십니다';
+    traits    = ['비움의 미학', '뉴트럴 베이지·크림 톤', '낮은 가구 배치', '자연광 극대화', '정돈된 미니멀 소품'];
+  } else if (styleVal === '웨인스코팅/클래식') {
     styleKey  = 'wainscoting_classic';
     styleName = '웨인스코팅 / 클래식';
     styleSub  = '품격 있는 몰딩과 클래식한 디테일로 격조 있는 공간을 원하십니다';
     traits    = ['웨인스코팅 벽면 디테일', '몰딩 포인트', '따뜻한 화이트·크림 톤', '앤틱 하드웨어', '우아한 조명'];
   } else {
-    /* 스타일 미선택 시 색상으로 fallback */
+    /* 미선택 시 색상으로 fallback */
     if (color.includes('그레이') || color.includes('무채')) {
       styleKey = 'modern_gray'; styleName = '모던 / 그레이';
       styleSub = '세련된 무채색 톤으로 도시적인 감각을 담은 공간을 원하십니다';
       traits   = ['그레이 계열 메인 컬러', '포인트 다크 라인', '무광 마감 선호', '심플한 하드웨어', '절제된 조명'];
     } else if (color.includes('베이지') || color.includes('우드')) {
-      styleKey = 'natural_zen'; styleName = '내추럴 / 젠스타일';
-      styleSub = '자연 소재의 따뜻함과 고요한 여백이 공존하는 공간을 원하십니다';
-      traits   = ['우드 & 자연 소재 중심', '따뜻한 베이지·브라운 톤', '여백의 미', '간접조명 + 자연광', '정돈된 포인트 그린'];
+      styleKey = 'natural_wood'; styleName = '내추럴 / 우드';
+      styleSub = '따뜻한 나무 소재와 자연스러운 색감이 어우러진 공간을 원하십니다';
+      traits   = ['우드 소재 중심', '따뜻한 베이지·브라운 톤', '자연 소재 마감', '간접조명 + 자연광', '편안하고 아늑한 분위기'];
     } else {
       styleKey = 'simple_minimal'; styleName = '심플 / 미니멀';
       styleSub = '꼭 필요한 것만 남긴, 여백이 아름다운 공간을 원하십니다';
@@ -895,72 +911,55 @@ function diagnoseStyle(data) {
     }
   }
 
-  /* ─ 견적 계산 (항목별 단가 × 평수 합산) ─ */
-  /* 평수 파싱 */
-  var sqm = 25; /* 기본값 25평 */
+  var photoUrl = STYLE_IMG[styleKey] || '';
+
+  /* ─ 견적 계산 ─ */
+  var sqm = 25;
   if (sizeText.includes('10평'))      sqm = 12;
   else if (sizeText.includes('20평')) sqm = 22;
   else if (sizeText.includes('30평')) sqm = 32;
   else if (sizeText.includes('40평')) sqm = 45;
 
-  /* 선택된 공사 항목 */
   var scopeItems = data.construction_scope || [];
-
-  /* 단가 테이블 (만원 기준) */
   var UNIT = {
-    '확장공사/구조변경':  { type:'fixed', val:180  },
-    '난방공사':           { type:'sqm',   val:26   },
-    '목공사':             { type:'sqm',   val:30   },
-    '전기공사_단순교체':  { type:'sqm',   val:3.5  },
-    '전기공사_신규배선':  { type:'sqm',   val:7.5  },
-    '욕실공사_1개':       { type:'fixed', val:500  },
-    '욕실공사_2개':       { type:'fixed', val:1000 },
-    '타일공사':           { type:'fixed', val:45   },
-    '도장_세탁실베란다':  { type:'fixed', val:75   },
-    '도장_전체':          { type:'sqm',   val:15   },
-    '필름리폼':           { type:'fixed', val:40   },
-    '바닥_마루':          { type:'sqm',   val:15   },
-    '바닥_장판':          { type:'sqm',   val:7.5  },
-    '도배_실크':          { type:'sqm',   val:12   },
-    '도배_합지':          { type:'sqm',   val:8    },
-    '주방가구':           { type:'fixed', val:800  },
-    '붙박이장/수납가구':  { type:'fixed', val:200  },
-    '준공청소':           { type:'sqm',   val:1.5  }
+    '확장공사/구조변경': {type:'fixed',val:180},
+    '난방공사':          {type:'sqm',  val:26 },
+    '목공사':            {type:'sqm',  val:30 },
+    '전기공사_단순교체': {type:'sqm',  val:3.5},
+    '전기공사_신규배선': {type:'sqm',  val:7.5},
+    '욕실공사_1개':      {type:'fixed',val:500},
+    '욕실공사_2개':      {type:'fixed',val:1000},
+    '타일공사':          {type:'fixed',val:45 },
+    '도장_세탁실베란다': {type:'fixed',val:75 },
+    '도장_전체':         {type:'sqm',  val:15 },
+    '필름리폼':          {type:'fixed',val:40 },
+    '바닥_마루':         {type:'sqm',  val:15 },
+    '바닥_장판':         {type:'sqm',  val:7.5},
+    '도배_실크':         {type:'sqm',  val:12 },
+    '도배_합지':         {type:'sqm',  val:8  },
+    '주방가구':          {type:'fixed',val:800},
+    '붙박이장/수납가구': {type:'fixed',val:200},
+    '준공청소':          {type:'sqm',  val:1.5}
   };
 
   var total = 0;
   scopeItems.forEach(function(item) {
-    var u = UNIT[item];
-    if (!u) return;
+    var u = UNIT[item]; if (!u) return;
     total += u.type === 'sqm' ? u.val * sqm : u.val;
   });
 
   var estimateStr;
   if (total === 0) {
-    /* 항목 미선택 시 평당 160~230만원 범위로 fallback */
     var fbMin = Math.round(sqm * 160);
     var fbMax = Math.round(sqm * 230);
     estimateStr = fbMin.toLocaleString() + ' ~ ' + fbMax.toLocaleString() + '만원';
   } else {
-    /* 합계 ±20% 범위 */
     var estMin = Math.round(total * 0.8 / 10) * 10;
     var estMax = Math.round(total * 1.2 / 10) * 10;
     estimateStr = estMin.toLocaleString() + ' ~ ' + estMax.toLocaleString() + '만원';
   }
 
-  /* ─ 실사 이미지 (추후 사진 준비 후 URL 입력) ─
-     사진 4종 준비되면 아래 photos 배열에 URL 넣으면 자동 표시됨
-     photos: [ {url:'이미지URL', caption:'캡션'}, ... ]
-  */
-  var STYLE_PHOTOS = {
-    simple_minimal:      [], /* 예: [{url:'https://...jpg', caption:'심플 미니멀 거실'}] */
-    modern_gray:         [],
-    natural_zen:         [],
-    wainscoting_classic: []
-  };
-  var photos = STYLE_PHOTOS[styleKey] || [];
-
-  return { styleName, styleSub, traits, styleKey, photos, estimate: estimateStr };
+  return { styleName, styleSub, traits, styleKey, photoUrl, estimate: estimateStr };
 }
 
 /* ══ 결과 화면 렌더 ══ */
@@ -979,19 +978,14 @@ function renderResult(result) {
     traitEl.appendChild(span);
   });
 
-  /* 실사 사진 — photos 배열에 데이터 있을 때만 표시 */
+  /* 실사 사진 — styleKey에 매칭된 이미지 표시 */
   var photoCard = document.getElementById('res-photo-card');
-  if (result.photos && result.photos.length > 0 && photoCard) {
+  if (result.photoUrl && photoCard) {
     var photosEl = document.getElementById('res-photos');
-    photosEl.innerHTML = '';
-    result.photos.forEach(function(p) {
-      photosEl.innerHTML +=
-        '<div style="margin-bottom:10px;">' +
-        '<img src="' + p.url + '" alt="' + (p.caption||'') + '" ' +
-        'style="width:100%;border-radius:8px;display:block;">' +
-        (p.caption ? '<div style="font-size:11px;color:var(--jk-gray);margin-top:5px;text-align:center;">' + p.caption + '</div>' : '') +
-        '</div>';
-    });
+    photosEl.innerHTML =
+      '<img src="' + result.photoUrl + '" alt="' + result.styleName + '" ' +
+      'style="width:100%;border-radius:8px;display:block;" ' +
+      'onerror="this.parentElement.parentElement.style.display='none'">';
     photoCard.style.display = 'block';
   }
 }
@@ -1003,7 +997,7 @@ async function submitSurvey() {
   if (!getRadio('aptType')) { showToast('주거 유형을 선택해 주세요.'); return; }
   if (!_chipVals.size) { showToast('전용면적을 선택해 주세요.'); return; }
   if (getChecked('purpose').length === 0) { showToast('리모델링 목적을 선택해 주세요.'); return; }
-  if (getChecked('style').length === 0) { showToast('원하는 스타일을 선택해 주세요.'); return; }
+  if (!getRadio('style'))               { showToast('원하는 스타일을 선택해 주세요.'); return; }
   if (!getRadio('colorPrefer')) { showToast('선호 색상을 선택해 주세요.'); return; }
   if (getChecked('scopeItem').length === 0) { showToast('공사 항목을 1개 이상 선택해 주세요.'); return; }
   /* 예산 칩 제거됨 — 항목 합산으로 대체 */
