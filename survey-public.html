@@ -1069,31 +1069,16 @@ function diagnoseStyle(data) {
   else if (sizeText.includes('40평')) sqm = 45;
 
   var scopeItems = data.construction_scope || [];
-  var UNIT = {
-    '확장공사/구조변경': {type:'fixed',val:207},
-    '난방공사':          {type:'sqm',  val:29.9},
-    '목공사':            {type:'sqm',  val:34.5},
-    '전기공사_단순교체': {type:'sqm',  val:4.0},
-    '전기공사_신규배선': {type:'sqm',  val:8.6},
-    '욕실공사_1개':      {type:'fixed',val:575},
-    '욕실공사_2개':      {type:'fixed',val:1150},
-    '타일공사':          {type:'fixed',val:51.8},
-    '도장_세탁실베란다': {type:'fixed',val:86.3},
-    '도장_전체':         {type:'sqm',  val:17.3},
-    '필름리폼':          {type:'fixed',val:46 },
-    '바닥_마루':         {type:'sqm',  val:17.3},
-    '바닥_장판':         {type:'sqm',  val:8.6},
-    '도배_실크':         {type:'sqm',  val:13.8},
-    '도배_합지':         {type:'sqm',  val:9.2},
-    '주방가구':          {type:'fixed',val:920},
-    '붙박이장/수납가구': {type:'fixed',val:230},
-    '준공청소':          {type:'sqm',  val:1.7}
-  };
 
+  /* ─ 견적 계산 — data-val 직접 읽기 ─ */
   var total = 0;
-  scopeItems.forEach(function(item) {
-    var u = UNIT[item]; if (!u) return;
-    total += u.type === 'sqm' ? u.val * sqm : u.val;
+  document.querySelectorAll('input[name="scopeItem"]:checked').forEach(function(el) {
+    var v = el.dataset.val || '0';
+    if (v.startsWith('sqm:')) {
+      total += parseFloat(v.replace('sqm:', '')) * sqm;
+    } else {
+      total += parseFloat(v) || 0;
+    }
   });
 
   var estimateStr;
