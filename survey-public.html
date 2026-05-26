@@ -363,18 +363,31 @@ body {
 .result-cover {
   background: var(--jk-black);
   border-radius: var(--radius);
-  padding: 32px 24px;
+  padding: 36px 24px 32px;
   text-align: center;
   color: #fff;
   margin-bottom: 20px;
   position: relative; overflow: hidden;
+  min-height: 220px;
+  display: flex; align-items: center; justify-content: center;
+}
+.result-cover-bg {
+  position: absolute; inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transition: opacity .5s ease;
 }
 .result-cover::before {
   content: '';
   position: absolute; inset: 0;
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d2520 60%, #1a1a1a 100%);
+  background: linear-gradient(180deg,
+    rgba(0,0,0,.45) 0%,
+    rgba(0,0,0,.62) 50%,
+    rgba(0,0,0,.75) 100%);
+  z-index: 1;
 }
-.result-cover-inner { position: relative; z-index: 1; }
+.result-cover-inner { position: relative; z-index: 2; width: 100%; }
 .result-icon {
   width: 64px; height: 64px;
   background: rgba(212,175,122,.15);
@@ -710,9 +723,9 @@ body {
       <div class="scope-group">
         <div class="scope-group-title">확장공사 / 구조변경</div>
         <div class="options-grid col2">
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="확장_거실" data-val="186.3"><span class="opt-box"><span class="opt-check"></span>거실 확장</span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="확장_침실1" data-val="27"><span class="opt-box"><span class="opt-check"></span>침실 1개 추가</span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="확장_침실2" data-val="54"><span class="opt-box"><span class="opt-check"></span>침실 2개 추가</span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="확장_거실" data-val="195.6"><span class="opt-box"><span class="opt-check"></span>거실 확장</span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="확장_침실1" data-val="28.4"><span class="opt-box"><span class="opt-check"></span>침실 1개 추가</span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="확장_침실2" data-val="56.7"><span class="opt-box"><span class="opt-check"></span>침실 2개 추가</span></label>
         </div>
       </div>
 
@@ -720,7 +733,7 @@ body {
       <div class="scope-group">
         <div class="scope-group-title">난방공사</div>
         <div class="options-grid col2">
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="난방공사" data-val="sqm:26.91"><span class="opt-box"><span class="opt-check"></span>전체 난방공사</span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="난방공사" data-val="sqm:28.26"><span class="opt-box"><span class="opt-check"></span>전체 난방공사</span></label>
         </div>
       </div>
 
@@ -728,7 +741,7 @@ body {
       <div class="scope-group">
         <div class="scope-group-title">목공사 (벽체·천장·단열)</div>
         <div class="options-grid col2">
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="목공사" data-val="sqm:31.05"><span class="opt-box"><span class="opt-check"></span>벽체·천장·단열</span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="목공사" data-val="sqm:32.6"><span class="opt-box"><span class="opt-check"></span>벽체·천장·단열</span></label>
         </div>
       </div>
 
@@ -736,8 +749,8 @@ body {
       <div class="scope-group">
         <div class="scope-group-title">전기공사</div>
         <div class="options-grid col2">
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="전기_단순교체" data-val="sqm:3.6" data-group="전기"><span class="opt-box"><span class="opt-check"></span>조명기구 단순교체 <span class="opt-price">평당 4만</span></span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="전기_신규배선" data-val="sqm:7.74" data-group="전기"><span class="opt-box"><span class="opt-check"></span>증설·이설 신규배선 <span class="opt-price">평당 8.6만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="전기_단순교체" data-val="sqm:3.78" data-group="전기"><span class="opt-box"><span class="opt-check"></span>조명기구 단순교체 <span class="opt-price">평당 4만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="전기_신규배선" data-val="sqm:8.13" data-group="전기"><span class="opt-box"><span class="opt-check"></span>증설·이설 신규배선 <span class="opt-price">평당 8.6만</span></span></label>
         </div>
       </div>
 
@@ -745,10 +758,10 @@ body {
       <div class="scope-group">
         <div class="scope-group-title">욕실공사</div>
         <div class="options-grid col2">
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="욕실_안방" data-val="517.5" data-group="욕실_안방"><span class="opt-box"><span class="opt-check"></span>안방욕실 전체 <span class="opt-price">575만</span></span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="욕실_공용" data-val="517.5" data-group="욕실_공용"><span class="opt-box"><span class="opt-check"></span>공용욕실 전체 <span class="opt-price">575만</span></span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="욕실_금구류1" data-val="90" data-group="욕실_안방"><span class="opt-box"><span class="opt-check"></span>수전·위생금구류만 (안방) <span class="opt-price">100만</span></span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="욕실_금구류2" data-val="180" data-group="욕실_공용"><span class="opt-box"><span class="opt-check"></span>수전·위생금구류만 (공용) <span class="opt-price">200만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="욕실_안방" data-val="543.4" data-group="욕실_안방"><span class="opt-box"><span class="opt-check"></span>안방욕실 전체 <span class="opt-price">575만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="욕실_공용" data-val="543.4" data-group="욕실_공용"><span class="opt-box"><span class="opt-check"></span>공용욕실 전체 <span class="opt-price">575만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="욕실_금구류1" data-val="94.5" data-group="욕실_안방"><span class="opt-box"><span class="opt-check"></span>수전·위생금구류만 (안방) <span class="opt-price">100만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="욕실_금구류2" data-val="189" data-group="욕실_공용"><span class="opt-box"><span class="opt-check"></span>수전·위생금구류만 (공용) <span class="opt-price">200만</span></span></label>
         </div>
       </div>
 
@@ -756,9 +769,9 @@ body {
       <div class="scope-group">
         <div class="scope-group-title">타일공사</div>
         <div class="options-grid col2">
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="타일_현관" data-val="46.6"><span class="opt-box"><span class="opt-check"></span>현관 <span class="opt-price">51.8만</span></span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="타일_베란다" data-val="76.5"><span class="opt-box"><span class="opt-check"></span>베란다 <span class="opt-price">85만</span></span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="타일_세탁실" data-val="46.8"><span class="opt-box"><span class="opt-check"></span>세탁실 <span class="opt-price">52만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="타일_현관" data-val="48.9"><span class="opt-box"><span class="opt-check"></span>현관 <span class="opt-price">51.8만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="타일_베란다" data-val="80.3"><span class="opt-box"><span class="opt-check"></span>베란다 <span class="opt-price">85만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="타일_세탁실" data-val="49.1"><span class="opt-box"><span class="opt-check"></span>세탁실 <span class="opt-price">52만</span></span></label>
         </div>
       </div>
 
@@ -766,8 +779,8 @@ body {
       <div class="scope-group">
         <div class="scope-group-title">도장 (페인트)</div>
         <div class="options-grid col2">
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="도장_전체" data-val="sqm:15.57"><span class="opt-box"><span class="opt-check"></span>거실·주방 전체 <span class="opt-price">평당 17.3만</span></span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="도장_보조" data-val="77.7"><span class="opt-box"><span class="opt-check"></span>베란다·세탁실 보조공간 <span class="opt-price">86.3만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="도장_전체" data-val="sqm:16.35"><span class="opt-box"><span class="opt-check"></span>거실·주방 전체 <span class="opt-price">평당 17.3만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="도장_보조" data-val="81.6"><span class="opt-box"><span class="opt-check"></span>베란다·세탁실 보조공간 <span class="opt-price">86.3만</span></span></label>
         </div>
       </div>
 
@@ -775,8 +788,8 @@ body {
       <div class="scope-group">
         <div class="scope-group-title">필름리폼</div>
         <div class="options-grid col2">
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="필름_문틀" data-val="120.6"><span class="opt-box"><span class="opt-check"></span>문·문틀·창호틀 <span class="opt-price">134만</span></span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="필름_가구" data-val="162"><span class="opt-box"><span class="opt-check"></span>주방·수납가구 전체 <span class="opt-price">180만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="필름_문틀" data-val="126.6"><span class="opt-box"><span class="opt-check"></span>문·문틀·창호틀 <span class="opt-price">134만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="필름_가구" data-val="170.1"><span class="opt-box"><span class="opt-check"></span>주방·수납가구 전체 <span class="opt-price">180만</span></span></label>
         </div>
       </div>
 
@@ -784,9 +797,9 @@ body {
       <div class="scope-group">
         <div class="scope-group-title">바닥공사</div>
         <div class="options-grid col2">
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="바닥_장판" data-val="sqm:7.74" data-group="바닥"><span class="opt-box"><span class="opt-check"></span>장판 <span class="opt-price">평당 8.6만</span></span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="바닥_강마루" data-val="sqm:15.57" data-group="바닥"><span class="opt-box"><span class="opt-check"></span>강마루 <span class="opt-price">평당 17.3만</span></span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="바닥_원목마루" data-val="sqm:21.6" data-group="바닥"><span class="opt-box"><span class="opt-check"></span>원목마루 <span class="opt-price">평당 24만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="바닥_장판" data-val="sqm:8.13" data-group="바닥"><span class="opt-box"><span class="opt-check"></span>장판 <span class="opt-price">평당 8.6만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="바닥_강마루" data-val="sqm:16.35" data-group="바닥"><span class="opt-box"><span class="opt-check"></span>강마루 <span class="opt-price">평당 17.3만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="바닥_원목마루" data-val="sqm:22.68" data-group="바닥"><span class="opt-box"><span class="opt-check"></span>원목마루 <span class="opt-price">평당 24만</span></span></label>
         </div>
       </div>
 
@@ -794,8 +807,8 @@ body {
       <div class="scope-group">
         <div class="scope-group-title">도배공사</div>
         <div class="options-grid col2">
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="도배_합지" data-val="sqm:8.28" data-group="도배"><span class="opt-box"><span class="opt-check"></span>합지 <span class="opt-price">평당 9.2만</span></span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="도배_실크" data-val="sqm:12.42" data-group="도배"><span class="opt-box"><span class="opt-check"></span>실크 <span class="opt-price">평당 13.8만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="도배_합지" data-val="sqm:8.69" data-group="도배"><span class="opt-box"><span class="opt-check"></span>합지 <span class="opt-price">평당 9.2만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="도배_실크" data-val="sqm:13.04" data-group="도배"><span class="opt-box"><span class="opt-check"></span>실크 <span class="opt-price">평당 13.8만</span></span></label>
         </div>
       </div>
 
@@ -803,10 +816,10 @@ body {
       <div class="scope-group">
         <div class="scope-group-title">주방가구</div>
         <div class="options-grid col2">
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="주방_일자" data-val="657" data-group="주방"><span class="opt-box"><span class="opt-check"></span>일자형 <span class="opt-price">730만</span></span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="주방_ㄱ자" data-val="828" data-group="주방"><span class="opt-box"><span class="opt-check"></span>ㄱ자형 <span class="opt-price">920만</span></span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="주방_ㄷ자" data-val="1170" data-group="주방"><span class="opt-box"><span class="opt-check"></span>ㄷ자형 <span class="opt-price">1,300만</span></span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="주방_아일랜드" data-val="1530" data-group="주방"><span class="opt-box"><span class="opt-check"></span>대면형 아일랜드 <span class="opt-price">1,700만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="주방_일자" data-val="689.9" data-group="주방"><span class="opt-box"><span class="opt-check"></span>일자형 <span class="opt-price">730만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="주방_ㄱ자" data-val="869.4" data-group="주방"><span class="opt-box"><span class="opt-check"></span>ㄱ자형 <span class="opt-price">920만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="주방_ㄷ자" data-val="1228.5" data-group="주방"><span class="opt-box"><span class="opt-check"></span>ㄷ자형 <span class="opt-price">1,300만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="주방_아일랜드" data-val="1606.5" data-group="주방"><span class="opt-box"><span class="opt-check"></span>대면형 아일랜드 <span class="opt-price">1,700만</span></span></label>
         </div>
       </div>
 
@@ -814,9 +827,9 @@ body {
       <div class="scope-group">
         <div class="scope-group-title">수납가구</div>
         <div class="options-grid col2">
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="수납_현관장" data-val="180"><span class="opt-box"><span class="opt-check"></span>현관장 <span class="opt-price">200만</span></span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="수납_붙박이장" data-val="207"><span class="opt-box"><span class="opt-check"></span>붙박이장 <span class="opt-price">230만</span></span></label>
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="수납_기타" data-val="135"><span class="opt-box"><span class="opt-check"></span>기타 수납장 <span class="opt-price">150만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="수납_현관장" data-val="189"><span class="opt-box"><span class="opt-check"></span>현관장 <span class="opt-price">200만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="수납_붙박이장" data-val="217.4"><span class="opt-box"><span class="opt-check"></span>붙박이장 <span class="opt-price">230만</span></span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="수납_기타" data-val="141.8"><span class="opt-box"><span class="opt-check"></span>기타 수납장 <span class="opt-price">150만</span></span></label>
         </div>
       </div>
 
@@ -824,7 +837,7 @@ body {
       <div class="scope-group">
         <div class="scope-group-title">준공청소</div>
         <div class="options-grid col2">
-          <label class="opt-item"><input type="checkbox" name="scopeItem" value="준공청소" data-val="sqm:1.53"><span class="opt-box"><span class="opt-check"></span>준공청소</span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="준공청소" data-val="sqm:1.61"><span class="opt-box"><span class="opt-check"></span>준공청소</span></label>
         </div>
       </div>
 
@@ -868,11 +881,12 @@ body {
 
 <!-- ════ 결과 화면 ════ -->
 <div id="result-screen">
-  <div class="result-cover">
+  <div class="result-cover" id="result-cover">
+    <div class="result-cover-bg" id="result-cover-bg"></div>
     <div class="result-cover-inner">
       <div class="result-icon">✦</div>
       <div class="result-label">YOUR STYLE</div>
-      <div class="result-style-name" id="res-style-name">모던 미니멀리스트</div>
+      <div class="result-style-name" id="res-style-name"></div>
       <div class="result-style-sub" id="res-style-sub">깔끔하고 기능적인 공간을 선호하는 당신</div>
     </div>
   </div>
@@ -1118,6 +1132,19 @@ function diagnoseStyle(data) {
 
 /* ══ 결과 화면 렌더 ══ */
 function renderResult(result) {
+  /* 커버 배경 이미지 설정 */
+  var COVER_IMG = {
+    'simple_minimal':      'images/style_simple.png',
+    'modern_gray':         'images/style_modern.png',
+    'natural_wood':        'images/style_natural.png',
+    'zen':                 'images/style_zen.png',
+    'wainscoting_classic': 'images/style_classic.png'
+  };
+  var coverBg = document.getElementById('result-cover-bg');
+  if (coverBg && COVER_IMG[result.styleKey]) {
+    coverBg.style.backgroundImage = 'url(' + COVER_IMG[result.styleKey] + ')';
+  }
+
   document.getElementById('res-style-name').textContent = result.styleName;
   document.getElementById('res-style-sub').textContent  = result.styleSub;
   /* 슬롯머신 숫자 효과 */
