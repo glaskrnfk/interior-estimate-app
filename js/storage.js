@@ -78,14 +78,18 @@ async function loadSettingsFromDB() {
     const row = await sbGet('company_settings', 'default');
     if (row) {
         _settingsCache = row;
-        // localStorage 캐시 갱신
-        if (row.logo_base64)  localStorage.setItem(STORAGE_KEYS.LOGO,      row.logo_base64);
-        if (row.stamp_base64) localStorage.setItem(STORAGE_KEYS.STAMP,     row.stamp_base64);
-        if (row.company)      localStorage.setItem(STORAGE_KEYS.COMPANY,    JSON.stringify(row.company));
-        if (row.processes)    localStorage.setItem(STORAGE_KEYS.PROCESSES,  JSON.stringify(row.processes));
-        if (row.units)        localStorage.setItem(STORAGE_KEYS.UNITS,      JSON.stringify(row.units));
-        if (row.rates)        localStorage.setItem(STORAGE_KEYS.RATES,      JSON.stringify(row.rates));
-        if (row.vat_mode)     localStorage.setItem(STORAGE_KEYS.VAT_MODE,   row.vat_mode);
+        // localStorage 캐시 갱신 — 빈값/빈배열이면 덮어쓰지 않음
+        if (row.logo_base64)  localStorage.setItem(STORAGE_KEYS.LOGO,  row.logo_base64);
+        if (row.stamp_base64) localStorage.setItem(STORAGE_KEYS.STAMP, row.stamp_base64);
+        if (row.company && Object.keys(row.company).length > 0)
+            localStorage.setItem(STORAGE_KEYS.COMPANY, JSON.stringify(row.company));
+        if (row.processes && Array.isArray(row.processes) && row.processes.length > 0)
+            localStorage.setItem(STORAGE_KEYS.PROCESSES, JSON.stringify(row.processes));
+        if (row.units && Array.isArray(row.units) && row.units.length > 0)
+            localStorage.setItem(STORAGE_KEYS.UNITS, JSON.stringify(row.units));
+        if (row.rates && Object.keys(row.rates).length > 0)
+            localStorage.setItem(STORAGE_KEYS.RATES, JSON.stringify(row.rates));
+        if (row.vat_mode) localStorage.setItem(STORAGE_KEYS.VAT_MODE, row.vat_mode);
     }
     return _settingsCache;
 }
@@ -324,12 +328,13 @@ function genId(pfx) { return pfx+'_'+Date.now()+'_'+Math.random().toString(36).s
    bootstrap
 ═══════════════════════════════════════════════════════ */
 (function bootstrap() {
+    // 자재·노무·요율: localStorage에 이미 있으면 절대 덮어쓰지 않음
     if (!localStorage.getItem(STORAGE_KEYS.MATERIALS)) saveMaterials(getDefaultMaterials());
     if (!localStorage.getItem(STORAGE_KEYS.LABORS))    saveLabors(getDefaultLabors());
     if (!localStorage.getItem(STORAGE_KEYS.RATES))     saveRates(getDefaultRates());
+    // 공정·단위: localStorage에 없을 때만 기본값 세팅
     if (!localStorage.getItem(STORAGE_KEYS.PROCESSES)) localStorage.setItem(STORAGE_KEYS.PROCESSES, JSON.stringify(getDefaultProcesses()));
     if (!localStorage.getItem(STORAGE_KEYS.UNITS))     localStorage.setItem(STORAGE_KEYS.UNITS, JSON.stringify(getDefaultUnits()));
-
-    // DB에서 설정 동기화 (비동기, 앱 로딩 중 백그라운드 실행)
+    // DB 동기화는 비동기 백그라운드로만 실행 (덮어쓰기 안전장치 있음)
     initSettingsFromDB().catch(e => console.warn('DB 설정 동기화 실패', e));
 })();
