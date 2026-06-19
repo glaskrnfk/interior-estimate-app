@@ -1661,8 +1661,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof renderLabBlocks === 'function') renderLabBlocks();
         showToast(`📌 공정명 동기화: "${oldName}" → "${newName}"`);
       } else if (e.data.type === 'proc_changed') {
-        if (typeof renderMatBlocks === 'function') renderMatBlocks();
-        if (typeof renderLabBlocks === 'function') renderLabBlocks();
+        // 캐시 무효화 후 DB에서 최신 데이터 재로드
+        if (typeof invalidateCache === 'function') invalidateCache();
+        initMasterData().then(() => {
+          if (typeof renderMatBlocks === 'function') renderMatBlocks();
+          if (typeof renderLabBlocks === 'function') renderLabBlocks();
+        });
       }
     };
   } catch(e) {}
