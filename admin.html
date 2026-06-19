@@ -1549,7 +1549,7 @@ function editProc(id) {
     openModal('proc-modal');
 }
 
-async function saveProc() {
+function saveProc() {
     var num  = document.getElementById('pf-num').value.trim();
     var name = document.getElementById('pf-name').value.trim();
     if (!num || !name) { alert('번호와 공정명을 모두 입력하세요.'); return; }
@@ -1570,13 +1570,13 @@ async function saveProc() {
         if (exists) { alert('"' + name + '" 공정이 이미 존재합니다.'); return; }
         procs.push({ id: genId('proc'), num: num, name: name });
     }
-    await saveProcesses(procs);
+    saveProcesses(procs);
     closeModal('proc-modal');
     renderProcTable(); renderMatTable(); renderLabTable(); populateCatFilters();
     markSaved(); showToast('공정이 저장되었습니다.');
 }
 
-async function deleteProc(id) {
+function deleteProc(id) {
     var p = null;
     var procs = loadProcesses();
     for (var i = 0; i < procs.length; i++) if (procs[i].id === id) { p = procs[i]; break; }
@@ -1590,17 +1590,17 @@ async function deleteProc(id) {
     if ((matCnt + labCnt) > 0) orphanProcItems(p.name);
     var newProcs = [];
     for (var i = 0; i < procs.length; i++) if (procs[i].id !== id) newProcs.push(procs[i]);
-    await saveProcesses(newProcs);
+    saveProcesses(newProcs);
     renderProcTable(); renderMatTable(); renderLabTable(); populateCatFilters();
     markSaved(); showToast('공정이 삭제되었습니다.' + ((matCnt+labCnt) > 0 ? ' (미분류로 이관됨)' : ''));
 }
 
-async function updateProcNumAdmin(id, newNum) {
+function updateProcNumAdmin(id, newNum) {
     var procs = loadProcesses();
     for (var i = 0; i < procs.length; i++) {
         if (procs[i].id === id && newNum.trim()) {
             procs[i].num = newNum.trim();
-            await saveProcesses(procs);
+            saveProcesses(procs);
             markSaved();
             showToast('번호가 "' + newNum + '"(으)로 변경되었습니다.');
             break;
@@ -1608,17 +1608,17 @@ async function updateProcNumAdmin(id, newNum) {
     }
 }
 
-async function moveProcUp(i) {
+function moveProcUp(i) {
     var procs = loadProcesses();
     if (i <= 0) return;
     var tmp = procs[i-1]; procs[i-1] = procs[i]; procs[i] = tmp;
-    await saveProcesses(procs); renderProcTable(); markSaved();
+    saveProcesses(procs); renderProcTable(); markSaved();
 }
-async function moveProcDown(i) {
+function moveProcDown(i) {
     var procs = loadProcesses();
     if (i >= procs.length - 1) return;
     var tmp = procs[i+1]; procs[i+1] = procs[i]; procs[i] = tmp;
-    await saveProcesses(procs); renderProcTable(); markSaved();
+    saveProcesses(procs); renderProcTable(); markSaved();
 }
 
 /* ── 체크박스 상태 ────────────────────────── */
@@ -1668,33 +1668,33 @@ function openBulkModal(type) {
     openModal('bulk-modal');
 }
 
-async function bulkSave() {
+function bulkSave() {
     var newCat = document.getElementById('bulk-cat-select').value;
     if (!newCat) { closeModal('bulk-modal'); return; }
     var ids = Array.from(_checked[_bulkType]);
     if (_bulkType === 'mat') {
         var list = loadMaterials();
         for (var i = 0; i < list.length; i++) if (ids.indexOf(list[i].id) >= 0) list[i].category = newCat;
-        await saveMaterials(list); renderMatTable();
+        saveMaterials(list); renderMatTable();
     } else {
         var list = loadLabors();
         for (var i = 0; i < list.length; i++) if (ids.indexOf(list[i].id) >= 0) list[i].category = newCat;
-        await saveLabors(list); renderLabTable();
+        saveLabors(list); renderLabTable();
     }
     _checked[_bulkType].clear(); updateBulkBtn(_bulkType); renderProcTable();
     closeModal('bulk-modal'); markSaved();
     showToast(ids.length + '개 항목의 공종이 "' + newCat + '"(으)로 변경되었습니다.');
 }
 
-async function bulkDelete() {
+function bulkDelete() {
     var ids = Array.from(_checked[_bulkType]);
     if (!confirm('선택한 ' + ids.length + '개 항목을 삭제하시겠습니까?')) return;
     if (_bulkType === 'mat') {
         var list = loadMaterials().filter(function(m) { return ids.indexOf(m.id) < 0; });
-        await saveMaterials(list); renderMatTable();
+        saveMaterials(list); renderMatTable();
     } else {
         var list = loadLabors().filter(function(l) { return ids.indexOf(l.id) < 0; });
-        await saveLabors(list); renderLabTable();
+        saveLabors(list); renderLabTable();
     }
     _checked[_bulkType].clear(); updateBulkBtn(_bulkType); renderProcTable();
     closeModal('bulk-modal'); markSaved();
@@ -1702,7 +1702,7 @@ async function bulkDelete() {
 }
 
 /* ── 복사(Duplicate) 기능 ──────────────────── */
-async function duplicateSelected(type) {
+function duplicateSelected(type) {
     var ids = Array.from(_checked[type]);
     if (!ids.length) return;
     if (!confirm('선택한 ' + ids.length + '개 항목을 복사하시겠습니까?\n복사된 항목의 이름 앞에 "[복사]"가 붙습니다.')) return;
@@ -1720,7 +1720,7 @@ async function duplicateSelected(type) {
                 }
             }
         }
-        await saveMaterials(list.concat(newItems)); renderMatTable();
+        saveMaterials(list.concat(newItems)); renderMatTable();
     } else {
         var list = loadLabors();
         var newItems = [];
@@ -1735,7 +1735,7 @@ async function duplicateSelected(type) {
                 }
             }
         }
-        await saveLabors(list.concat(newItems)); renderLabTable();
+        saveLabors(list.concat(newItems)); renderLabTable();
     }
     _checked[type].clear(); updateBulkBtn(type); renderProcTable(); markSaved();
     showToast(ids.length + '개 항목이 복사되었습니다.');
@@ -1810,7 +1810,7 @@ function editMat(id) {
     openModal('mat-modal');
 }
 
-async function saveMat() {
+function saveMat() {
     var cat   = document.getElementById('mf-cat').value;
     var name  = document.getElementById('mf-name').value.trim();
     var price = parseFloat(document.getElementById('mf-price').value);
@@ -1829,13 +1829,13 @@ async function saveMat() {
     var idx  = -1;
     for (var i = 0; i < list.length; i++) if (list[i].id === obj.id) { idx = i; break; }
     if (idx >= 0) list[idx] = obj; else list.push(obj);
-    await saveMaterials(list); closeModal('mat-modal'); renderMatTable(); renderProcTable();
+    saveMaterials(list); closeModal('mat-modal'); renderMatTable(); renderProcTable();
     markSaved(); showToast('자재가 저장되었습니다.');
 }
 
-async function deleteMat(id) {
+function deleteMat(id) {
     if (!confirm('이 자재를 삭제하시겠습니까?')) return;
-    await saveMaterials(loadMaterials().filter(function(x) { return x.id !== id; }));
+    saveMaterials(loadMaterials().filter(function(x) { return x.id !== id; }));
     renderMatTable(); renderProcTable(); markSaved(); showToast('삭제되었습니다.');
 }
 
@@ -1907,7 +1907,7 @@ function editLab(id) {
     openModal('lab-modal');
 }
 
-async function saveLab() {
+function saveLab() {
     var cat   = document.getElementById('lf-cat').value;
     var name  = document.getElementById('lf-name').value.trim();
     var price = parseFloat(document.getElementById('lf-price').value);
@@ -1925,13 +1925,13 @@ async function saveLab() {
     var idx  = -1;
     for (var i = 0; i < list.length; i++) if (list[i].id === obj.id) { idx = i; break; }
     if (idx >= 0) list[idx] = obj; else list.push(obj);
-    await saveLabors(list); closeModal('lab-modal'); renderLabTable(); renderProcTable();
+    saveLabors(list); closeModal('lab-modal'); renderLabTable(); renderProcTable();
     markSaved(); showToast('노무비가 저장되었습니다.');
 }
 
-async function deleteLab(id) {
+function deleteLab(id) {
     if (!confirm('이 노무비 항목을 삭제하시겠습니까?')) return;
-    await saveLabors(loadLabors().filter(function(x) { return x.id !== id; }));
+    saveLabors(loadLabors().filter(function(x) { return x.id !== id; }));
     renderLabTable(); renderProcTable(); markSaved(); showToast('삭제되었습니다.');
 }
 
@@ -1993,16 +1993,16 @@ function exportData() {
 
 /* ── 복원 ───────────────────────────────────── */
 function importData() { document.getElementById('import-file').click(); }
-async function doImport(input) {
+function doImport(input) {
     var file = input.files[0]; if (!file) return;
     var reader = new FileReader();
-    reader.onload = async function(e) {
+    reader.onload = function(e) {
         try {
             var data = JSON.parse(e.target.result);
-            if (data.materials) await saveMaterials(data.materials);
-            if (data.labors)    await saveLabors(data.labors);
+            if (data.materials) saveMaterials(data.materials);
+            if (data.labors)    saveLabors(data.labors);
             if (data.rates)     saveRates(data.rates);
-            if (data.processes) await saveProcesses(data.processes);
+            if (data.processes) saveProcesses(data.processes);
             initPage(); markSaved();
             showToast('복원 완료! 자재 ' + ((data.materials && data.materials.length) || 0) + '개, 노무비 ' + ((data.labors && data.labors.length) || 0) + '개');
         } catch(err) { alert('파일 형식 오류: ' + err.message); }
@@ -2067,7 +2067,7 @@ function openUnitAddModal() {
     setTimeout(function() { var f = document.getElementById('uf-name'); if (f) f.focus(); }, 100);
 }
 
-async function addUnit() {
+function addUnit() {
     var nameEl = document.getElementById('uf-name');
     var name = nameEl ? nameEl.value.trim() : '';
     if (!name) { alert('단위명을 입력하세요.'); return; }
@@ -2078,7 +2078,7 @@ async function addUnit() {
     closeModal('unit-modal'); markSaved(); showToast('"' + name + '" 단위가 추가되었습니다.');
 }
 
-async function deleteUnit(idx) {
+function deleteUnit(idx) {
     var units = loadUnits();
     var name = units[idx];
     if (!confirm('"' + name + '" 단위를 삭제하시겠습니까?')) return;
@@ -2143,7 +2143,7 @@ function uploadCSV(type, input) {
     var file = input.files[0];
     if (!file) return;
     var reader = new FileReader();
-    reader.onload = async function(e) {
+    reader.onload = function(e) {
         try {
             var text = e.target.result.replace(/^\uFEFF/,'');
             var lines = text.split(/\r?\n/).filter(function(l) { return l.trim(); });
@@ -2204,7 +2204,7 @@ function parseCSVLine(line) {
     return result;
 }
 
-async function confirmCSVImport() {
+function confirmCSVImport() {
     if (!_csvPendingData) return;
     var type = _csvPendingType;
     if (type === 'mat') {
@@ -2218,7 +2218,7 @@ async function confirmCSVImport() {
             for (var j = 0; j < merged.length; j++) if (merged[j].id === newItems[i].id) { idx = j; break; }
             if (idx >= 0) merged[idx] = newItems[i]; else merged.push(newItems[i]);
         }
-        await saveMaterials(merged); renderMatTable(); showToast('자재 ' + _csvPendingData.length + '개 가져오기 완료!');
+        saveMaterials(merged); renderMatTable(); showToast('자재 ' + _csvPendingData.length + '개 가져오기 완료!');
     } else {
         var existing = loadLabors();
         var newItems = _csvPendingData.map(function(r) {
@@ -2230,7 +2230,7 @@ async function confirmCSVImport() {
             for (var j = 0; j < merged.length; j++) if (merged[j].id === newItems[i].id) { idx = j; break; }
             if (idx >= 0) merged[idx] = newItems[i]; else merged.push(newItems[i]);
         }
-        await saveLabors(merged); renderLabTable(); showToast('노무비 ' + _csvPendingData.length + '개 가져오기 완료!');
+        saveLabors(merged); renderLabTable(); showToast('노무비 ' + _csvPendingData.length + '개 가져오기 완료!');
     }
     renderProcTable(); populateCatFilters(); markSaved();
     closeModal('csv-guide-modal'); _csvPendingData = null;
