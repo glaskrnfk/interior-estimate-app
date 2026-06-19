@@ -96,7 +96,21 @@ async function saveMaterials(list) {
     _cache.materials = list;
     localStorage.setItem(STORAGE_KEYS.MATERIALS, JSON.stringify(list));
     // 전체 동기화: 기존 항목 업데이트 + 신규 삽입 (delete-and-insert 방식은 위험하므로 upsert)
-    if (list.length > 0) await sbUpsert('master_materials', list.map((m, i) => ({ ...m, sort_order: i })));
+    // PostgREST 배열 upsert는 모든 객체가 동일한 키 집합을 가져야 하므로 컬럼을 명시적으로 고정한다.
+    if (list.length > 0) {
+        const rows = list.map((m, i) => ({
+            id       : m.id,
+            category : m.category || '',
+            name     : m.name || '',
+            brand    : m.brand || '',
+            spec     : m.spec || '',
+            grade    : m.grade || '',
+            unit     : m.unit || '',
+            price    : Number(m.price) || 0,
+            sort_order: i
+        }));
+        await sbUpsert('master_materials', rows);
+    }
 }
 
 async function addMaterial(item) {
@@ -136,7 +150,20 @@ function loadLabors() {
 async function saveLabors(list) {
     _cache.labors = list;
     localStorage.setItem(STORAGE_KEYS.LABORS, JSON.stringify(list));
-    if (list.length > 0) await sbUpsert('master_labors', list.map((l, i) => ({ ...l, sort_order: i })));
+    // PostgREST 배열 upsert는 모든 객체가 동일한 키 집합을 가져야 하므로 컬럼을 명시적으로 고정한다.
+    if (list.length > 0) {
+        const rows = list.map((l, i) => ({
+            id       : l.id,
+            category : l.category || '',
+            name     : l.name || '',
+            spec     : l.spec || '',
+            basis    : l.basis || '',
+            unit     : l.unit || '',
+            price    : Number(l.price) || 0,
+            sort_order: i
+        }));
+        await sbUpsert('master_labors', rows);
+    }
 }
 
 async function addLabor(item) {
