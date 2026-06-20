@@ -1701,16 +1701,19 @@ async function bulkSave() {
 async function bulkDelete() {
     var ids = Array.from(_checked[_bulkType]);
     if (!confirm('선택한 ' + ids.length + '개 항목을 삭제하시겠습니까?')) return;
-    if (_bulkType === 'mat') {
-        var list = loadMaterials().filter(function(m) { return ids.indexOf(m.id) < 0; });
-        await saveMaterials(list); renderMatTable();
-    } else {
-        var list = loadLabors().filter(function(l) { return ids.indexOf(l.id) < 0; });
-        await saveLabors(list); renderLabTable();
-    }
-    _checked[_bulkType].clear(); updateBulkBtn(_bulkType); renderProcTable();
-    closeModal('bulk-modal'); markSaved();
-    showToast(ids.length + '개 항목이 삭제되었습니다.');
+    try {
+        if (_bulkType === 'mat') {
+            // DB에서 실제로 각 행을 삭제 (saveMaterials는 upsert만 하므로 삭제가 반영되지 않음)
+            for (var i = 0; i < ids.length; i++) await deleteMaterial(ids[i]);
+            renderMatTable();
+        } else {
+            for (var i = 0; i < ids.length; i++) await deleteLabor(ids[i]);
+            renderLabTable();
+        }
+        _checked[_bulkType].clear(); updateBulkBtn(_bulkType); renderProcTable();
+        closeModal('bulk-modal'); markSaved();
+        showToast(ids.length + '개 항목이 삭제되었습니다.'); broadcastMatLabChange();
+    } catch(e) { showToast('❌ 일괄 삭제 실패: ' + e.message); console.error(e); }
 }
 
 /* ── 복사(Duplicate) 기능 ──────────────────── */
@@ -1850,8 +1853,11 @@ async function saveMat() {
 
 async function deleteMat(id) {
     if (!confirm('이 자재를 삭제하시겠습니까?')) return;
-    await saveMaterials(loadMaterials().filter(function(x) { return x.id !== id; }));
-    renderMatTable(); renderProcTable(); markSaved(); showToast('삭제되었습니다.'); broadcastMatLabChange();
+    try {
+        // DB에서 실제로 행을 삭제 (saveMaterials는 upsert만 하므로 삭제가 반영되지 않음)
+        await deleteMaterial(id);
+        renderMatTable(); renderProcTable(); markSaved(); showToast('삭제되었습니다.'); broadcastMatLabChange();
+    } catch(e) { showToast('❌ 삭제 실패: ' + e.message); console.error(e); }
 }
 
 /* ── 노무비 테이블 ──────────────────────────── */
@@ -1949,8 +1955,11 @@ async function saveLab() {
 
 async function deleteLab(id) {
     if (!confirm('이 노무비 항목을 삭제하시겠습니까?')) return;
-    await saveLabors(loadLabors().filter(function(x) { return x.id !== id; }));
-    renderLabTable(); renderProcTable(); markSaved(); showToast('삭제되었습니다.'); broadcastMatLabChange();
+    try {
+        // DB에서 실제로 행을 삭제 (saveLabors는 upsert만 하므로 삭제가 반영되지 않음)
+        await deleteLabor(id);
+        renderLabTable(); renderProcTable(); markSaved(); showToast('삭제되었습니다.'); broadcastMatLabChange();
+    } catch(e) { showToast('❌ 삭제 실패: ' + e.message); console.error(e); }
 }
 
 /* ── 요율 폼 ─────────────────────────────────── */
