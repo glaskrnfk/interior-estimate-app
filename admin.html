@@ -2491,7 +2491,7 @@ async function openLinkedContractTmpl(estId) {
     closeModal('contract-preview-modal');
     try {
         var list = await loadContracts();
-        var matched = Array.isArray(list) ? list.find(function(c) { return c.linked_estimate_id === estId; }) : null;
+        var matched = Array.isArray(list) ? list.find(function(c) { return c.estimate_id === estId; }) : null;
         var btn = document.querySelector('.tab-btn[onclick*="tab-contract-tmpl"]');
         switchTab('tab-contract-tmpl', btn);
         if (matched) {
@@ -3524,15 +3524,23 @@ async function saveContractTmpl() {
     var siteName   = ctVal('ct-site-name') || ctVal('ct-site-addr');
     if (!clientName) { showToast('⚠️ 발주자 성명을 입력해 주세요.'); return; }
 
+    var amountNum = Number(ctVal('ct-amount')) || 0;
+    var vatNum    = Math.round(amountNum * 0.1);
+
+    /* 실제 contracts 테이블 컬럼: id, estimate_id, client_name, site_name,
+       site_address, contract_amount, vat_amount, total_amount, contract_data,
+       status, created_at, updated_at  (2026-06-20 스키마 프로브로 확인됨) */
     var payload = {
-        id            : _currentContractDbId || undefined,
-        client_name   : clientName,
-        site_name     : siteName,
-        contract_type : _currentTmplType,
-        amount        : Number(ctVal('ct-amount')) || 0,
-        contract_date : ctVal('ct-date') || null,
-        linked_estimate_id : _currentLinkedEstId || null,
-        form_data     : ctCollectFormData()
+        id               : _currentContractDbId || undefined,
+        estimate_id      : _currentLinkedEstId || null,
+        client_name      : clientName,
+        site_name        : siteName,
+        site_address     : ctVal('ct-site-addr'),
+        contract_amount  : amountNum,
+        vat_amount       : vatNum,
+        total_amount     : amountNum + vatNum,
+        status           : '작성중',
+        contract_data    : ctCollectFormData()
     };
     if (!payload.id) delete payload.id;
 
@@ -3560,9 +3568,10 @@ async function showContractTmplList() {
             html += '<div style="text-align:center;color:#aaa;padding:32px"><i class="fas fa-inbox" style="font-size:32px;display:block;margin-bottom:10px;opacity:.4"></i>저장된 계약서가 없습니다.</div>';
         } else {
             list.forEach(function(c) {
-                var typeLabel = c.contract_type === 'general' ? '도급계약서' : '인테리어계약서';
-                var dateStr = c.contract_date ? c.contract_date : (c.created_at ? c.created_at.slice(0,10) : '');
-                var amtStr  = c.amount ? Number(c.amount).toLocaleString() + '원' : '';
+                var fd = c.contract_data || {};
+                var typeLabel = fd._tmplType === 'general' ? '도급계약서' : '인테리어계약서';
+                var dateStr = fd['ct-date'] ? fd['ct-date'] : (c.created_at ? c.created_at.slice(0,10) : '');
+                var amtStr  = c.contract_amount ? Number(c.contract_amount).toLocaleString() + '원' : '';
                 html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border:1px solid #e1e4e8;border-radius:8px;margin-bottom:7px">' +
                     '<div style="cursor:pointer;flex:1" onclick="loadContractTmplById(\'' + c.id + '\')">' +
                     '<div style="font-size:13px;font-weight:700;color:#1a3e72">' + escHtml(c.client_name||'(이름없음)') +
@@ -3586,8 +3595,8 @@ async function loadContractTmplById(id) {
         var c = await loadContract(id);
         if (!c) { showToast('계약서를 찾을 수 없습니다.'); return; }
         _currentContractDbId = c.id;
-        _currentLinkedEstId  = c.linked_estimate_id || null;
-        ctApplyFormData(c.form_data || {});
+        _currentLinkedEstId  = c.estimate_id || null;
+        ctApplyFormData(c.contract_data || {});
         var picker = document.getElementById('ct-list-picker');
         if (picker) picker.remove();
         showToast('✅ 계약서를 불러왔습니다. 수정 후 "저장" 버튼을 누르면 갱신됩니다.');
