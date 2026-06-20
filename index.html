@@ -1660,8 +1660,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof renderMatBlocks === 'function') renderMatBlocks();
         if (typeof renderLabBlocks === 'function') renderLabBlocks();
         showToast(`📌 공정명 동기화: "${oldName}" → "${newName}"`);
-      } else if (e.data.type === 'proc_changed') {
-        // 캐시 무효화 후 DB에서 최신 데이터 재로드
+      } else if (e.data.type === 'proc_changed' || e.data.type === 'mat_lab_changed') {
+        // 캐시 무효화 후 DB에서 최신 데이터 재로드 (관리자에서 공정/자재/노무 변경 시)
         if (typeof invalidateCache === 'function') invalidateCache();
         initMasterData().then(() => {
           if (typeof renderMatBlocks === 'function') renderMatBlocks();

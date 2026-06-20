@@ -1491,6 +1491,16 @@ function escHtml(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+/* ── 다른 탭(index.html/admin.html)에 자재·노무 변경 알림 ── */
+function broadcastMatLabChange() {
+    try {
+        var bc = new BroadcastChannel('iq_proc_update');
+        bc.postMessage({ type: 'mat_lab_changed', ts: Date.now() });
+        bc.close();
+    } catch(e) {}
+}
+
+
 /* ════════════════════════════════════════════════════════
    공정 카테고리 관리
 ════════════════════════════════════════════════════════ */
@@ -1834,14 +1844,14 @@ async function saveMat() {
     try {
         await saveMaterials(list);
         closeModal('mat-modal'); renderMatTable(); renderProcTable();
-        markSaved(); showToast('자재가 저장되었습니다.');
+        markSaved(); showToast('자재가 저장되었습니다.'); broadcastMatLabChange();
     } catch(e) { showToast('❌ 저장 실패: ' + e.message); console.error(e); }
 }
 
 async function deleteMat(id) {
     if (!confirm('이 자재를 삭제하시겠습니까?')) return;
     await saveMaterials(loadMaterials().filter(function(x) { return x.id !== id; }));
-    renderMatTable(); renderProcTable(); markSaved(); showToast('삭제되었습니다.');
+    renderMatTable(); renderProcTable(); markSaved(); showToast('삭제되었습니다.'); broadcastMatLabChange();
 }
 
 /* ── 노무비 테이블 ──────────────────────────── */
@@ -1933,14 +1943,14 @@ async function saveLab() {
     try {
         await saveLabors(list);
         closeModal('lab-modal'); renderLabTable(); renderProcTable();
-        markSaved(); showToast('노무비가 저장되었습니다.');
+        markSaved(); showToast('노무비가 저장되었습니다.'); broadcastMatLabChange();
     } catch(e) { showToast('❌ 저장 실패: ' + e.message); console.error(e); }
 }
 
 async function deleteLab(id) {
     if (!confirm('이 노무비 항목을 삭제하시겠습니까?')) return;
     await saveLabors(loadLabors().filter(function(x) { return x.id !== id; }));
-    renderLabTable(); renderProcTable(); markSaved(); showToast('삭제되었습니다.');
+    renderLabTable(); renderProcTable(); markSaved(); showToast('삭제되었습니다.'); broadcastMatLabChange();
 }
 
 /* ── 요율 폼 ─────────────────────────────────── */
@@ -2844,6 +2854,31 @@ if (document.readyState === 'loading') {
             bc.close();
         } catch(e) {}
     };
+})();
+
+/* ════════════════════════════════════════════════════════
+   BroadcastChannel 수신 — index.html(세부견적) 또는 다른
+   admin.html 탭에서 자재/노무/공정이 변경되면 캐시를 비우고
+   현재 활성 탭만 다시 그려서 새로고침 없이 최신 데이터 반영
+════════════════════════════════════════════════════════ */
+(function listenProcUpdate() {
+    try {
+        var bcIn = new BroadcastChannel('iq_proc_update');
+        bcIn.onmessage = function(e) {
+            var type = e.data && e.data.type;
+            if (type !== 'mat_lab_changed' && type !== 'proc_changed' && type !== 'proc_renamed') return;
+            if (typeof invalidateCache === 'function') invalidateCache();
+            initMasterData().then(function() {
+                populateCatFilters();
+                renderProcTable();
+                renderMatTable();
+                renderLabTable();
+                if (typeof renderUnitList === 'function') renderUnitList();
+                if (typeof populateUnitSelects === 'function') populateUnitSelects();
+                showToast('🔄 다른 화면에서 변경된 데이터가 반영되었습니다.');
+            });
+        };
+    } catch(e) {}
 })();
 
 /* ════════════════════════════════════════════════════════
