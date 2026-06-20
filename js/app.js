@@ -1082,7 +1082,7 @@ function setRegType(type) {
     }
 }
 
-function confirmRegisterToDb() {
+async function confirmRegisterToDb() {
     const type  = window._regDbType || 'mat';
     const cat   = (document.getElementById('reg-cat')   || {}).value || '';
     const name  = ((document.getElementById('reg-name')  || {}).value || '').trim();
@@ -1094,41 +1094,51 @@ function confirmRegisterToDb() {
         return;
     }
 
-    if (type === 'mat') {
-        const newMat = {
-            id       : 'mat_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
-            category : cat,
-            name     : name,
-            brand    : (document.getElementById('reg-brand') || {}).value || '',
-            spec     : (document.getElementById('reg-spec')  || {}).value || '',
-            grade    : (document.getElementById('reg-grade') || {}).value || '기본형',
-            unit     : unit,
-            price    : price
-        };
-        const list = loadMaterials();
-        list.push(newMat);
-        saveMaterials(list);
-        showToast(`✅ "${name}" 자재로 DB에 등록되었습니다.`);
-    } else {
-        const newLab = {
-            id       : 'lab_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
-            category : cat,
-            name     : name,
-            spec     : (document.getElementById('reg-spec')  || {}).value || '',
-            basis    : (document.getElementById('reg-basis') || {}).value || '식당',
-            unit     : unit,
-            price    : price
-        };
-        const list = loadLabors();
-        list.push(newLab);
-        saveLabors(list);
-        showToast(`✅ "${name}" 노무비로 DB에 등록되었습니다.`);
-    }
+    const saveBtn = document.querySelector('#reg-db-body')?.parentElement?.querySelector('button[onclick="confirmRegisterToDb()"]');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 저장 중…'; }
 
-    document.getElementById('register-to-db-modal').classList.remove('open');
-    // 자재/노무 블록 즉시 갱신
-    if (typeof renderMatBlocks === 'function') renderMatBlocks();
-    if (typeof renderLabBlocks === 'function') renderLabBlocks();
+    try {
+        if (type === 'mat') {
+            const newMat = {
+                id       : 'mat_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+                category : cat,
+                name     : name,
+                brand    : (document.getElementById('reg-brand') || {}).value || '',
+                spec     : (document.getElementById('reg-spec')  || {}).value || '',
+                grade    : (document.getElementById('reg-grade') || {}).value || '기본형',
+                unit     : unit,
+                price    : price
+            };
+            const list = loadMaterials();
+            list.push(newMat);
+            await saveMaterials(list);
+            showToast(`✅ "${name}" 자재로 DB에 등록되었습니다.`);
+        } else {
+            const newLab = {
+                id       : 'lab_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+                category : cat,
+                name     : name,
+                spec     : (document.getElementById('reg-spec')  || {}).value || '',
+                basis    : (document.getElementById('reg-basis') || {}).value || '식당',
+                unit     : unit,
+                price    : price
+            };
+            const list = loadLabors();
+            list.push(newLab);
+            await saveLabors(list);
+            showToast(`✅ "${name}" 노무비로 DB에 등록되었습니다.`);
+        }
+
+        document.getElementById('register-to-db-modal').classList.remove('open');
+        // 자재/노무 블록 즉시 갱신
+        if (typeof renderMatBlocks === 'function') renderMatBlocks();
+        if (typeof renderLabBlocks === 'function') renderLabBlocks();
+    } catch (e) {
+        console.error('confirmRegisterToDb 저장 실패:', e);
+        showToast('❌ DB 저장 실패: ' + e.message);
+    } finally {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-save"></i> DB에 저장'; }
+    }
 }
 
 function upRow(idx, field, val) {
