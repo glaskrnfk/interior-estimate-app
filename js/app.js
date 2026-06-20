@@ -1133,6 +1133,12 @@ async function confirmRegisterToDb() {
         // 자재/노무 블록 즉시 갱신
         if (typeof renderMatBlocks === 'function') renderMatBlocks();
         if (typeof renderLabBlocks === 'function') renderLabBlocks();
+        // 다른 탭(admin.html 등)에 변경 알림
+        try {
+            const bc = new BroadcastChannel('iq_proc_update');
+            bc.postMessage({ type: 'mat_lab_changed', ts: Date.now() });
+            bc.close();
+        } catch(e) {}
     } catch (e) {
         console.error('confirmRegisterToDb 저장 실패:', e);
         showToast('❌ DB 저장 실패: ' + e.message);
