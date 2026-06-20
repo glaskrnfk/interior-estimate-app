@@ -598,6 +598,7 @@ var _customHols   = {};   // {dateKey: label}
 var _dragTask     = null;
 var _dragDate     = null;
 var _dragIsCtrlCopy = false;  // Ctrl+드래그 복사 여부
+var _linkedEstId = null;      // 어드민 계약(견적) ID와 연동 시 사용 — 저장 성공 후 iq_estimates에 scheduleId를 기록하기 위함
 var _copyMode     = false;
 var _editTaskId   = null;
 var _editTaskDate = null;
@@ -1356,6 +1357,21 @@ async function saveSchedule(){
     try{ saved=JSON.parse(respText); }catch(pe){}
     if(Array.isArray(saved)&&saved[0]) _currentId=saved[0].id;
     else if(saved&&saved.id) _currentId=saved.id;
+    /* 어드민 계약(견적)에서 연동되어 들어온 경우, 견적 레코드에 공정표 ID를 기록해
+       다음에 "공정표" 버튼을 누르면 이 공정표로 바로 연결되도록 한다. */
+    if(_linkedEstId && _currentId){
+      try{
+        var ests=JSON.parse(localStorage.getItem('iq_estimates')||'[]');
+        for(var ei=0; ei<ests.length; ei++){
+          if(ests[ei].id===_linkedEstId){
+            if(!ests[ei].fields) ests[ei].fields={};
+            ests[ei].fields.scheduleId=_currentId;
+            break;
+          }
+        }
+        localStorage.setItem('iq_estimates', JSON.stringify(ests));
+      }catch(le){ console.error('[공정표-계약 연동 저장 실패]', le); }
+    }
     showToast('✅ 공정표가 저장되었습니다.');
     document.getElementById('edit-title').textContent=site;
   }catch(e){
@@ -1452,6 +1468,8 @@ function checkURLParams(){
   var client=decodeURIComponent(p.get('client')||'');
   var site=decodeURIComponent(p.get('site')||'');
   var schId=p.get('id');
+  var estId=p.get('estId');
+  if(estId) _linkedEstId=estId;
   if(schId){
     loadSchedules().then(function(){
       var s=_schedules.find(function(x){return x.id===schId;});
