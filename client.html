@@ -356,7 +356,7 @@ async function doAuth() {
 
     try {
         /* 토큰으로 계약서 조회 */
-        var res = await sbFetch('/rest/v1/contracts?access_token=eq.' + encodeURIComponent(_token) + '&select=*&limit=1');
+        var res = await sbFetch('/rest/v1/contracts?access_token=eq.' + _token + '&select=*&limit=1');
         var rows = await res.json();
         if (!res.ok || !Array.isArray(rows) || !rows.length) {
             showAuthError('유효하지 않은 링크입니다. 정결 Design Studio로 문의해 주세요.');
@@ -540,7 +540,9 @@ function buildInteriorDocHtml(fd, v, vb, fmtDate, amtFmt, contractDate,
         '<div style="border:1.5px solid #e1e4e8;border-radius:7px;padding:14px">' +
         '<div style="font-size:12px;font-weight:800;color:#1a3e72;margin-bottom:10px">시공자 (乙)</div>' +
         '<div style="font-size:12px;color:#555;margin-bottom:4px">상호: <strong>' + vb('ct-company') + '</strong></div>' +
-        '<div style="font-size:12px;color:#555">대표자: <strong>' + vb('ct-rep') + '</strong></div>' +
+        '<div style="font-size:12px;color:#555">대표자: <strong>' + vb('ct-rep') + '</strong>' +
+        (fd['_stampImage'] ? '<img src="' + fd['_stampImage'] + '" style="max-width:70px;max-height:70px;object-fit:contain;vertical-align:middle;margin-left:8px;opacity:.92">' : ' <span style="color:#aaa;font-size:11px">(인)</span>') +
+        '</div>' +
         '</div></div>';
 }
 
@@ -565,7 +567,9 @@ function buildGeneralDocHtml(fd, v, vb, fmtDate, amtFmt, contractDate, special) 
         '<div id="client-sig-slot" style="min-height:50px;border-bottom:1px solid #e1e4e8;margin-top:4px"></div></div>' +
         '<div style="border-top:2px solid #1a3e72;padding-top:12px"><div style="font-size:12px;font-weight:700;color:#1a3e72;margin-bottom:10px">수급인 (乙)</div>' +
         '<div style="font-size:12px;color:#555">상호: ' + vb('ct-company') + '</div>' +
-        '<div style="font-size:12px;color:#555">대표자: ' + vb('ct-rep') + '</div></div></div>';
+        '<div style="font-size:12px;color:#555">대표자: ' + vb('ct-rep') +
+        (fd['_stampImage'] ? '<img src="' + fd['_stampImage'] + '" style="max-width:60px;max-height:60px;object-fit:contain;vertical-align:middle;margin-left:8px;opacity:.92">' : ' <span style="color:#aaa;font-size:11px">(인)</span>') +
+        '</div></div></div>';
 }
 
 function goToSign() {

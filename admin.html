@@ -570,6 +570,38 @@ input[type=number] { user-select:none; }
           <textarea id="co-remark" rows="3" placeholder="예: 본 견적서는 발행일로부터 30일간 유효합니다. 상기 금액은 부가세 포함 금액입니다." style="resize:vertical;font:13px 'Noto Sans KR',sans-serif;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;width:100%;box-sizing:border-box"></textarea>
         </div>
       </div>
+
+      <!-- 도장 이미지 업로드 -->
+      <div style="margin-top:20px;padding:18px 20px;background:#f8fafc;border:1.5px solid var(--border);border-radius:10px">
+        <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px">
+          <i class="fas fa-stamp" style="margin-right:6px"></i>대표 도장 / 서명 이미지
+          <span style="font-size:11px;font-weight:400;color:#888;margin-left:8px">계약서 시공자 서명란에 자동 삽입됩니다</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap">
+          <div id="stamp-preview-wrap" style="width:120px;height:90px;border:2px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;background:#fff;flex-shrink:0;overflow:hidden">
+            <div id="stamp-placeholder" style="text-align:center;color:#ccc;font-size:12px">
+              <i class="fas fa-stamp" style="font-size:24px;display:block;margin-bottom:6px"></i>도장 없음
+            </div>
+            <img id="stamp-preview-img" style="display:none;max-width:116px;max-height:86px;object-fit:contain">
+          </div>
+          <div style="flex:1;min-width:200px">
+            <p style="font-size:12.5px;color:#666;line-height:1.8;margin-bottom:12px">
+              PNG/JPG 이미지를 업로드하면 계약서 시공자 서명란에 자동으로 들어갑니다.<br>
+              <strong>투명 배경 PNG</strong>를 사용하면 가장 깔끔하게 보입니다.
+            </p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <label class="btn btn-secondary" style="cursor:pointer;margin:0;font-size:13px">
+                <i class="fas fa-upload"></i> 도장 이미지 업로드
+                <input type="file" accept="image/*" style="display:none" onchange="uploadStampImage(this)">
+              </label>
+              <button class="btn btn-secondary" onclick="clearStampImage()" style="font-size:13px;color:#dc2626" id="stamp-clear-btn" style="display:none">
+                <i class="fas fa-trash"></i> 삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div style="margin-top:20px;text-align:center">
         <button class="btn btn-primary" onclick="saveCompanyForm()" style="padding:12px 32px;font-size:15px">
           <i class="fas fa-save"></i> 시공사 정보 저장
@@ -729,7 +761,11 @@ input[type=number] { user-select:none; }
           <button class="btn btn-secondary" onclick="switchContractTmpl('general')" id="tmpl-btn-general">
             <i class="fas fa-file-alt"></i> 도급 계약서
           </button>
-          <div style="margin-left:auto;display:flex;gap:8px">
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--navy);padding:7px 12px;border:1.5px solid var(--border);border-radius:7px;background:#fff" title="계약서에 도장 이미지 표시 여부">
+              <input type="checkbox" id="stamp-toggle" onchange="toggleStamp(this.checked)" style="width:15px;height:15px;cursor:pointer">
+              <i class="fas fa-stamp" style="font-size:13px"></i> 도장
+            </label>
             <button class="btn btn-secondary" onclick="showContractTmplList()" style="background:#eef2ff;border-color:#4338ca;color:#4338ca"><i class="fas fa-list"></i> 저장된 계약서</button>
             <button class="btn btn-secondary" onclick="openReceiptWindow()" style="background:#f0fdf4;border-color:#16a34a;color:#16a34a"><i class="fas fa-receipt"></i> 영수증 발행</button>
             <button class="btn btn-secondary" onclick="printContractTmpl()"><i class="fas fa-print"></i> 인쇄</button>
@@ -2053,6 +2089,7 @@ function loadCompanyForm() {
     setVal('co-email',  co.companyEmail);
     setVal('co-addr',   co.companyAddr);
     setVal('co-remark', co.remarkText);
+    loadStampImage();  /* 도장 미리보기 갱신 */
 }
 
 function saveCompanyForm() {
@@ -2068,6 +2105,64 @@ function saveCompanyForm() {
         remarkText   : getVal('co-remark')
     };
     saveCompany(co); markSaved(); showToast('✅ 시공사 정보가 저장되었습니다.');
+}
+
+/* ════════════════════════════════════════════════════════
+   도장 이미지 관리
+   — localStorage 'iq_stamp_image' 에 base64로 저장
+   — 계약서 렌더링 시 _stampEnabled 플래그로 on/off 제어
+════════════════════════════════════════════════════════ */
+var _stampEnabled = false;  /* 현재 도장 표시 여부 */
+var _stampDataUrl = null;   /* base64 도장 이미지 */
+
+function loadStampImage() {
+    _stampDataUrl = localStorage.getItem('iq_stamp_image') || null;
+    var img  = document.getElementById('stamp-preview-img');
+    var ph   = document.getElementById('stamp-placeholder');
+    var clr  = document.getElementById('stamp-clear-btn');
+    if (_stampDataUrl) {
+        if (img)  { img.src = _stampDataUrl; img.style.display = ''; }
+        if (ph)   ph.style.display = 'none';
+        if (clr)  clr.style.display = '';
+    } else {
+        if (img)  img.style.display = 'none';
+        if (ph)   ph.style.display = '';
+        if (clr)  clr.style.display = 'none';
+    }
+}
+
+function uploadStampImage(input) {
+    var file = input.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { showToast('⚠️ 파일 크기는 2MB 이하여야 합니다.'); return; }
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        _stampDataUrl = e.target.result;
+        localStorage.setItem('iq_stamp_image', _stampDataUrl);
+        loadStampImage();
+        showToast('✅ 도장 이미지가 저장되었습니다.');
+        /* 도장 체크박스 자동 on */
+        var toggle = document.getElementById('stamp-toggle');
+        if (toggle && !toggle.checked) { toggle.checked = true; toggleStamp(true); }
+        else renderContractTmpl();
+    };
+    reader.readAsDataURL(file);
+    input.value = '';
+}
+
+function clearStampImage() {
+    if (!confirm('도장 이미지를 삭제하시겠습니까?')) return;
+    _stampDataUrl = null;
+    localStorage.removeItem('iq_stamp_image');
+    loadStampImage();
+    renderContractTmpl();
+    showToast('도장 이미지가 삭제되었습니다.');
+}
+
+function toggleStamp(on) {
+    _stampEnabled = on;
+    renderContractTmpl();
+    showToast(on ? '🖊 도장이 계약서에 표시됩니다.' : '도장이 숨겨졌습니다. (인쇄 후 직접 날인)');
 }
 
 /* ── 단위 마스터 관리 ──────────────────────── */
@@ -2862,7 +2957,8 @@ async function initPage() {
     renderLabTable();
     renderRateForm();
     renderUnitList();
-    loadCompanyForm();
+    loadCompanyForm();        /* 내부에서 loadStampImage()도 호출됨 */
+    loadStampImage();         /* 도장 미리보기 초기화 (company 탭 외에도 미리 로드) */
     var cnt   = loadContractedEstimates().length;
     var badge = document.getElementById('contract-count');
     if (badge) badge.textContent = cnt;
@@ -3340,7 +3436,9 @@ function buildInteriorContract() {
         '<div style="font-size:12px;font-weight:700;color:#1a3e72;border-bottom:1px solid #e1e8f4;padding-bottom:6px;margin-bottom:12px">시 공 자 (乙)</div>' +
         '<table style="width:100%;font-size:12px">' +
           '<tr><td style="padding:5px 0;color:#666;width:90px">상호</td><td style="padding:5px 0;border-bottom:1px solid #e8edf4">' + company + '</td></tr>' +
-          '<tr><td style="padding:5px 0;color:#666">대표자</td><td style="padding:5px 0;border-bottom:1px solid #e8edf4">' + rep + ' &nbsp;<span style="color:#aaa">(인)</span></td></tr>' +
+          '<tr><td style="padding:5px 0;color:#666">대표자</td><td style="padding:5px 0;border-bottom:1px solid #e8edf4">' + rep + ' &nbsp;<span style="color:#aaa">(인)</span>' +
+          (_stampEnabled && _stampDataUrl ? '<img src="' + _stampDataUrl + '" style="max-width:70px;max-height:70px;object-fit:contain;vertical-align:middle;margin-left:8px;opacity:.92">' : '') +
+          '</td></tr>' +
           '<tr><td style="padding:5px 0;color:#666">사업자번호</td><td style="padding:5px 0;border-bottom:1px solid #e8edf4">' + bizNo + '</td></tr>' +
           '<tr><td style="padding:5px 0;color:#666">전화/FAX</td><td style="padding:5px 0;border-bottom:1px solid #e8edf4">' + tel + ' / ' + fax + '</td></tr>' +
           '<tr><td style="padding:5px 0;color:#666">주소</td><td style="padding:5px 0;border-bottom:1px solid #e8edf4">' + coAddr + '</td></tr>' +
@@ -3443,7 +3541,7 @@ ${special ? `<div style="background:#fffbeb;border:1.5px solid #fcd34d;border-ra
     <div style="font-size:13px;font-weight:700;color:#1a3e72;margin-bottom:14px">수 급 인 (乙)</div>
     <table style="width:100%;font-size:13px">
       <tr><td style="padding:6px 0;color:#666;width:70px">상 호</td><td style="padding:6px 0;border-bottom:1px solid #e1e4e8">${company}</td></tr>
-      <tr><td style="padding:6px 0;color:#666">대표자</td><td style="padding:6px 0;border-bottom:1px solid #e1e4e8">${rep}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#aaa">(인)</span></td></tr>
+      <tr><td style="padding:6px 0;color:#666">대표자</td><td style="padding:6px 0;border-bottom:1px solid #e1e4e8">${rep}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#aaa">(인)</span>${_stampEnabled && _stampDataUrl ? '<img src="' + _stampDataUrl + '" style="max-width:60px;max-height:60px;object-fit:contain;vertical-align:middle;margin-left:8px;opacity:.92">' : ''}</td></tr>
       <tr><td style="padding:6px 0;color:#666">연락처</td><td style="padding:6px 0;border-bottom:1px solid #e1e4e8">${tel}</td></tr>
     </table>
   </div>
@@ -3505,7 +3603,8 @@ function ctCollectFormData() {
         var el = document.getElementById(id);
         data[id] = el ? el.value : '';
     });
-    data._tmplType = _currentTmplType;
+    data._tmplType   = _currentTmplType;
+    data._stampImage = (_stampEnabled && _stampDataUrl) ? _stampDataUrl : null;  /* 도장: on 상태일 때만 포함 */
     return data;
 }
 
@@ -3664,8 +3763,9 @@ async function openSendLinkModal(contractId) {
     var clientName = (c && c.client_name) || '고객';
     var baseUrl  = window.location.href.replace(/admin\.html.*$/, '') + 'client.html';
 
-    /* 기존 토큰이 있으면 그대로, 없으면 새로 생성 */
+    /* 기존 토큰이 있으면 그대로, 없으면 새로 생성 — 이 값을 전역에 고정해서 doSendLink가 동일하게 사용 */
     var token   = (c && c.access_token) || generateToken();
+    window._pendingLinkToken = token;   /* doSendLink가 이 값을 그대로 DB에 저장 */
     var linkUrl = baseUrl + '?token=' + token;
 
     /* 연락처 뒷 4자리 */
@@ -3786,8 +3886,9 @@ async function doSendLink(contractId, mode) {
         showToast('⚠️ 연락처 뒷 4자리를 정확히 입력해 주세요.'); return;
     }
 
-    /* 새 토큰 생성 (재발송이면 기존 토큰 유지 — 이미 링크를 받은 고객에게 영향 없음) */
-    var token = generateToken();
+    /* 모달에서 이미 결정된 토큰 사용 (새로 생성하면 모달의 링크 URL과 달라짐) */
+    var token = window._pendingLinkToken || generateToken();
+    window._pendingLinkToken = null;  /* 사용 후 초기화 */
     var expiresAt = expDays > 0
         ? new Date(Date.now() + expDays * 86400000).toISOString()
         : null;
