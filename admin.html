@@ -734,6 +734,7 @@ input[type=number] { user-select:none; }
             <button class="btn btn-secondary" onclick="openReceiptWindow()" style="background:#f0fdf4;border-color:#16a34a;color:#16a34a"><i class="fas fa-receipt"></i> 영수증 발행</button>
             <button class="btn btn-secondary" onclick="printContractTmpl()"><i class="fas fa-print"></i> 인쇄</button>
             <button class="btn btn-primary" onclick="saveContractTmpl()" style="background:#059669"><i class="fas fa-save"></i> 저장</button>
+            <button class="btn btn-secondary" onclick="showSendLinkBtn(_currentContractDbId)" id="btn-send-link" style="display:none;border-color:#7c3aed;color:#7c3aed"><i class="fas fa-share-alt"></i> 고객 링크 발송</button>
             <button class="btn btn-primary" onclick="downloadContractPDF()"><i class="fas fa-file-pdf"></i> PDF 저장</button>
           </div>
         </div>
@@ -2434,6 +2435,7 @@ function renderContractList() {
               '<button class="btn btn-secondary" style="font-size:12px;padding:4px 10px;margin-right:4px" onclick="showContractPreview(\'' + r.id + '\')"><i class="fas fa-eye"></i> 상세</button>' +
               '<button class="btn btn-secondary" style="font-size:12px;padding:4px 10px;color:#1a3e72" onclick="openScheduleFromContract(\'' + r.id + '\')"><i class="fas fa-calendar-alt"></i> 공정표</button>' +
               (hasSchedule ? '' : '<button class="btn btn-secondary" style="font-size:12px;padding:4px 10px;color:#7c3aed" onclick="relinkScheduleToContract(\'' + r.id + '\')" title="기존 공정표와 연결"><i class="fas fa-link"></i></button>') +
+              '<button class="btn btn-secondary" style="font-size:12px;padding:4px 10px;color:#4338ca;margin-left:4px" onclick="openContractSignStatus(\'' + r.id + '\')" title="계약서/서명 현황"><i class="fas fa-file-signature"></i></button>' +
             '</td>' +
             '</tr>';
     }
@@ -3547,7 +3549,8 @@ async function saveContractTmpl() {
     try {
         var savedId = await saveContract(payload);
         _currentContractDbId = savedId;
-        showToast('✅ 계약서가 저장되었습니다.');
+        showToast('✅ 계약서가 저장되었습니다. 아래 "고객 링크 발송" 버튼으로 링크를 보내세요.');
+        showSendLinkBtn(savedId);
     } catch(e) {
         showToast('❌ 계약서 저장 실패: ' + e.message);
         console.error(e);
@@ -3600,6 +3603,7 @@ async function loadContractTmplById(id) {
         var picker = document.getElementById('ct-list-picker');
         if (picker) picker.remove();
         showToast('✅ 계약서를 불러왔습니다. 수정 후 "저장" 버튼을 누르면 갱신됩니다.');
+        showSendLinkBtn(c.id);
     } catch(e) {
         showToast('계약서 불러오기 실패: ' + e.message);
     }
@@ -3621,6 +3625,234 @@ async function deleteContractTmpl(id) {
 
 /* ── 계약 견적에서 자동 채우기 시, 해당 견적과 계약서를 연결해두기 위한 보조 ── */
 function ctResetCurrentDbId() { _currentContractDbId = null; _currentLinkedEstId = null; }
+
+/* ════════════════════════════════════════════════════════
+   전자계약 — 고객 링크 발송
+════════════════════════════════════════════════════════ */
+
+/* 32자리 랜덤 토큰 생성 */
+function generateToken() {
+    var arr = new Uint8Array(24);
+    window.crypto.getRandomValues(arr);
+    return Array.from(arr).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+}
+
+/* 저장 후 또는 불러오기 후 링크 발송 버튼 표시 */
+function showSendLinkBtn(contractId) {
+    if (!contractId) return;
+    var btn = document.getElementById('btn-send-link');
+    if (btn) {
+        btn.style.display = '';
+        btn.onclick = function() { openSendLinkModal(contractId); };
+    }
+}
+
+/* 링크 발송 모달 열기 */
+async function openSendLinkModal(contractId) {
+    if (!contractId) { showToast('먼저 계약서를 저장해 주세요.'); return; }
+
+    /* 현재 계약서 정보 로드 */
+    var c = null;
+    try {
+        var r = await fetch(SB_URL + '/rest/v1/contracts?id=eq.' + contractId + '&select=*&limit=1', { headers: sbHeaders() });
+        var rows = await r.json();
+        c = Array.isArray(rows) && rows[0] ? rows[0] : null;
+    } catch(e) { showToast('계약서 정보 조회 실패: ' + e.message); return; }
+
+    var isSent   = !!(c && c.access_token);
+    var isSigned = !!(c && c.signed_at);
+    var clientName = (c && c.client_name) || '고객';
+    var baseUrl  = window.location.href.replace(/admin\.html.*$/, '') + 'client.html';
+
+    /* 기존 토큰이 있으면 그대로, 없으면 새로 생성 */
+    var token   = (c && c.access_token) || generateToken();
+    var linkUrl = baseUrl + '?token=' + token;
+
+    /* 연락처 뒷 4자리 */
+    var fd = (c && c.contract_data) || {};
+    var tel = fd['ct-client-tel'] || '';
+    var last4 = tel.replace(/\D/g,'').slice(-4) || '';
+
+    /* 모달 HTML */
+    var existingModal = document.getElementById('send-link-modal');
+    if (existingModal) existingModal.remove();
+
+    var statusHtml = isSigned
+        ? '<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:8px;padding:10px 14px;font-size:13px;color:#065f46;margin-bottom:16px"><i class="fas fa-check-circle" style="margin-right:6px"></i><strong>이미 서명 완료된 계약서입니다.</strong></div>'
+        : isSent
+        ? '<div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:10px 14px;font-size:13px;color:#1d4ed8;margin-bottom:16px"><i class="fas fa-paper-plane" style="margin-right:6px"></i>이미 발송된 링크입니다. 재발송하거나 새 링크를 생성할 수 있습니다.</div>'
+        : '';
+
+    var html = '<div id="send-link-modal" style="position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center">' +
+        '<div style="background:#fff;border-radius:14px;width:min(520px,94vw);max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">' +
+        '<div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">' +
+        '<span style="font-size:16px;font-weight:800;color:var(--navy)"><i class="fas fa-share-alt" style="margin-right:8px"></i>고객 링크 발송</span>' +
+        '<button onclick="document.getElementById(\'send-link-modal\').remove()" style="border:none;background:none;font-size:20px;cursor:pointer;color:#888">×</button></div>' +
+        '<div style="padding:20px 22px">' +
+        statusHtml +
+
+        /* 고객 정보 */
+        '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:18px">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px">계약서 정보</div>' +
+        '<div style="font-size:13px;margin-bottom:5px"><strong>발주자:</strong> ' + escHtml(clientName) + '</div>' +
+        '<div style="font-size:13px;margin-bottom:5px"><strong>현장:</strong> ' + escHtml((c && c.site_name)||'—') + '</div>' +
+        '<div style="font-size:13px"><strong>금액:</strong> ' + (c && c.contract_amount ? '₩ '+Number(c.contract_amount).toLocaleString()+'원' : '—') + '</div>' +
+        '</div>' +
+
+        /* 연락처 뒷 4자리 입력 */
+        '<div class="fg" style="margin-bottom:14px">' +
+        '<label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px">' +
+        '고객 연락처 뒷 4자리 <span style="color:var(--red)">*</span>' +
+        '<span style="font-weight:400;color:#aaa;font-size:11px;margin-left:6px">(고객이 계약서 열 때 입력하는 비밀번호)</span></label>' +
+        '<input id="sl-phone4" type="tel" maxlength="4" inputmode="numeric" value="' + escHtml(last4) + '" ' +
+        'placeholder="예: 5678" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:18px;font-weight:700;letter-spacing:8px;text-align:center;outline:none">' +
+        '</div>' +
+
+        /* 링크 유효기간 */
+        '<div class="fg" style="margin-bottom:18px">' +
+        '<label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px">링크 유효 기간</label>' +
+        '<select id="sl-expires" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none">' +
+        '<option value="30">30일</option>' +
+        '<option value="60" selected>60일</option>' +
+        '<option value="90">90일</option>' +
+        '<option value="365">1년</option>' +
+        '<option value="0">만료 없음</option>' +
+        '</select>' +
+        '</div>' +
+
+        /* 생성된 링크 */
+        '<div style="background:#f0f4f8;border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:16px">' +
+        '<div style="font-size:11.5px;color:#888;margin-bottom:6px">발송할 링크 미리보기</div>' +
+        '<div id="sl-link-preview" style="font-size:11px;color:var(--navy);word-break:break-all;font-family:monospace;background:#fff;padding:8px;border-radius:5px;border:1px solid #dce7f5">' + escHtml(linkUrl) + '</div>' +
+        '</div>' +
+
+        /* 카톡 메시지 템플릿 */
+        '<div style="background:#fff8e1;border:1px solid #ffd54f;border-radius:8px;padding:12px 14px;margin-bottom:18px">' +
+        '<div style="font-size:11.5px;font-weight:700;color:#f57f17;margin-bottom:8px"><i class="fas fa-comment" style="margin-right:4px"></i>카카오톡 발송 메시지 (복사 후 전송)</div>' +
+        '<div id="sl-kakao-msg" style="font-size:12.5px;color:#333;line-height:1.9;white-space:pre-wrap;background:#fff;padding:10px;border-radius:6px;border:1px solid #ffe082">' +
+        escHtml('안녕하세요 ' + clientName + '님, 정결 Design Studio입니다.\n\n계약서가 준비되었습니다.\n아래 링크에서 확인 및 서명 부탁드립니다.\n\n' + linkUrl + '\n\n※ 접속 시 연락처 뒷 4자리를 입력해 주세요.') +
+        '</div>' +
+        '</div>' +
+
+        /* 버튼 */
+        '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
+        '<button class="btn btn-secondary" onclick="copyKakaoMsg()" style="flex:1;justify-content:center"><i class="fas fa-copy"></i> 메시지 복사</button>' +
+        '<button class="btn btn-primary" onclick="doSendLink(\'' + contractId + '\',\'' + (isSent?'re':'new') + '\')" style="flex:1;justify-content:center;background:#7c3aed"><i class="fas fa-paper-plane"></i> ' + (isSent?'링크 재발송':'링크 생성 및 저장') + '</button>' +
+        '</div>' +
+
+        (isSigned ? '<div style="margin-top:12px;text-align:center"><button class="btn btn-secondary" onclick="viewSignatureFromModal(\'' + contractId + '\')" style="font-size:12px"><i class="fas fa-signature"></i> 서명 이미지 확인</button></div>' : '') +
+
+        '</div></div></div>';
+
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    /* 전화번호 4자리 변경 시 미리보기 + 메시지 업데이트 */
+    document.getElementById('sl-phone4').addEventListener('input', function() {
+        updateLinkPreview(contractId, token, baseUrl, clientName);
+    });
+}
+
+function updateLinkPreview(contractId, token, baseUrl, clientName) {
+    var linkEl = document.getElementById('sl-link-preview');
+    var msgEl  = document.getElementById('sl-kakao-msg');
+    if (!linkEl || !msgEl) return;
+    var url = baseUrl + '?token=' + token;
+    linkEl.textContent = url;
+    msgEl.textContent  = '안녕하세요 ' + clientName + '님, 정결 Design Studio입니다.\n\n계약서가 준비되었습니다.\n아래 링크에서 확인 및 서명 부탁드립니다.\n\n' + url + '\n\n※ 접속 시 연락처 뒷 4자리를 입력해 주세요.';
+}
+
+function copyKakaoMsg() {
+    var el = document.getElementById('sl-kakao-msg');
+    if (!el) return;
+    var txt = el.textContent;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(txt).then(function(){ showToast('✅ 메시지가 복사되었습니다. 카카오톡에 붙여넣기 해주세요.'); });
+    } else {
+        var ta = document.createElement('textarea');
+        ta.value = txt;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('✅ 메시지가 복사되었습니다.');
+    }
+}
+
+async function doSendLink(contractId, mode) {
+    var phone4   = (document.getElementById('sl-phone4').value || '').trim();
+    var expDays  = parseInt((document.getElementById('sl-expires') || {}).value || '60', 10);
+
+    if (!phone4 || !/^\d{4}$/.test(phone4)) {
+        showToast('⚠️ 연락처 뒷 4자리를 정확히 입력해 주세요.'); return;
+    }
+
+    /* 새 토큰 생성 (재발송이면 기존 토큰 유지 — 이미 링크를 받은 고객에게 영향 없음) */
+    var token = generateToken();
+    var expiresAt = expDays > 0
+        ? new Date(Date.now() + expDays * 86400000).toISOString()
+        : null;
+
+    var patchData = {
+        access_token       : token,
+        client_phone_last4 : phone4,
+        status             : (mode === 'new') ? '발송됨' : '발송됨'
+    };
+    if (expiresAt) patchData.token_expires_at = expiresAt;
+
+    try {
+        var res = await fetch(SB_URL + '/rest/v1/contracts?id=eq.' + contractId, {
+            method : 'PATCH',
+            headers: Object.assign(sbHeaders(), { 'Prefer': 'return=minimal' }),
+            body   : JSON.stringify(patchData)
+        });
+        if (!res.ok) throw new Error(await res.text());
+
+        var modal = document.getElementById('send-link-modal');
+        if (modal) modal.remove();
+        showToast('✅ 링크가 생성되었습니다. 카카오톡 메시지를 복사해서 고객에게 전송해 주세요.');
+
+        /* 계약관리 탭 카운트 갱신 */
+        var cnt = document.getElementById('contract-count');
+        if (cnt && parseInt(cnt.textContent) < 1) cnt.textContent = '0';
+
+    } catch(e) {
+        showToast('❌ 링크 생성 실패: ' + e.message);
+        console.error(e);
+    }
+}
+
+async function viewSignatureFromModal(contractId) {
+    try {
+        var r = await fetch(SB_URL + '/rest/v1/contracts?id=eq.' + contractId + '&select=signature_data,client_confirmed_name,signed_at&limit=1', { headers: sbHeaders() });
+        var rows = await r.json();
+        var c = rows && rows[0];
+        if (!c || !c.signature_data) { showToast('저장된 서명이 없습니다.'); return; }
+        var w = window.open('', '_blank', 'width=500,height=400');
+        w.document.write('<html><body style="font-family:sans-serif;padding:20px;text-align:center">' +
+            '<h3 style="color:#1a3e72">서명 확인 — ' + escHtml(c.client_confirmed_name||'') + '</h3>' +
+            '<p style="color:#888;font-size:12px">서명일시: ' + new Date(c.signed_at).toLocaleString('ko-KR') + '</p>' +
+            '<img src="' + c.signature_data + '" style="max-width:400px;border:1px solid #ddd;border-radius:8px;margin-top:12px">' +
+            '</body></html>');
+    } catch(e) { showToast('서명 확인 실패: ' + e.message); }
+}
+
+/* ── 계약 목록에서 계약서/서명 현황 보기 ── */
+async function openContractSignStatus(estId) {
+    try {
+        var r = await fetch(SB_URL + '/rest/v1/contracts?estimate_id=eq.' + encodeURIComponent(estId) + '&select=*&limit=1', { headers: sbHeaders() });
+        var rows = await r.json();
+        if (!Array.isArray(rows) || !rows.length) {
+            showToast('연결된 계약서가 없습니다. 계약서 템플릿 탭에서 먼저 작성 후 저장해 주세요.');
+            return;
+        }
+        var c = rows[0];
+        openSendLinkModal(c.id);
+    } catch(e) {
+        showToast('계약서 조회 실패: ' + e.message);
+    }
+}
+
+/* ── 계약관리 탭: 서명 상태 배지 + 서명 확인 버튼 추가 ── */
 
 /* ── 계약서 탭 활성화 시 견적 선택 목록 채우기 ── */
 function populateContractEstSelect() {
