@@ -762,6 +762,10 @@ input[type=number] { user-select:none; }
             <i class="fas fa-file-alt"></i> 도급 계약서
           </button>
           <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--navy);padding:7px 12px;border:1.5px solid var(--border);border-radius:7px;background:#fff" title="고객 페이지에 공정표 요약을 함께 보여줄지 여부">
+              <input type="checkbox" id="schedule-include-toggle" style="width:15px;height:15px;cursor:pointer">
+              <i class="fas fa-calendar-alt" style="font-size:13px"></i> 공정표 포함
+            </label>
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--navy);padding:7px 12px;border:1.5px solid var(--border);border-radius:7px;background:#fff" title="계약서에 도장 이미지 표시 여부">
               <input type="checkbox" id="stamp-toggle" onchange="toggleStamp(this.checked)" style="width:15px;height:15px;cursor:pointer">
               <i class="fas fa-stamp" style="font-size:13px"></i> 도장
@@ -2397,7 +2401,7 @@ function changeContractYear(delta) {
     renderContractDashboard();
 }
 
-function renderContractDashboard() {
+async function renderContractDashboard() {
     var all      = loadContractedEstimates();
     var yearData = all.filter(function(r) { return new Date(r.contractedAt).getFullYear() === _contractYear; });
     var countEl  = document.getElementById('contract-count');
@@ -2425,7 +2429,7 @@ function renderContractDashboard() {
     }
     renderMonthBarChart(monthRev);
     renderMonthGrid(monthItems, monthRev);
-    renderContractList();
+    await renderContractList();
 }
 
 function renderMonthBarChart(monthRev) {
@@ -2499,7 +2503,23 @@ function openEstimateFromContract(contractId) {
     window.open(url, '_blank');
 }
 
-function renderContractList() {
+var _contractSignStatusCache = {}; /* estimate_id -> { status, signed_at } */
+
+async function loadContractSignStatusCache() {
+    try {
+        var r = await fetch(SB_URL + '/rest/v1/contracts?select=estimate_id,status,signed_at&estimate_id=not.is.null', { headers: sbHeaders() });
+        var rows = await r.json();
+        var map = {};
+        if (Array.isArray(rows)) {
+            rows.forEach(function(c) {
+                if (c.estimate_id) map[c.estimate_id] = { status: c.status, signed_at: c.signed_at };
+            });
+        }
+        _contractSignStatusCache = map;
+    } catch(e) { console.error('계약서 상태 캐시 로드 실패', e); }
+}
+
+async function renderContractList() {
     var tbody = document.getElementById('contract-list-tbody');
     if (!tbody) return;
     var kw  = ((document.getElementById('contract-search') || {}).value || '').toLowerCase();
@@ -2511,6 +2531,7 @@ function renderContractList() {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#aaa;padding:32px"><i class="fas fa-handshake" style="font-size:32px;display:block;margin-bottom:8px;opacity:.3"></i>계약완료 견적이 없습니다.</td></tr>';
         return;
     }
+    await loadContractSignStatusCache(); /* 서명 상태 일괄 조회 */
     var rows = '';
     for (var i = 0; i < all.length; i++) {
         var r = all[i];
@@ -2519,9 +2540,23 @@ function renderContractList() {
         var profitClass = f.profit >= 0 ? 'cdt-profit-pos' : 'cdt-profit-neg';
         var profitSign  = f.profit >= 0 ? '+' : '';
         var hasSchedule = !!(r.fields && r.fields.scheduleId);
+
+        /* 계약서 상태 배지 */
+        var sign = _contractSignStatusCache[r.id];
+        var badgeHtml = '';
+        if (sign) {
+            if (sign.status === '서명완료') {
+                badgeHtml = '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:#d1fae5;color:#065f46;margin-left:6px"><i class="fas fa-check-circle"></i> 서명완료</span>';
+            } else if (sign.status === '발송됨') {
+                badgeHtml = '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:#dbeafe;color:#1d4ed8;margin-left:6px"><i class="fas fa-paper-plane"></i> 발송됨</span>';
+            } else {
+                badgeHtml = '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:#f3f4f6;color:#6b7280;margin-left:6px">작성중</span>';
+            }
+        }
+
         rows += '<tr>' +
             '<td style="white-space:nowrap" class="cdt-contracted">' + cDate + '</td>' +
-            '<td><div style="font-weight:700">' + escHtml(r.title||'제목없음') + '</div><div style="font-size:11.5px;color:#888">' + escHtml(r.siteName||'') + '</div></td>' +
+            '<td><div style="font-weight:700">' + escHtml(r.title||'제목없음') + badgeHtml + '</div><div style="font-size:11.5px;color:#888">' + escHtml(r.siteName||'') + '</div></td>' +
             '<td>' + escHtml(r.clientName||'—') + '</td>' +
             '<td style="text-align:right;font-weight:700">' + wonFull(f.fin) + '</td>' +
             '<td style="text-align:right" class="' + profitClass + '">' + profitSign + wonFull(f.profit) + '</td>' +
@@ -3594,8 +3629,9 @@ var CT_FIELD_IDS = [
     'ct-date','ct-admin-special'
 ];
 
-var _currentContractDbId = null; /* 현재 편집 중인 저장된 계약서의 DB id (없으면 신규) */
-var _currentLinkedEstId  = null; /* "계약된 견적서에서 불러오기"로 채운 경우, 그 견적 id */
+var _currentContractDbId   = null; /* 현재 편집 중인 저장된 계약서의 DB id (없으면 신규) */
+var _currentLinkedEstId    = null; /* "계약된 견적서에서 불러오기"로 채운 경우, 그 견적 id */
+var _currentLinkedScheduleId = null; /* 연결된 견적에 공정표가 있으면 그 schedule id */
 
 function ctCollectFormData() {
     var data = {};
@@ -3605,6 +3641,9 @@ function ctCollectFormData() {
     });
     data._tmplType   = _currentTmplType;
     data._stampImage = (_stampEnabled && _stampDataUrl) ? _stampDataUrl : null;  /* 도장: on 상태일 때만 포함 */
+    var schToggle = document.getElementById('schedule-include-toggle');
+    data._includeSchedule = !!(schToggle && schToggle.checked);
+    data._scheduleId = _currentLinkedScheduleId || null; /* 고객 페이지에서 공정표를 가져올 때 사용 */
     return data;
 }
 
@@ -3615,6 +3654,9 @@ function ctApplyFormData(data) {
         if (el && data[id] !== undefined) el.value = data[id];
     });
     _currentTmplType = data._tmplType || 'interior';
+    _currentLinkedScheduleId = data._scheduleId || null;
+    var schToggle = document.getElementById('schedule-include-toggle');
+    if (schToggle) schToggle.checked = !!data._includeSchedule;
     switchContractTmpl(_currentTmplType);
     calcPayments();
     renderContractTmpl();
@@ -3723,7 +3765,7 @@ async function deleteContractTmpl(id) {
 }
 
 /* ── 계약 견적에서 자동 채우기 시, 해당 견적과 계약서를 연결해두기 위한 보조 ── */
-function ctResetCurrentDbId() { _currentContractDbId = null; _currentLinkedEstId = null; }
+function ctResetCurrentDbId() { _currentContractDbId = null; _currentLinkedEstId = null; _currentLinkedScheduleId = null; }
 
 /* ════════════════════════════════════════════════════════
    전자계약 — 고객 링크 발송
@@ -3861,12 +3903,23 @@ function updateLinkPreview(contractId, token, baseUrl, clientName) {
     msgEl.textContent  = '안녕하세요 ' + clientName + '님, 정결 Design Studio입니다.\n\n계약서가 준비되었습니다.\n아래 링크에서 확인 및 서명 부탁드립니다.\n\n' + url + '\n\n※ 접속 시 연락처 뒷 4자리를 입력해 주세요.';
 }
 
-function copyKakaoMsg() {
+async function copyKakaoMsg(contractId) {
+    var btn = event && event.target ? event.target.closest('button') : null;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 저장 중…'; }
+
+    /* 메시지를 복사하기 전에 먼저 DB에 토큰을 반드시 저장한다.
+       "저장 버튼을 안 눌러도 복사하면 항상 유효한 링크"가 되도록 보장하는 안전장치. */
+    var saveOk = await doSendLink(contractId, 'copy');
+    if (!saveOk) {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-copy"></i> 메시지 복사'; }
+        return; /* 저장 실패 시 복사하지 않음 — 무효 링크 발송 방지 */
+    }
+
     var el = document.getElementById('sl-kakao-msg');
     if (!el) return;
     var txt = el.textContent;
     if (navigator.clipboard) {
-        navigator.clipboard.writeText(txt).then(function(){ showToast('✅ 메시지가 복사되었습니다. 카카오톡에 붙여넣기 해주세요.'); });
+        navigator.clipboard.writeText(txt).then(function(){ showToast('✅ 링크가 저장되고 메시지가 복사되었습니다. 카카오톡에 붙여넣기 해주세요.'); });
     } else {
         var ta = document.createElement('textarea');
         ta.value = txt;
@@ -3874,7 +3927,7 @@ function copyKakaoMsg() {
         ta.select();
         document.execCommand('copy');
         document.body.removeChild(ta);
-        showToast('✅ 메시지가 복사되었습니다.');
+        showToast('✅ 링크가 저장되고 메시지가 복사되었습니다.');
     }
 }
 
@@ -3883,12 +3936,12 @@ async function doSendLink(contractId, mode) {
     var expDays  = parseInt((document.getElementById('sl-expires') || {}).value || '60', 10);
 
     if (!phone4 || !/^\d{4}$/.test(phone4)) {
-        showToast('⚠️ 연락처 뒷 4자리를 정확히 입력해 주세요.'); return;
+        showToast('⚠️ 연락처 뒷 4자리를 정확히 입력해 주세요.'); return false;
     }
 
     /* 모달에서 이미 결정된 토큰 사용 (새로 생성하면 모달의 링크 URL과 달라짐) */
     var token = window._pendingLinkToken || generateToken();
-    window._pendingLinkToken = null;  /* 사용 후 초기화 */
+    window._pendingLinkToken = token; /* copy 경로에서 여러 번 호출될 수 있으므로 즉시 비우지 않고 유지 */
     var expiresAt = expDays > 0
         ? new Date(Date.now() + expDays * 86400000).toISOString()
         : null;
@@ -3896,7 +3949,7 @@ async function doSendLink(contractId, mode) {
     var patchData = {
         access_token       : token,
         client_phone_last4 : phone4,
-        status             : (mode === 'new') ? '발송됨' : '발송됨'
+        status             : '발송됨'
     };
     if (expiresAt) patchData.token_expires_at = expiresAt;
 
@@ -3908,17 +3961,24 @@ async function doSendLink(contractId, mode) {
         });
         if (!res.ok) throw new Error(await res.text());
 
-        var modal = document.getElementById('send-link-modal');
-        if (modal) modal.remove();
-        showToast('✅ 링크가 생성되었습니다. 카카오톡 메시지를 복사해서 고객에게 전송해 주세요.');
+        window._pendingLinkToken = null; /* 저장 성공했으니 초기화 */
+
+        if (mode !== 'copy') {
+            var modal = document.getElementById('send-link-modal');
+            if (modal) modal.remove();
+            showToast('✅ 링크가 생성되었습니다. 카카오톡 메시지를 복사해서 고객에게 전송해 주세요.');
+        }
 
         /* 계약관리 탭 카운트 갱신 */
         var cnt = document.getElementById('contract-count');
         if (cnt && parseInt(cnt.textContent) < 1) cnt.textContent = '0';
 
+        return true;
+
     } catch(e) {
         showToast('❌ 링크 생성 실패: ' + e.message);
         console.error(e);
+        return false;
     }
 }
 
@@ -4009,6 +4069,9 @@ function autoFillContractFromEst() {
         var fld  = est.fields || {};
         var snap = est.costSnapshot || {};
         _currentLinkedEstId = est.id || null; /* 계약서 저장 시 이 견적과 연결 */
+        _currentLinkedScheduleId = fld.scheduleId || null; /* 연결된 공정표가 있으면 함께 저장 */
+        var schToggle = document.getElementById('schedule-include-toggle');
+        if (schToggle) schToggle.checked = !!_currentLinkedScheduleId;
         /* 시공사 정보 로드 */
         var co   = (typeof loadCompanyInfo === 'function') ? (loadCompanyInfo() || {}) : {};
         var setV = function(id, v) { var el = document.getElementById(id); if (el && v !== undefined && v !== null && v !== '') el.value = v; };
