@@ -351,6 +351,30 @@ async function loadContracts() { return await sbSelect('contracts', 'order=creat
 async function loadContract(id) { return await sbGetOne('contracts', id); }
 async function deleteContract(id) { await sbDelete('contracts', id); }
 
+
+/* ═══════════════════════════════════════════════════════
+   영수증 CRUD — Supabase receipts 테이블
+═══════════════════════════════════════════════════════ */
+function genReceiptId() { return 'rcpt_' + Date.now() + '_' + Math.random().toString(36).slice(2,6); }
+
+async function saveReceipt(receiptObj) {
+    if (!receiptObj.id) receiptObj.id = genReceiptId();
+    receiptObj.updated_at = new Date().toISOString();
+    if (!receiptObj.created_at) receiptObj.created_at = receiptObj.updated_at;
+    await sbUpsert('receipts', receiptObj);
+    return receiptObj.id;
+}
+
+async function loadReceipts(contractId) {
+    var query = contractId
+        ? 'contract_id=eq.' + encodeURIComponent(contractId) + '&order=created_at.desc'
+        : 'order=created_at.desc&limit=100';
+    return await sbSelect('receipts', query);
+}
+
+async function loadAllReceipts() { return await sbSelect('receipts', 'order=created_at.desc&limit=200'); }
+async function deleteReceipt(id) { await sbDelete('receipts', id); }
+
 /* ═══════════════════════════════════════════════════════
    genId
 ═══════════════════════════════════════════════════════ */

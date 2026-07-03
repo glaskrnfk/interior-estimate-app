@@ -14,7 +14,7 @@ function openReceiptWindow() {
 
     /* ── 대표도장 (localStorage) ── */
     var stamp = '';
-    try { stamp = localStorage.getItem('iq_stamp') || ''; } catch(e) {}
+    try { stamp = localStorage.getItem('iq_stamp_image') || localStorage.getItem('iq_stamp') || ''; } catch(e) {}
 
     var today = new Date().toISOString().slice(0, 10);
 
@@ -32,7 +32,9 @@ function openReceiptWindow() {
         tel        : gf('ct-tel'),
         fax        : gf('ct-fax'),
         coAddr     : gf('ct-co-addr'),
-        today      : today
+        today      : today,
+        contractId : (typeof _currentContractDbId !== 'undefined' ? (_currentContractDbId || '') : ''),
+        estimateId : (typeof _currentLinkedEstId !== 'undefined' ? (_currentLinkedEstId || '') : '')
     };
 
     /* ── JSON 직렬화 (<\/script> 이스케이프로 XSS 방지) ── */
@@ -101,6 +103,8 @@ function openReceiptWindow() {
         + '  <label>발행일<input type="date" id="rd" value="' + today + '"></label>'
         + '  <button class="br" id="btnR">&#9654; 미리보기</button>'
         + '  <button class="bp" id="btnP">&#128438; 인쇄 (A4)</button>'
+        + '  <button class="bs" id="btnS" style="background:#059669;color:#fff">&#128190; DB 저장</button>'
+        + '  <button class="bs" id="btnSend" style="background:#7c3aed;color:#fff;display:none">&#128279; 고객 링크</button>'
         + '</div>'
         + '<div class="a4">'
         + '  <div id="r1"></div>'
@@ -315,6 +319,56 @@ function buildPopupJs() {
         + '  });\n'
         + '  document.getElementById("btnR").addEventListener("click", render);\n'
         + '  document.getElementById("btnP").addEventListener("click", function() { window.print(); });\n'
+        + '  document.getElementById("btnS").addEventListener("click", function() {\n'
+        + '    var sup = parseInt(document.getElementById("rs").value) || 0;\n'
+        + '    var vat = parseInt(document.getElementById("rv").value) || 0;\n'
+        + '    var tot = parseInt(document.getElementById("rt").value) || 0;\n'
+        + '    var memo = document.getElementById("rm").value || "";\n'
+        + '    var dt   = document.getElementById("rd").value || D.today;\n'
+        + '    if (!sup) { alert("공급가액을 입력해 주세요."); return; }\n'
+        + '    var payload = {\n'
+        + '      contract_id    : D.contractId || null,\n'
+        + '      estimate_id    : D.estimateId || null,\n'
+        + '      client_name    : D.clientName || "",\n'
+        + '      site_name      : D.siteName   || "",\n'
+        + '      supply_amount  : sup,\n'
+        + '      vat_amount     : vat,\n'
+        + '      total_amount   : tot,\n'
+        + '      memo           : memo,\n'
+        + '      issued_at      : dt,\n'
+        + '      receipt_data   : { D: D, sup: sup, vat: vat, tot: tot, memo: memo, dt: dt }\n'
+        + '    };\n'
+        + '    var SB_URL = parent.SB_URL || "";\n'
+        + '    var SB_KEY = parent.SB_KEY || "";\n'
+        + '    if (!SB_URL) { alert("Supabase 연결 정보를 찾을 수 없습니다."); return; }\n'
+        + '    var id = "rcpt_" + Date.now() + "_" + Math.random().toString(36).slice(2,6);\n'
+        + '    payload.id = id;\n'
+        + '    payload.created_at = new Date().toISOString();\n'
+        + '    payload.updated_at = payload.created_at;\n'
+        + '    fetch(SB_URL + "/rest/v1/receipts", {\n'
+        + '      method: "POST",\n'
+        + '      headers: { "Content-Type": "application/json", "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Prefer": "return=representation" },\n'
+        + '      body: JSON.stringify(payload)\n'
+        + '    }).then(function(r) { return r.json(); })\n'
+        + '    .then(function(d) {\n'
+        + '      if (d && d[0] && d[0].id) {\n'
+        + '        window._savedReceiptId = d[0].id;\n'
+        + '        document.getElementById("btnS").textContent = "\u2705 저장됨";\n'
+        + '        document.getElementById("btnS").style.background = "#047857";\n'
+        + '        document.getElementById("btnSend").style.display = "";\n'
+        + '        document.getElementById("btnSend").dataset.rcptId = d[0].id;\n'
+        + '      } else { alert("저장 실패: " + JSON.stringify(d)); }\n'
+        + '    }).catch(function(e) { alert("저장 오류: " + e.message); });\n'
+        + '  });\n'
+        + '  document.getElementById("btnSend").addEventListener("click", function() {\n'
+        + '    var rcptId = this.dataset.rcptId;\n'
+        + '    if (!rcptId) return;\n'
+        + '    var base = location.href.split("/").slice(0,-1).join("/") + "/";\n'
+        + '    var link = base + "client.html?rcpt=" + rcptId;\n'
+        + '    navigator.clipboard.writeText(link).then(function() {\n'
+        + '      alert("\u2705 영수증 링크가 복사되었습니다.\\n\\n" + link + "\\n\\n카카오톡에 붙여넣기 해주세요.");\n'
+        + '    }).catch(function() { alert("링크: " + link); });\n'
+        + '  });\n'
         + '\n'
         + '  /* 초기 렌더링 */\n'
         + '  render();\n'
