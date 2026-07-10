@@ -701,14 +701,36 @@ input[type=number] { user-select:none; }
           </a>
         </div>
       </div>
-      <div style="background:#f0f4ff;border:1px solid #c7d9f5;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12.5px;color:#1a3e72">
-        <i class="fas fa-share-alt" style="margin-right:6px"></i>
-        <strong>고객 설문 링크:</strong>
-        <span id="survey-url-display" style="font-family:monospace;background:#fff;padding:2px 8px;border-radius:4px;margin:0 8px;font-size:12px;color:#333"></span>
-        <button onclick="copySurveyUrl()" class="btn btn-secondary" style="font-size:12px;padding:4px 12px;vertical-align:middle">
-          <i class="fas fa-copy"></i> 복사
-        </button>
-        <span style="color:#888;margin-left:6px">카카오톡·문자로 고객에게 전송하세요</span>
+      <!-- 설문 링크 영역 -->
+      <div style="background:#f0f4ff;border:1px solid #c7d9f5;border-radius:8px;padding:14px 16px;margin-bottom:16px;font-size:12.5px;color:#1a3e72">
+        <div style="font-weight:800;margin-bottom:10px"><i class="fas fa-share-alt" style="margin-right:6px"></i>고객 발송용 링크</div>
+
+        <!-- 링크 1: 사전 체크리스트 (직접 발송용) -->
+        <div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #dce7f5">
+          <div style="font-size:11px;font-weight:700;color:#586069;margin-bottom:5px">
+            📋 사전 체크리스트 <span style="font-weight:400;color:#aaa">(고객에게 직접 발송)</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span id="survey-url-display" style="font-family:monospace;background:#fff;padding:3px 8px;border-radius:4px;font-size:11px;color:#333;border:1px solid #dce7f5;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+            <button onclick="copySurveyUrl()" class="btn btn-secondary" style="font-size:12px;padding:4px 12px;flex-shrink:0">
+              <i class="fas fa-copy"></i> 복사
+            </button>
+          </div>
+        </div>
+
+        <!-- 링크 2: 스타일 진단 (SNS/홍보용) -->
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#586069;margin-bottom:5px">
+            🎨 인테리어 스타일 진단 <span style="font-weight:400;color:#aaa">(SNS·홍보용 공개 링크)</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span id="survey-public-url-display" style="font-family:monospace;background:#fff;padding:3px 8px;border-radius:4px;font-size:11px;color:#333;border:1px solid #dce7f5;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+            <button onclick="copySurveyPublicUrl()" class="btn btn-secondary" style="font-size:12px;padding:4px 12px;flex-shrink:0">
+              <i class="fas fa-copy"></i> 복사
+            </button>
+          </div>
+          <div style="font-size:11px;color:#888;margin-top:5px">인스타그램·블로그 등 SNS 프로필에 연결하면 예비 고객이 스스로 진단 후 접수합니다.</div>
+        </div>
       </div>
       <!-- ★수정 #6: 상태 카운트 배지 – 취소/계약완료 추가 (6열) -->
       <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px">
@@ -2681,14 +2703,24 @@ var _currentSurveyId = null;
 function initSurveyUrl() {
     var base = location.href.replace(/admin\.html.*$/, '');
     var url  = base + 'survey.html';
-    var el   = document.getElementById('survey-url-display');
+    var urlPublic = base + 'survey-public.html';
+    var el = document.getElementById('survey-url-display');
     if (el) el.textContent = url;
+    var el2 = document.getElementById('survey-public-url-display');
+    if (el2) el2.textContent = urlPublic;
 }
 function copySurveyUrl() {
     var base = location.href.replace(/admin\.html.*$/, '');
     var url  = base + 'survey.html';
     if (navigator.clipboard) {
-        navigator.clipboard.writeText(url).then(function() { showToast('✅ 설문 링크가 복사되었습니다!'); }).catch(function() { showToast('링크: ' + url); });
+        navigator.clipboard.writeText(url).then(function() { showToast('✅ 사전 체크리스트 링크가 복사되었습니다!'); }).catch(function() { showToast('링크: ' + url); });
+    } else { showToast('링크: ' + url); }
+}
+function copySurveyPublicUrl() {
+    var base = location.href.replace(/admin\.html.*$/, '');
+    var url  = base + 'survey-public.html';
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(function() { showToast('✅ 스타일 진단 링크가 복사되었습니다! SNS에 붙여넣기 하세요.'); }).catch(function() { showToast('링크: ' + url); });
     } else { showToast('링크: ' + url); }
 }
 
