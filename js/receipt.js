@@ -33,8 +33,8 @@ function openReceiptWindow() {
         fax        : gf('ct-fax'),
         coAddr     : gf('ct-co-addr'),
         today      : today,
-        contractId : (typeof _currentContractDbId !== 'undefined' ? (_currentContractDbId || '') : ''),
-        estimateId : (typeof _currentLinkedEstId !== 'undefined' ? (_currentLinkedEstId || '') : '')
+        contractId : (typeof _currentContractDbId !== 'undefined' ? (_currentContractDbId || '') : '') || (window.opener && window.opener._currentContractDbId) || '',
+        estimateId : (typeof _currentLinkedEstId !== 'undefined' ? (_currentLinkedEstId || '') : '') || (window.opener && window.opener._currentLinkedEstId) || ''
     };
 
     /* ── JSON 직렬화 (<\/script> 이스케이프로 XSS 방지) ── */
@@ -104,7 +104,7 @@ function openReceiptWindow() {
         + '  <button class="br" id="btnR">&#9654; 미리보기</button>'
         + '  <button class="bp" id="btnP">&#128438; 인쇄 (A4)</button>'
         + '  <button class="bs" id="btnS" style="background:#059669;color:#fff">&#128190; DB 저장</button>'
-        + '  <button class="bs" id="btnSend" style="background:#7c3aed;color:#fff;display:none">&#128279; 고객 링크</button>'
+        + '  <button class="bs" id="btnSend" style="background:#059669;color:#fff;display:none">&#10003; 저장됨 (계약서 탭에서 발송)</button>'
         + '</div>'
         + '<div class="a4">'
         + '  <div id="r1"></div>'
@@ -338,8 +338,8 @@ function buildPopupJs() {
         + '      issued_at      : dt,\n'
         + '      receipt_data   : { D: D, sup: sup, vat: vat, tot: tot, memo: memo, dt: dt }\n'
         + '    };\n'
-        + '    var SB_URL = parent.SB_URL || "";\n'
-        + '    var SB_KEY = parent.SB_KEY || "";\n'
+        + '    var SB_URL = (window.opener && window.opener.SB_URL) || parent.SB_URL || "";\n'
+        + '    var SB_KEY = (window.opener && window.opener.SB_KEY) || parent.SB_KEY || "";\n'
         + '    if (!SB_URL) { alert("Supabase 연결 정보를 찾을 수 없습니다."); return; }\n'
         + '    var id = "rcpt_" + Date.now() + "_" + Math.random().toString(36).slice(2,6);\n'
         + '    payload.id = id;\n'
@@ -361,13 +361,7 @@ function buildPopupJs() {
         + '    }).catch(function(e) { alert("저장 오류: " + e.message); });\n'
         + '  });\n'
         + '  document.getElementById("btnSend").addEventListener("click", function() {\n'
-        + '    var rcptId = this.dataset.rcptId;\n'
-        + '    if (!rcptId) return;\n'
-        + '    var base = location.href.split("/").slice(0,-1).join("/") + "/";\n'
-        + '    var link = base + "client.html?rcpt=" + rcptId;\n'
-        + '    navigator.clipboard.writeText(link).then(function() {\n'
-        + '      alert("\u2705 영수증 링크가 복사되었습니다.\\n\\n" + link + "\\n\\n카카오톡에 붙여넣기 해주세요.");\n'
-        + '    }).catch(function() { alert("링크: " + link); });\n'
+        + '    alert("영수증이 저장되었습니다.\\n\\n고객에게 발송하려면:\\n어드민 계약서 탭 → \'고객 링크 발송\' 버튼을 사용하세요.\\n고객이 기존 링크로 재접속하면 영수증 탭이 자동으로 나타납니다.");\n'
         + '  });\n'
         + '\n'
         + '  /* 초기 렌더링 */\n'
