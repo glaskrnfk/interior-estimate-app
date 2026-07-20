@@ -604,11 +604,23 @@ async function goToPortal() {
     var btnSign   = document.getElementById('btn-go-sign');
     if (alreadySigned) {
         alreadyEl.style.display = 'block';
-        document.getElementById('signed-at-text').textContent =
-            '서명일시: ' + new Date(c.signed_at).toLocaleString('ko-KR') +
-            (c.client_confirmed_name ? ' / 서명자: ' + c.client_confirmed_name : '');
+        var signedTxt = '서명일시: ' + new Date(c.signed_at).toLocaleString('ko-KR');
+        if (c.client_confirmed_name)  signedTxt += ' / 서명자: ' + c.client_confirmed_name;
+        if (c.client_confirmed_bizno) signedTxt += ' / 신분번호: ' + c.client_confirmed_bizno;
+        document.getElementById('signed-at-text').textContent = signedTxt;
         btnSign.innerHTML = '<i class="fas fa-check-circle"></i> 서명 완료됨 (계약서 보기)';
         btnSign.style.background = '#059669';
+        /* 서명 완료 상태면 서명폼 입력값도 채워서 재확인 가능하게 */
+        var nameEl  = document.getElementById('sign-name');
+        var phoneEl = document.getElementById('sign-phone');
+        var biznoEl = document.getElementById('sign-bizno');
+        if (nameEl  && c.client_confirmed_name)  nameEl.value  = c.client_confirmed_name;
+        if (phoneEl && c.client_confirmed_phone) phoneEl.value = c.client_confirmed_phone;
+        if (biznoEl && c.client_confirmed_bizno) {
+            biznoEl.value    = c.client_confirmed_bizno;
+            biznoEl.readOnly = true;
+            biznoEl.style.background = '#f6f8fa';
+        }
     } else {
         alreadyEl.style.display = 'none';
         btnSign.innerHTML = '<i class="fas fa-pen"></i> 서명하러 가기';
@@ -1352,6 +1364,14 @@ async function submitSignature() {
         document.getElementById('done-amount').textContent = _contract.contract_amount
             ? ('₩ ' + Number(_contract.contract_amount).toLocaleString() + '원') : '—';
 
+        /* 계약서 본문 재렌더링 - 서명 이미지 즉시 표시 */
+        renderContractDoc(_contract.contract_data || {});
+        var sigSlot = document.getElementById('client-sig-slot');
+        if (sigSlot) sigSlot.innerHTML = '<img src="' + sigData + '" style="max-width:180px;max-height:80px;border:1px solid #e1e4e8;border-radius:6px;margin-top:6px">';
+        var bizCell1 = document.getElementById('ct-doc-bizno-cell');
+        var bizCell2 = document.getElementById('ct-doc-bizno-cell2');
+        if (bizCell1) bizCell1.textContent = bizno;
+        if (bizCell2) bizCell2.textContent = bizno;
         setScreen('done');
         setStep(4);
         /* 서명 완료 후 포털 상태 갱신 (재방문 시 최신 상태 반영) */
