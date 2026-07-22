@@ -789,7 +789,7 @@ input[type=number] { user-select:none; }
           </button>
           <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--navy);padding:7px 12px;border:1.5px solid var(--border);border-radius:7px;background:#fff" title="고객 페이지에 공정표 요약을 함께 보여줄지 여부">
-              <input type="checkbox" id="schedule-include-toggle" style="width:15px;height:15px;cursor:pointer">
+              <input type="checkbox" id="schedule-include-toggle" style="width:15px;height:15px;cursor:pointer" onchange="onScheduleIncludeToggle(this.checked)">
               <i class="fas fa-calendar-alt" style="font-size:13px"></i> 공정표 포함
             </label>
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--navy);padding:7px 12px;border:1.5px solid var(--border);border-radius:7px;background:#fff" title="계약서에 도장 이미지 표시 여부">
@@ -2229,6 +2229,17 @@ function toggleStamp(on) {
     showToast(on ? '🖊 도장이 계약서에 표시됩니다.' : '도장이 숨겨졌습니다. (인쇄 후 직접 날인)');
 }
 
+function onScheduleIncludeToggle(on) {
+    if (on && !_currentLinkedScheduleId) {
+        showToast('⚠️ 연결된 공정표가 없습니다. 계약관리 탭 → 🔗 버튼으로 공정표를 먼저 연결해 주세요.');
+        document.getElementById('schedule-include-toggle').checked = false;
+        return;
+    }
+    showToast(on
+        ? '📅 공정표가 포함됩니다. 저장 후 고객 링크에서 공정표 탭이 표시됩니다.'
+        : '공정표가 제외되었습니다.');
+}
+
 /* ── 단위 마스터 관리 ──────────────────────── */
 function renderUnitList() {
     var units = loadUnits();
@@ -2671,6 +2682,9 @@ function showContractPreview(id) {
         row2('면적', (flds.areaPyeong||'—') + '평 / ' + (flds.areaSqm||'—') + '㎡') +
         row2('공사 기간', (flds.constDays||'—') + '일') + row2('최종 저장', sDate) +
         row2('계약 완료일', '<span class="cdt-contracted">' + cDate + '</span>') +
+        (c.signed_at ? row2('서명 완료', new Date(c.signed_at).toLocaleString('ko-KR')) : '') +
+        (c.client_confirmed_name ? row2('서명자', escHtml(c.client_confirmed_name)) : '') +
+        (c.client_confirmed_bizno ? row2('신분번호', escHtml(c.client_confirmed_bizno)) : '') +
         '</table></div>' +
         '<div><h4 style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)"><i class="fas fa-won-sign" style="margin-right:4px"></i>공사 원가 계산서</h4>' +
         snapRows + '</div></div>' +
@@ -3967,7 +3981,7 @@ async function openSendLinkModal(contractId) {
         '<div style="background:#fff8e1;border:1px solid #ffd54f;border-radius:8px;padding:12px 14px;margin-bottom:18px">' +
         '<div style="font-size:11.5px;font-weight:700;color:#f57f17;margin-bottom:8px"><i class="fas fa-comment" style="margin-right:4px"></i>카카오톡 발송 메시지 (복사 후 전송)</div>' +
         '<div id="sl-kakao-msg" style="font-size:12.5px;color:#333;line-height:1.9;white-space:pre-wrap;background:#fff;padding:10px;border-radius:6px;border:1px solid #ffe082">' +
-        escHtml('안녕하세요 ' + clientName + '님, 정결 Design Studio입니다.\n\n계약서가 준비되었습니다.\n아래 링크에서 확인 및 서명 부탁드립니다.\n\n' + linkUrl + '\n\n※ 접속 시 연락처 뒷 4자리를 입력해 주세요.') +
+        escHtml('[정결 Design Studio] 계약서 확인 요청\n\n안녕하세요 ' + clientName + '님,\n인테리어 계약서가 준비되었습니다.\n아래 링크를 터치하여 확인 및 서명해 주세요.\n\n' + linkUrl + '\n\n접속 비밀번호: 연락처 뒷 4자리') +
         '</div>' +
         '</div>' +
 
@@ -3995,7 +4009,7 @@ function updateLinkPreview(contractId, token, baseUrl, clientName) {
     if (!linkEl || !msgEl) return;
     var url = baseUrl + '?token=' + token;
     linkEl.textContent = url;
-    msgEl.textContent  = '안녕하세요 ' + clientName + '님, 정결 Design Studio입니다.\n\n계약서가 준비되었습니다.\n아래 링크에서 확인 및 서명 부탁드립니다.\n\n' + url + '\n\n※ 접속 시 연락처 뒷 4자리를 입력해 주세요.';
+    msgEl.textContent  = '[정결 Design Studio] 계약서 확인 요청\n\n안녕하세요 ' + clientName + '님,\n인테리어 계약서가 준비되었습니다.\n아래 링크를 터치하여 확인 및 서명해 주세요.\n\n' + url + '\n\n접속 비밀번호: 연락처 뒷 4자리';
 }
 
 async function copyKakaoMsg(contractId) {
@@ -4107,6 +4121,46 @@ async function openContractSignStatus(estId) {
         showToast('계약서 조회 실패: ' + e.message);
     }
 }
+
+/* ════════════════════════════════════════════════════════
+   영수증 저장 — receipt.js 팝업에서 호출
+   팝업은 anon 키 RLS 제한을 받으므로 부모 창(admin.html)에서
+   대신 저장해줌으로써 인증된 세션의 권한을 활용한다.
+════════════════════════════════════════════════════════ */
+window.saveReceiptFromPopup = async function(payload, callback) {
+    try {
+        if (!payload.id) {
+            payload.id = 'rcpt_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+        }
+        payload.created_at = payload.created_at || new Date().toISOString();
+        payload.updated_at = new Date().toISOString();
+
+        var res = await fetch(SB_URL + '/rest/v1/receipts', {
+            method : 'POST',
+            headers: Object.assign(sbHeaders(), { 'Prefer': 'return=representation' }),
+            body   : JSON.stringify(payload)
+        });
+        var data = await res.json();
+
+        if (res.ok && Array.isArray(data) && data[0] && data[0].id) {
+            showToast('✅ 영수증이 저장되었습니다. 고객이 기존 링크 재접속 시 자동 표시됩니다.');
+            /* 영수증 관리 탭 목록 갱신 */
+            _receiptList.unshift(data[0]);
+            var badge = document.getElementById('receipt-count');
+            if (badge) badge.textContent = _receiptList.length;
+            if (callback) callback(data[0].id);
+        } else {
+            var errMsg = data && data.message ? data.message : JSON.stringify(data);
+            showToast('❌ 영수증 저장 실패: ' + errMsg);
+            console.error('saveReceiptFromPopup 오류:', data);
+            if (callback) callback(null);
+        }
+    } catch(e) {
+        showToast('❌ 영수증 저장 오류: ' + e.message);
+        console.error(e);
+        if (callback) callback(null);
+    }
+};
 
 /* ════════════════════════════════════════════════════════
    영수증 관리 탭 — 목록 로드 / 렌더 / 삭제 / 발송
