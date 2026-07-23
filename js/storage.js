@@ -57,7 +57,7 @@ async function sbDelete(table, id) {
 }
 
 async function sbGetOne(table, id) {
-    const rows = await sbSelect(table, `id=eq.${id}&limit=1`);
+    const rows = await sbSelect(table, `id=eq.${id}&select=*&limit=1`);
     return rows[0] || null;
 }
 
@@ -347,7 +347,7 @@ async function saveContract(contractObj) {
     return contractObj.id;
 }
 
-async function loadContracts() { return await sbSelect('contracts', 'order=created_at.desc'); }
+async function loadContracts() { return await sbSelect('contracts', 'select=*&order=created_at.desc'); }
 async function loadContract(id) { return await sbGetOne('contracts', id); }
 async function deleteContract(id) { await sbDelete('contracts', id); }
 
