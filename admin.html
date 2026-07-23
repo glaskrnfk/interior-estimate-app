@@ -787,20 +787,24 @@ input[type=number] { user-select:none; }
           <button class="btn btn-secondary" onclick="switchContractTmpl('general')" id="tmpl-btn-general">
             <i class="fas fa-file-alt"></i> 도급 계약서
           </button>
-          <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--navy);padding:7px 12px;border:1.5px solid var(--border);border-radius:7px;background:#fff" title="고객 페이지에 공정표 요약을 함께 보여줄지 여부">
-              <input type="checkbox" id="schedule-include-toggle" style="width:15px;height:15px;cursor:pointer" onchange="onScheduleIncludeToggle(this.checked)">
-              <i class="fas fa-calendar-alt" style="font-size:13px"></i> 공정표 포함
+          <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <!-- 옵션 토글 2개 -->
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;font-weight:600;color:var(--navy);padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;background:#fff" title="도장 이미지 표시 여부">
+              <input type="checkbox" id="stamp-toggle" onchange="toggleStamp(this.checked)" style="width:14px;height:14px;cursor:pointer">
+              <i class="fas fa-stamp"></i> 도장
             </label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--navy);padding:7px 12px;border:1.5px solid var(--border);border-radius:7px;background:#fff" title="계약서에 도장 이미지 표시 여부">
-              <input type="checkbox" id="stamp-toggle" onchange="toggleStamp(this.checked)" style="width:15px;height:15px;cursor:pointer">
-              <i class="fas fa-stamp" style="font-size:13px"></i> 도장
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;font-weight:600;color:var(--navy);padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;background:#fff" title="고객 포털에 공정표 포함 여부">
+              <input type="checkbox" id="schedule-include-toggle" onchange="onScheduleIncludeToggle(this.checked)" style="width:14px;height:14px;cursor:pointer">
+              <i class="fas fa-calendar-alt"></i> 공정표
             </label>
-            <button class="btn btn-secondary" onclick="showContractTmplList()" style="background:#eef2ff;border-color:#4338ca;color:#4338ca"><i class="fas fa-list"></i> 저장된 계약서</button>
-            <button class="btn btn-secondary" onclick="openReceiptWindow()" style="background:#f0fdf4;border-color:#16a34a;color:#16a34a"><i class="fas fa-receipt"></i> 영수증 발행</button>
-            <button class="btn btn-secondary" onclick="printContractTmpl()"><i class="fas fa-print"></i> 인쇄</button>
-            <button class="btn btn-primary" onclick="saveContractTmpl()" style="background:#059669"><i class="fas fa-save"></i> 저장</button>
-            <button class="btn btn-secondary" onclick="showSendLinkBtn(_currentContractDbId)" id="btn-send-link" style="display:none;border-color:#7c3aed;color:#7c3aed"><i class="fas fa-share-alt"></i> 고객 링크 발송</button>
+            <!-- 구분선 -->
+            <span style="width:1px;height:28px;background:var(--border);display:inline-block"></span>
+            <!-- 주요 액션 버튼 -->
+            <button class="btn btn-secondary" onclick="showContractTmplList()" style="font-size:12px;padding:7px 12px;color:#4338ca;border-color:#4338ca"><i class="fas fa-folder-open"></i> 목록</button>
+            <button class="btn btn-secondary" onclick="openReceiptWindow()" style="font-size:12px;padding:7px 12px;color:#16a34a;border-color:#16a34a"><i class="fas fa-receipt"></i> 영수증</button>
+            <button class="btn btn-secondary" onclick="printContractTmpl()" style="font-size:12px;padding:7px 12px"><i class="fas fa-print"></i> 인쇄</button>
+            <button class="btn btn-primary" onclick="saveContractTmpl()" style="background:#059669;font-size:12px;padding:7px 14px"><i class="fas fa-save"></i> 저장</button>
+            <button class="btn btn-secondary" id="btn-send-link" style="display:none;font-size:12px;padding:7px 12px;border-color:#7c3aed;color:#7c3aed" onclick="showSendLinkBtn(_currentContractDbId)"><i class="fas fa-paper-plane"></i> 발송</button>
             <button class="btn btn-primary" onclick="downloadContractPDF()"><i class="fas fa-file-pdf"></i> PDF 저장</button>
           </div>
         </div>
@@ -3055,9 +3059,16 @@ function confirmRelinkSchedule(contractId, scheduleId) {
             }
         }
         localStorage.setItem('iq_estimates', JSON.stringify(ests));
+        /* 현재 계약서 템플릿에서 이 계약과 연결 중이면 메모리 변수도 즉시 업데이트 */
+        if (_currentLinkedEstId === contractId || !_currentLinkedEstId) {
+            _currentLinkedScheduleId = scheduleId;
+            /* 공정표 포함 토글 자동 활성화 */
+            var schToggle = document.getElementById('schedule-include-toggle');
+            if (schToggle) { schToggle.checked = true; }
+        }
         var picker = document.getElementById('sch-relink-picker');
         if (picker) picker.remove();
-        showToast('✅ 공정표가 연결되었습니다.');
+        showToast('✅ 공정표가 연결되었습니다. 계약서 탭에서 "공정표 포함" 체크 후 저장해 주세요.');
     } catch(e) { showToast('연결 실패: ' + e.message); }
 }
 
@@ -4016,31 +4027,37 @@ async function copyKakaoMsg(contractId) {
     var btn = event && event.target ? event.target.closest('button') : null;
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 저장 중…'; }
 
-    /* 메시지를 복사하기 전에 먼저 DB에 토큰을 반드시 저장한다.
-       "저장 버튼을 안 눌러도 복사하면 항상 유효한 링크"가 되도록 보장하는 안전장치. */
+    /* 1단계: 먼저 DB에 토큰 저장 (저장 전 메시지를 보내면 링크가 무효) */
     var saveOk = await doSendLink(contractId, 'copy');
-    if (!saveOk) {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-copy"></i> 메시지 복사'; }
-        return; /* 저장 실패 시 복사하지 않음 — 무효 링크 발송 방지 */
-    }
 
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-copy"></i> 메시지 복사'; }
+
+    if (!saveOk) return; /* 저장 실패 시 중단 */
+
+    /* 2단계: 저장 완료 후 DOM의 메시지 텍스트를 복사 (토큰이 이미 반영되어 있음) */
     var el = document.getElementById('sl-kakao-msg');
     if (!el) return;
     var txt = el.textContent;
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(txt).then(function(){ showToast('✅ 링크가 저장되고 메시지가 복사되었습니다. 카카오톡에 붙여넣기 해주세요.'); });
-    } else {
+
+    try {
+        await navigator.clipboard.writeText(txt);
+        showToast('✅ 저장 완료! 메시지가 복사되었습니다. 카카오톡에 붙여넣기 하세요.');
+    } catch(e) {
+        /* 클립보드 API 실패 시 폴백 */
         var ta = document.createElement('textarea');
         ta.value = txt;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
         document.body.appendChild(ta);
+        ta.focus();
         ta.select();
-        document.execCommand('copy');
+        try { document.execCommand('copy'); showToast('✅ 저장 완료! 메시지가 복사되었습니다.'); }
+        catch(e2) { alert('복사 실패. 링크를 직접 복사해 주세요:\n\n' + txt); }
         document.body.removeChild(ta);
-        showToast('✅ 링크가 저장되고 메시지가 복사되었습니다.');
     }
 }
 
-async function doSendLink(contractId, mode) {
+async async function doSendLink(contractId, mode) {
     var phone4   = (document.getElementById('sl-phone4').value || '').trim();
     var expDays  = parseInt((document.getElementById('sl-expires') || {}).value || '60', 10);
 
