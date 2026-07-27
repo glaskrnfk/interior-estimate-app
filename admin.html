@@ -2582,12 +2582,18 @@ var _contractSignStatusCache = {}; /* estimate_id -> { status, signed_at } */
 
 async function loadContractSignStatusCache() {
     try {
-        var r = await fetch(SB_URL + '/rest/v1/contracts?select=estimate_id,status,signed_at&estimate_id=not.is.null', { headers: sbHeaders() });
+        var r = await fetch(SB_URL + '/rest/v1/contracts?select=estimate_id,status,signed_at,client_confirmed_name,client_confirmed_bizno,signature_data&estimate_id=not.is.null', { headers: sbHeaders() });
         var rows = await r.json();
         var map = {};
         if (Array.isArray(rows)) {
             rows.forEach(function(c) {
-                if (c.estimate_id) map[c.estimate_id] = { status: c.status, signed_at: c.signed_at };
+                if (c.estimate_id) map[c.estimate_id] = {
+                    status: c.status,
+                    signed_at: c.signed_at,
+                    client_confirmed_name: c.client_confirmed_name,
+                    client_confirmed_bizno: c.client_confirmed_bizno,
+                    signature_data: c.signature_data
+                };
             });
         }
         _contractSignStatusCache = map;
@@ -2606,7 +2612,7 @@ async function renderContractList() {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#aaa;padding:32px"><i class="fas fa-handshake" style="font-size:32px;display:block;margin-bottom:8px;opacity:.3"></i>계약완료 견적이 없습니다.</td></tr>';
         return;
     }
-    await loadContractSignStatusCache(); /* 서명 상태 일괄 조회 */
+    try { await loadContractSignStatusCache(); } catch(e) { console.warn('서명상태 캐시 로드 실패 (무시):', e); } /* 실패해도 목록은 표시 */
     var rows = '';
     for (var i = 0; i < all.length; i++) {
         var r = all[i];
@@ -3856,9 +3862,12 @@ async function loadContractTmplById(id) {
         _currentContractDbId = c.id;
         _currentLinkedEstId  = c.estimate_id || null;
         _currentSignatureData = c.signature_data || null; /* 고객 서명 이미지 */
-        /* 서명완료 여부를 탭 제목에 반영 */
+        /* 서명완료 여부를 토스트로 표시 */
         if (c.signed_at) {
-            showToast('✍️ 서명완료 계약서입니다. (' + new Date(c.signed_at).toLocaleDateString('ko-KR') + ')');
+            var signInfo = '✍️ 서명완료 (' + new Date(c.signed_at).toLocaleDateString('ko-KR') + ')';
+            if (c.client_confirmed_name)  signInfo += ' · ' + c.client_confirmed_name;
+            if (c.client_confirmed_bizno) signInfo += ' · ' + c.client_confirmed_bizno;
+            showToast(signInfo);
         }
         ctApplyFormData(c.contract_data || {});
         var picker = document.getElementById('ct-list-picker');
@@ -3992,7 +4001,7 @@ async function openSendLinkModal(contractId) {
         '<div style="background:#fff8e1;border:1px solid #ffd54f;border-radius:8px;padding:12px 14px;margin-bottom:18px">' +
         '<div style="font-size:11.5px;font-weight:700;color:#f57f17;margin-bottom:8px"><i class="fas fa-comment" style="margin-right:4px"></i>카카오톡 발송 메시지 (복사 후 전송)</div>' +
         '<div id="sl-kakao-msg" style="font-size:12.5px;color:#333;line-height:1.9;white-space:pre-wrap;background:#fff;padding:10px;border-radius:6px;border:1px solid #ffe082">' +
-        escHtml('[정결 Design Studio] 계약서 확인 요청\n\n안녕하세요 ' + clientName + '님,\n인테리어 계약서가 준비되었습니다.\n아래 링크를 터치하여 확인 및 서명해 주세요.\n\n' + linkUrl + '\n\n접속 비밀번호: 연락처 뒷 4자리') +
+        escHtml('[정결 Design Studio] 계약서 확인 요청\n\n안녕하세요 ' + clientName + '님,\n인테리어 계약서가 준비되었습니다.\n아래 링크를 터치하여 확인 및 서명해 주세요.\n\n' + linkUrl + '\n\n접속 비밀번호: 연락처 뒷 4자리\n(링크 미리보기와 동일한 주소입니다)') +
         '</div>' +
         '</div>' +
 
@@ -4020,39 +4029,52 @@ function updateLinkPreview(contractId, token, baseUrl, clientName) {
     if (!linkEl || !msgEl) return;
     var url = baseUrl + '?token=' + token;
     linkEl.textContent = url;
-    msgEl.textContent  = '[정결 Design Studio] 계약서 확인 요청\n\n안녕하세요 ' + clientName + '님,\n인테리어 계약서가 준비되었습니다.\n아래 링크를 터치하여 확인 및 서명해 주세요.\n\n' + url + '\n\n접속 비밀번호: 연락처 뒷 4자리';
+    /* URL 앞뒤 빈 줄로 분리 - 카카오톡이 하이퍼링크로 인식하도록 */
+    msgEl.textContent  = '[정결 Design Studio] 계약서 확인 요청\n\n안녕하세요 ' + clientName + '님,\n인테리어 계약서가 준비되었습니다.\n아래 링크를 터치하여 확인 및 서명해 주세요.\n\n' + url + '\n\n접속 비밀번호: 연락처 뒷 4자리\n(링크 미리보기와 동일한 주소입니다)';
 }
 
 async function copyKakaoMsg(contractId) {
     var btn = event && event.target ? event.target.closest('button') : null;
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 저장 중…'; }
 
-    /* 1단계: 먼저 DB에 토큰 저장 (저장 전 메시지를 보내면 링크가 무효) */
+    /* 1단계: 먼저 DB에 토큰 저장 */
     var saveOk = await doSendLink(contractId, 'copy');
 
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-copy"></i> 메시지 복사'; }
+    if (!saveOk) return;
 
-    if (!saveOk) return; /* 저장 실패 시 중단 */
+    /* 2단계: 미리보기 URL(sl-link-preview)에서 실제 저장된 URL을 읽어와
+       카카오 메시지를 새로 구성 — DOM의 메시지 텍스트 대신 직접 구성해서
+       두 URL이 절대 달라지지 않도록 보장 */
+    var linkEl = document.getElementById('sl-link-preview');
+    var actualUrl = linkEl ? linkEl.textContent.trim() : '';
+    if (!actualUrl) { showToast('❌ 링크를 찾을 수 없습니다.'); return; }
 
-    /* 2단계: 저장 완료 후 DOM의 메시지 텍스트를 복사 (토큰이 이미 반영되어 있음) */
-    var el = document.getElementById('sl-kakao-msg');
-    if (!el) return;
-    var txt = el.textContent;
+    var clientName = (document.getElementById('sl-kakao-msg') || {}).dataset
+        ? '' : '';
+    /* sl-kakao-msg에서 고객 이름 추출 */
+    var msgEl = document.getElementById('sl-kakao-msg');
+    var existingMsg = msgEl ? msgEl.textContent : '';
+    var nameMatch = existingMsg.match(/안녕하세요 (.+?)님/);
+    var cName = nameMatch ? nameMatch[1] : '고객';
+
+    /* 최종 메시지: URL은 미리보기와 100% 동일하게 */
+    var finalMsg = '[정결 Design Studio] 계약서 확인 요청\n\n안녕하세요 ' + cName + '님,\n인테리어 계약서가 준비되었습니다.\n아래 링크를 터치하여 확인 및 서명해 주세요.\n\n' + actualUrl + '\n\n접속 비밀번호: 연락처 뒷 4자리';
+
+    /* 메시지 박스 업데이트 (확인용) */
+    if (msgEl) msgEl.textContent = finalMsg;
 
     try {
-        await navigator.clipboard.writeText(txt);
+        await navigator.clipboard.writeText(finalMsg);
         showToast('✅ 저장 완료! 메시지가 복사되었습니다. 카카오톡에 붙여넣기 하세요.');
     } catch(e) {
-        /* 클립보드 API 실패 시 폴백 */
         var ta = document.createElement('textarea');
-        ta.value = txt;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
+        ta.value = finalMsg;
+        ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
         document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
+        ta.focus(); ta.select();
         try { document.execCommand('copy'); showToast('✅ 저장 완료! 메시지가 복사되었습니다.'); }
-        catch(e2) { alert('복사 실패. 링크를 직접 복사해 주세요:\n\n' + txt); }
+        catch(e2) { alert('복사 실패. 링크를 직접 복사해 주세요:\n\n' + actualUrl); }
         document.body.removeChild(ta);
     }
 }
