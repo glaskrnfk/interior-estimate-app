@@ -4079,7 +4079,7 @@ async function copyKakaoMsg(contractId) {
     }
 }
 
-async async function doSendLink(contractId, mode) {
+async function doSendLink(contractId, mode) {
     var phone4   = (document.getElementById('sl-phone4').value || '').trim();
     var expDays  = parseInt((document.getElementById('sl-expires') || {}).value || '60', 10);
 
