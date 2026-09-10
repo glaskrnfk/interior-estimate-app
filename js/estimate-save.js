@@ -313,7 +313,13 @@ function updateEstimate(id, titleOverride) {
         savedAt      : Date.now(),
         contracted   : existing.contracted,
         contractedAt : existing.contractedAt,
-        costSnapshot : existing.costSnapshot
+        /* 2번 수정: 계약완료 상태에서 견적을 수정·저장하면 costSnapshot도 자동 갱신.
+           이렇게 하면 어드민 계약관리에서 계약완료 해제 없이도 최신 금액이 반영된다. */
+        costSnapshot : existing.contracted
+            ? (typeof costResult !== 'undefined' && costResult.fin
+                ? JSON.parse(JSON.stringify(costResult))
+                : existing.costSnapshot)
+            : existing.costSnapshot
     };
     list[idx] = updated;
     _lsSave(list);
@@ -360,29 +366,90 @@ function toggleContract() {
 
     const cur = list[idx];
     const newContracted = !cur.contracted;
-    let updated;
 
-    if (newContracted) {
-        if (!confirm(`"${cur.title}"\n\n이 견적서를 계약 완료로 표시하시겠습니까?\n계약 시점의 금액 정보가 함께 저장됩니다.`)) return;
-        const snap = typeof costResult !== 'undefined' ? JSON.parse(JSON.stringify(costResult)) : {};
-        updated = { ...cur, contracted: true, contractedAt: Date.now(), costSnapshot: snap };
-        showToast('🎉 계약 완료로 표시되었습니다!');
-    } else {
+    if (!newContracted) {
+        /* 계약완료 해제 */
         if (!confirm(`"${cur.title}"\n\n계약 완료 표시를 해제하시겠습니까?`)) return;
-        updated = { ...cur, contracted: false, contractedAt: null };
+        const updated = { ...cur, contracted: false, contractedAt: null };
+        _applyContractUpdate(list, idx, updated);
         showToast('계약 완료 표시가 해제되었습니다.');
+        return;
     }
+
+    /* 계약완료 설정 — 날짜 선택 모달 표시 */
+    _showContractDateModal(cur.title, function(selectedDate) {
+        const contractedAt = selectedDate
+            ? new Date(selectedDate).getTime()
+            : Date.now();
+        const snap = typeof costResult !== 'undefined' ? JSON.parse(JSON.stringify(costResult)) : {};
+        const updated = { ...cur, contracted: true, contractedAt, costSnapshot: snap };
+        _applyContractUpdate(list, idx, updated);
+        showToast('🎉 계약 완료로 표시되었습니다! (' + new Date(contractedAt).toLocaleDateString('ko-KR') + ')');
+    });
+}
+
+function _applyContractUpdate(list, idx, updated) {
     list[idx] = updated;
     _lsSave(list);
-
-    // Supabase 동기화
     _setSyncStatus('syncing');
     _sbUpsert(updated)
         .then(() => _setSyncStatus('ok'))
         .catch(e => { console.warn('[estimate-save] 클라우드 동기화 실패:', e.message); _setSyncStatus('error'); });
-
     updateCurrentEstBadge();
     if (typeof renderEstimateList === 'function') renderEstimateList();
+}
+
+function _showContractDateModal(title, callback) {
+    /* 기존 모달 제거 */
+    var existing = document.getElementById('contract-date-modal');
+    if (existing) existing.remove();
+
+    var today = new Date().toISOString().slice(0, 10);
+
+    var modal = document.createElement('div');
+    modal.id = 'contract-date-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center';
+    modal.innerHTML = `
+      <div style="background:#fff;border-radius:14px;padding:28px 24px;width:min(360px,90vw);box-shadow:0 20px 60px rgba(0,0,0,.25)">
+        <div style="font-size:15px;font-weight:800;color:#1a3e72;margin-bottom:6px">
+          <i class="fas fa-handshake" style="margin-right:7px"></i>계약 완료 날짜 선택
+        </div>
+        <div style="font-size:12.5px;color:#666;margin-bottom:18px;word-break:break-all">${title}</div>
+        <div style="margin-bottom:18px">
+          <label style="font-size:12px;font-weight:700;color:#586069;display:block;margin-bottom:6px">
+            계약 시점 날짜 <span style="color:#dc2626">*</span>
+          </label>
+          <input type="date" id="contract-date-input" value="${today}"
+            style="width:100%;padding:10px 14px;border:1.5px solid #e1e4e8;border-radius:8px;font-size:15px;outline:none;box-sizing:border-box">
+          <div style="font-size:11px;color:#aaa;margin-top:5px">과거 계약 건이면 실제 계약일을 선택하세요.</div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button id="contract-date-cancel"
+            style="flex:1;padding:11px;border:1.5px solid #e1e4e8;border-radius:8px;background:#f6f8fa;font-size:14px;font-weight:600;cursor:pointer">
+            취소
+          </button>
+          <button id="contract-date-confirm"
+            style="flex:2;padding:11px;border:none;border-radius:8px;background:#1a3e72;color:#fff;font-size:14px;font-weight:700;cursor:pointer">
+            <i class="fas fa-check" style="margin-right:6px"></i>계약 완료 확정
+          </button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(modal);
+
+    document.getElementById('contract-date-cancel').onclick = function() { modal.remove(); };
+    document.getElementById('contract-date-confirm').onclick = function() {
+        var val = document.getElementById('contract-date-input').value;
+        modal.remove();
+        callback(val);
+    };
+    /* 배경 클릭 시 닫기 */
+    modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+    /* 날짜 입력 포커스 */
+    setTimeout(function() {
+        var inp = document.getElementById('contract-date-input');
+        if (inp) inp.focus();
+    }, 100);
 }
 
 /* ══════════════════════════════════════════════════════
