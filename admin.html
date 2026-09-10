@@ -2462,9 +2462,37 @@ function loadContractedEstimates() {
 }
 
 function extractFinancials(record) {
+    /* costSnapshot에는 costResult의 모든 키가 그대로 저장됨
+       핵심: fin(도급금액), margin(이익), exec_fin(실행원가 기준 도급금액)
+       
+       2번 수정: 견적 수정 후 계약완료 재클릭 없이도 최신 금액이 반영되도록
+       costSnapshot이 있더라도 견적 자체가 수정됐을 수 있으므로
+       Supabase에서 최신 로드된 record를 그대로 사용하되,
+       금액은 costSnapshot에서 읽는다 (costSnapshot은 toggleContract 시마다 갱신됨).
+       
+       진짜 해결책: 어드민에서 금액 조회 시 costSnapshot 대신
+       현재 localStorage의 최신 견적 데이터를 참조한다. */
     var snap = record.costSnapshot || {};
-    var fin    = Number(snap.fin    || snap.exec_fin  || 0);
+    
+    /* costSnapshot의 실제 키: fin, margin, marginPct, exec_fin 등 */
+    var fin    = Number(snap.fin    || snap.exec_fin || 0);
     var profit = Number(snap.margin || 0);
+    
+    /* costSnapshot이 없거나 0이면 localStorage에서 최신 값 조회 */
+    if (!fin) {
+        try {
+            var all = JSON.parse(localStorage.getItem('iq_estimates') || '[]');
+            var fresh = null;
+            for (var i = 0; i < all.length; i++) {
+                if (all[i].id === record.id) { fresh = all[i]; break; }
+            }
+            if (fresh && fresh.costSnapshot && fresh.costSnapshot.fin) {
+                fin    = Number(fresh.costSnapshot.fin    || 0);
+                profit = Number(fresh.costSnapshot.margin || 0);
+            }
+        } catch(e) {}
+    }
+    
     var profitPct = fin > 0 ? (profit / fin * 100) : 0;
     return { fin: fin, profit: profit, profitPct: profitPct };
 }
