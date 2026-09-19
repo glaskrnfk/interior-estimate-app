@@ -1079,36 +1079,64 @@ input[type=number] { user-select:none; }
 
     <!-- ② 월간 손익 -->
     <div id="profit-monthly" class="profit-pane" style="display:none">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
         <button onclick="changeMonthlyPeriod(-1)" style="border:none;background:var(--navy-bg);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:16px">◀</button>
         <span id="monthly-period-label" style="font-size:16px;font-weight:800;color:var(--navy);min-width:120px;text-align:center"></span>
         <button onclick="changeMonthlyPeriod(1)" style="border:none;background:var(--navy-bg);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:16px">▶</button>
-        <button class="btn btn-secondary" onclick="loadMonthlySummary()" style="font-size:12px;padding:5px 12px;margin-left:8px"><i class="fas fa-sync-alt"></i> 새로고침</button>
+        <button class="btn btn-secondary" onclick="loadMonthlySummary()" style="font-size:12px;padding:5px 12px"><i class="fas fa-sync-alt"></i> 새로고침</button>
       </div>
 
-      <!-- 수입/원가 입력 -->
-      <div class="card" style="padding:20px;margin-bottom:16px">
-        <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:14px"><i class="fas fa-won-sign" style="margin-right:6px"></i>이달 수입 및 공사 원가 입력</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="fg"><label style="font-size:12px;font-weight:700;color:var(--text2)">💰 잔금 입금액 (실제)</label>
-            <input type="number" id="rev-cashflow" placeholder="0" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px"></div>
-          <div class="fg"><label style="font-size:12px;font-weight:700;color:var(--text2)">🏗️ 자재 실행비</label>
-            <input type="number" id="rev-material" placeholder="0" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px"></div>
-          <div class="fg"><label style="font-size:12px;font-weight:700;color:var(--text2)">👷 노무 실행비</label>
-            <input type="number" id="rev-labor" placeholder="0" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px"></div>
-          <div class="fg"><label style="font-size:12px;font-weight:700;color:var(--text2)">📦 기타 공사비</label>
-            <input type="number" id="rev-other" placeholder="0" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px"></div>
+      <!-- 이달 계약 현황 (자동) -->
+      <div class="card" style="padding:20px;margin-bottom:14px;border-left:4px solid var(--navy)">
+        <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px">
+          <i class="fas fa-handshake" style="margin-right:6px"></i>이달 계약 현황
+          <span style="font-size:11px;font-weight:400;color:#aaa;margin-left:8px">계약완료일 기준 자동 집계</span>
         </div>
-        <div style="margin-top:12px">
-          <label style="font-size:12px;font-weight:700;color:var(--text2)">메모</label>
-          <input type="text" id="rev-memo" placeholder="이달 특이사항" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;margin-top:5px">
+        <div id="monthly-contract-list"></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px" id="monthly-contract-kpi"></div>
+      </div>
+
+      <!-- 최소 수동 입력 (3개만) -->
+      <div class="card" style="padding:20px;margin-bottom:14px;border-left:4px solid #059669">
+        <div style="font-size:13px;font-weight:800;color:#059669;margin-bottom:6px">
+          <i class="fas fa-pencil-alt" style="margin-right:6px"></i>수동 입력 <span style="font-size:11px;font-weight:400;color:#aaa">(꼭 필요한 항목만)</span>
+        </div>
+        <div style="font-size:12px;color:#888;margin-bottom:14px;padding:8px 12px;background:#f0fdf4;border-radius:6px">
+          💡 도급금액·원가·예상이익은 위에서 자동 계산됩니다. 아래는 실제 현금 흐름과 차이가 있는 항목만 입력하세요.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="fg">
+            <label style="font-size:12px;font-weight:700;color:var(--text2)">
+              💰 실제 잔금 입금액
+              <span style="font-weight:400;color:#aaa;font-size:10.5px;display:block">계약금+중도금+잔금 이달 실입금 합계</span>
+            </label>
+            <input type="number" id="rev-cashflow" placeholder="0" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px">
+          </div>
+          <div class="fg">
+            <label style="font-size:12px;font-weight:700;color:var(--text2)">
+              ➕ 추가 수입
+              <span style="font-weight:400;color:#aaa;font-size:10.5px;display:block">AS, 별도 용역, 기타</span>
+            </label>
+            <input type="number" id="rev-extra" placeholder="0" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px">
+          </div>
+          <div class="fg">
+            <label style="font-size:12px;font-weight:700;color:var(--text2)">
+              ⚠️ 실행원가 초과분
+              <span style="font-weight:400;color:#aaa;font-size:10.5px;display:block">견적 원가보다 실제 더 쓴 금액만</span>
+            </label>
+            <input type="number" id="rev-overrun" placeholder="0" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px">
+          </div>
+          <div class="fg">
+            <label style="font-size:12px;font-weight:700;color:var(--text2)">메모</label>
+            <input type="text" id="rev-memo" placeholder="이달 특이사항" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:13px">
+          </div>
         </div>
         <button class="btn btn-primary" onclick="saveMonthlyRevenue()" style="margin-top:14px;width:100%;background:#059669">
           <i class="fas fa-save"></i> 저장
         </button>
       </div>
 
-      <!-- 손익 요약 카드 -->
+      <!-- 손익 요약 카드 (자동 계산) -->
       <div id="monthly-summary-card"></div>
     </div>
 
@@ -4628,73 +4656,165 @@ function changeMonthlyPeriod(delta) {
 
 async function loadMonthlySummary() {
     if (!_profitMonth) _profitMonth = new Date().toISOString().slice(0,7);
+
+    /* ── 1. iq_estimates에서 이달 계약 건 자동 집계 ── */
+    var allEst = loadContractedEstimates();
+    var monthEsts = allEst.filter(function(r) {
+        return r.contractedAt && new Date(r.contractedAt).toISOString().slice(0,7) === _profitMonth;
+    });
+
+    var autoDopup = 0;  /* 도급금액 합계 */
+    var autoCost  = 0;  /* 견적 원가 합계 */
+    var autoProfit = 0; /* 견적 이익 합계 */
+
+    var contractListHtml = '';
+    if (!monthEsts.length) {
+        contractListHtml = '<div style="text-align:center;color:#bbb;padding:12px;font-size:12.5px">이달 계약 완료 건이 없습니다.</div>';
+    } else {
+        contractListHtml = '<table style="width:100%;border-collapse:collapse;font-size:12.5px">';
+        monthEsts.forEach(function(r) {
+            var f   = extractFinancials(r);
+            var snap = r.costSnapshot || {};
+            var cost = Number(snap.matCost || 0) + Number(snap.labCost || 0);
+            if (!cost && snap.fin && snap.margin) cost = snap.fin - snap.margin;
+            var contractDate = new Date(r.contractedAt).toLocaleDateString('ko-KR');
+            autoDopup  += f.fin;
+            autoCost   += cost;
+            autoProfit += f.profit;
+            contractListHtml +=
+                '<tr style="border-bottom:1px solid #f0f4f8">' +
+                '<td style="padding:7px 8px;color:#888;font-size:11.5px;white-space:nowrap">' + contractDate + '</td>' +
+                '<td style="padding:7px 8px;font-weight:600">' + escHtml(r.title||r.siteName||'제목없음') + '</td>' +
+                '<td style="padding:7px 8px;color:#888">' + escHtml(r.clientName||'') + '</td>' +
+                '<td style="padding:7px 8px;text-align:right;font-weight:700;color:var(--navy)">&#8361; ' + f.fin.toLocaleString() + '</td>' +
+                '<td style="padding:7px 8px;text-align:right;color:' + (f.profit>=0?'#059669':'#dc2626') + ';font-weight:700">&#8361; ' + f.profit.toLocaleString() + '</td>' +
+                '</tr>';
+        });
+        contractListHtml += '</table>';
+    }
+
+    var listEl = document.getElementById('monthly-contract-list');
+    if (listEl) listEl.innerHTML = contractListHtml;
+
+    /* KPI 카드 3개 */
+    var kpiEl = document.getElementById('monthly-contract-kpi');
+    if (kpiEl) {
+        var profitRate = autoDopup > 0 ? (autoProfit / autoDopup * 100).toFixed(1) : '0.0';
+        kpiEl.innerHTML =
+            _miniKpi('계약 ' + monthEsts.length + '건', '도급 합계', '&#8361; ' + autoDopup.toLocaleString(), 'var(--navy)') +
+            _miniKpi('견적 원가', '', '&#8361; ' + autoCost.toLocaleString(), '#777') +
+            _miniKpi('예상 이익', profitRate + '%', '&#8361; ' + autoProfit.toLocaleString(), autoProfit>=0?'#059669':'#dc2626');
+    }
+
+    /* ── 2. 고정비 합계 ── */
     if (!_fixedBiz.length && !_fixedPers.length) await loadFixedExpenses();
-    var bizFixed  = _fixedBiz.reduce(function(s,x){ return s+(Number(x.amount)||0); },0);
-    var persFixed = _fixedPers.reduce(function(s,x){ return s+(Number(x.amount)||0); },0);
-    var expRes  = await fetch(SB_URL + '/rest/v1/monthly_expenses?year_month=eq.' + _profitMonth + '&select=*', { headers: sbHeaders() });
-    var exps    = await expRes.json() || [];
-    var bizVar  = 0, persVar = 0;
+    var bizFixed  = _fixedBiz.reduce(function(s,x){ return s+(Number(x.amount)||0); }, 0);
+    var persFixed = _fixedPers.reduce(function(s,x){ return s+(Number(x.amount)||0); }, 0);
+
+    /* ── 3. 변동비 (DB) ── */
+    var expRes = await fetch(SB_URL + '/rest/v1/monthly_expenses?year_month=eq.' + _profitMonth + '&select=*', { headers: sbHeaders() });
+    var exps   = await expRes.json() || [];
+    var bizVar = 0, persVar = 0;
     exps.forEach(function(x){ var a=Number(x.amount)||0; if(x.bucket!=='personal') bizVar+=a; else persVar+=a; });
+
+    /* ── 4. 수동 입력값 (DB) ── */
     var revRes  = await fetch(SB_URL + '/rest/v1/monthly_revenue?year_month=eq.' + _profitMonth + '&select=*&limit=1', { headers: sbHeaders() });
     var revRows = await revRes.json() || [];
     var rev = revRows[0] || {};
-    var cf = document.getElementById('rev-cashflow');
-    var rm = document.getElementById('rev-material');
-    var rl = document.getElementById('rev-labor');
-    var ro = document.getElementById('rev-other');
-    var rmemo = document.getElementById('rev-memo');
-    if(cf) cf.value = rev.cashflow_amount || '';
-    if(rm) rm.value = rev.cost_material   || '';
-    if(rl) rl.value = rev.cost_labor      || '';
-    if(ro) ro.value = rev.cost_other      || '';
-    if(rmemo) rmemo.value = rev.memo      || '';
-    var contracted = loadContractedEstimates().filter(function(r){
-        return r.contractedAt && new Date(r.contractedAt).toISOString().slice(0,7) === _profitMonth;
-    });
-    var contractDopup = contracted.reduce(function(s,r){ return s+(extractFinancials(r).fin||0);},0);
-    var cashflow  = Number(rev.cashflow_amount)||0;
-    var cost      = (Number(rev.cost_material)||0)+(Number(rev.cost_labor)||0)+(Number(rev.cost_other)||0);
-    var constrP   = cashflow - cost;
-    var bizExpT   = bizFixed + bizVar;
-    var bizNet    = constrP - bizExpT;
-    var persExpT  = persFixed + persVar;
-    var realBal   = bizNet - persExpT;
-    function wf(n){ var c=n>=0?'pos':'neg'; return '<span class="pl-val '+c+'">'+(n>=0?'\u20a9 ':'-\u20a9 ')+Math.abs(n).toLocaleString()+'</span>'; }
-    function w(n){ return '<span class="pl-val">\u20a9 '+Number(n||0).toLocaleString()+'</span>'; }
+
+    /* 폼 채우기 */
+    var setVal = function(id, v) { var el = document.getElementById(id); if (el) el.value = v || ''; };
+    setVal('rev-cashflow', rev.cashflow_amount);
+    setVal('rev-extra',    rev.cost_material);   /* extra 수입 재활용 */
+    setVal('rev-overrun',  rev.cost_labor);       /* 실행원가 초과 재활용 */
+    setVal('rev-memo',     rev.memo);
+
+    /* ── 5. 손익 계산 ── */
+    var cashflow   = Number(rev.cashflow_amount) || 0;
+    var extraInc   = Number(rev.cost_material)   || 0;  /* 추가수입 */
+    var overrun    = Number(rev.cost_labor)       || 0;  /* 실행원가 초과 */
+    var totalInc   = cashflow + extraInc;
+    var realCost   = autoCost + overrun;
+    var constrP    = totalInc - realCost;
+    var bizExpT    = bizFixed + bizVar;
+    var bizNet     = constrP - bizExpT;
+    var persExpT   = persFixed + persVar;
+    var realBal    = bizNet - persExpT;
+
+    function wf(n) {
+        var c = n >= 0 ? 'pos' : 'neg';
+        return '<span class="pl-val ' + c + '">' + (n>=0?'&#8361; ':'-&#8361; ') + Math.abs(n).toLocaleString() + '</span>';
+    }
+    function w(n) { return '<span class="pl-val">&#8361; ' + Number(n||0).toLocaleString() + '</span>'; }
+
     var html =
-        '<div class="pl-section"><div class="pl-section-header">&#128200; 사업 수입</div>' +
-        '<div class="pl-row"><span>잔금 입금액 (실제)</span>'+w(cashflow)+'</div>' +
-        '<div class="pl-row sub"><span>참고: 이달 계약 도급액 ('+contracted.length+'건)</span><span style="color:#aaa">\u20a9 '+contractDopup.toLocaleString()+'</span></div></div>' +
-        '<div class="pl-section"><div class="pl-section-header">&#127959;&#65039; 공사 원가 (실행가)</div>' +
-        '<div class="pl-row sub"><span>자재+노무+기타</span>'+w(cost)+'</div>' +
-        '<div class="pl-row total"><span>공사 이익</span>'+wf(constrP)+'</div></div>' +
-        '<div class="pl-section"><div class="pl-section-header">&#127970; 사업 운영비</div>' +
-        '<div class="pl-row sub"><span>사업 고정비</span>'+w(bizFixed)+'</div>' +
-        '<div class="pl-row sub"><span>사업 변동비</span>'+w(bizVar)+'</div>' +
-        '<div class="pl-row total"><span>사업 운영비 합계</span>'+w(bizExpT)+'</div>' +
-        '<div class="pl-row highlight"><span>&#128176; 사업 순이익</span>'+wf(bizNet)+'</div></div>' +
-        '<div class="pl-section"><div class="pl-section-header">&#127968; 개인 생활비</div>' +
-        '<div class="pl-row sub"><span>개인 고정비</span>'+w(persFixed)+'</div>' +
-        '<div class="pl-row sub"><span>개인 변동비</span>'+w(persVar)+'</div>' +
-        '<div class="pl-row total"><span>개인 생활비 합계</span>'+w(persExpT)+'</div></div>' +
-        '<div class="pl-section"><div class="pl-row highlight" style="font-size:17px"><span>&#128181; 실질 잔액 (내 손에 남는 돈)</span>'+wf(realBal)+'</div>' +
-        '<div class="pl-row sub"><span>월 손익분기 필요 매출</span><span style="color:#888">\u20a9 '+(bizExpT+persExpT).toLocaleString()+' 이상</span></div></div>';
+        '<div class="pl-section">' +
+          '<div class="pl-section-header">&#128200; 이달 수입</div>' +
+          '<div class="pl-row sub"><span>실제 입금액 (계약금+중도금+잔금)</span>' + w(cashflow) + '</div>' +
+          (extraInc ? '<div class="pl-row sub"><span>추가 수입 (AS 등)</span>' + w(extraInc) + '</div>' : '') +
+          '<div class="pl-row total"><span>총 수입</span>' + wf(totalInc) + '</div>' +
+        '</div>' +
+        '<div class="pl-section">' +
+          '<div class="pl-section-header">&#127959;&#65039; 공사 원가</div>' +
+          '<div class="pl-row sub"><span>견적 원가 (자동 — ' + monthEsts.length + '건 합산)</span>' + w(autoCost) + '</div>' +
+          (overrun ? '<div class="pl-row sub"><span>실행원가 초과분 (수동)</span><span class="pl-val neg">+&#8361; ' + overrun.toLocaleString() + '</span></div>' : '') +
+          '<div class="pl-row total"><span>공사 이익</span>' + wf(constrP) + '</div>' +
+        '</div>' +
+        '<div class="pl-section">' +
+          '<div class="pl-section-header">&#127970; 사업 운영비</div>' +
+          '<div class="pl-row sub"><span>사업 고정비</span>' + w(bizFixed) + '</div>' +
+          '<div class="pl-row sub"><span>사업 변동비</span>' + w(bizVar) + '</div>' +
+          '<div class="pl-row total"><span>사업 운영비 합계</span>' + w(bizExpT) + '</div>' +
+          '<div class="pl-row highlight"><span>&#128176; 사업 순이익</span>' + wf(bizNet) + '</div>' +
+        '</div>' +
+        '<div class="pl-section">' +
+          '<div class="pl-section-header">&#127968; 개인 생활비</div>' +
+          '<div class="pl-row sub"><span>개인 고정비</span>' + w(persFixed) + '</div>' +
+          '<div class="pl-row sub"><span>개인 변동비</span>' + w(persVar) + '</div>' +
+          '<div class="pl-row total"><span>개인 생활비 합계</span>' + w(persExpT) + '</div>' +
+        '</div>' +
+        '<div class="pl-section">' +
+          '<div class="pl-row highlight" style="font-size:17px"><span>&#128181; 실질 잔액 (내 손에 남는 돈)</span>' + wf(realBal) + '</div>' +
+          '<div class="pl-row sub"><span>월 손익분기 필요 입금액</span><span style="color:#888">&#8361; ' + (bizExpT+persExpT).toLocaleString() + ' 이상</span></div>' +
+          '<div class="pl-row sub"><span>이달 계약 도급 합계 (참고)</span><span style="color:#aaa">&#8361; ' + autoDopup.toLocaleString() + '</span></div>' +
+        '</div>';
+
     var card = document.getElementById('monthly-summary-card');
     if (card) card.innerHTML = html;
 }
 
+function _miniKpi(title, sub, val, color) {
+    return '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">' +
+        '<div style="font-size:11.5px;font-weight:700;color:#666;margin-bottom:2px">' + title + '</div>' +
+        (sub ? '<div style="font-size:10.5px;color:#aaa;margin-bottom:4px">' + sub + '</div>' : '') +
+        '<div style="font-size:14px;font-weight:800;color:' + color + '">' + val + '</div>' +
+        '</div>';
+}
+
+
 async function saveMonthlyRevenue() {
+    /* rev-material, rev-labor 필드를 추가수입/실행원가초과로 재활용 */
     var cashflow = parseInt((document.getElementById('rev-cashflow')||{}).value)||0;
-    var material = parseInt((document.getElementById('rev-material')||{}).value)||0;
-    var labor    = parseInt((document.getElementById('rev-labor')||{}).value)||0;
-    var other    = parseInt((document.getElementById('rev-other')||{}).value)||0;
+    var extra    = parseInt((document.getElementById('rev-extra')||{}).value)||0;
+    var overrun  = parseInt((document.getElementById('rev-overrun')||{}).value)||0;
     var memo     = ((document.getElementById('rev-memo')||{}).value||'').trim();
-    var payload  = { id:'rev_'+_profitMonth.replace('-',''), year_month:_profitMonth, cashflow_amount:cashflow, cost_material:material, cost_labor:labor, cost_other:other, memo:memo, updated_at:new Date().toISOString() };
+
+    /* DB 컬럼 재활용: cost_material=추가수입, cost_labor=실행원가초과, cost_other=0 */
+    var payload = {
+        id           : 'rev_' + _profitMonth.replace('-',''),
+        year_month   : _profitMonth,
+        cashflow_amount : cashflow,
+        cost_material   : extra,    /* 추가수입 (AS 등) */
+        cost_labor      : overrun,  /* 실행원가 초과분 */
+        cost_other      : 0,
+        memo         : memo,
+        updated_at   : new Date().toISOString()
+    };
     try {
         await fetch(SB_URL + '/rest/v1/monthly_revenue', {
-            method: 'POST',
+            method : 'POST',
             headers: Object.assign(sbHeaders(), { 'Prefer': 'resolution=merge-duplicates,return=minimal' }),
-            body: JSON.stringify(payload)
+            body   : JSON.stringify(payload)
         });
         showToast('\u2705 저장되었습니다.');
         loadMonthlySummary();
@@ -4710,85 +4830,107 @@ function changeAnnualYear(delta) {
 async function loadAnnualSummary() {
     if (!_profitYear) _profitYear = new Date().getFullYear();
     if (!_fixedBiz.length && !_fixedPers.length) await loadFixedExpenses();
-    var bizFixed  = _fixedBiz.reduce(function(s,x){ return s+(Number(x.amount)||0);},0);
-    var persFixed = _fixedPers.reduce(function(s,x){ return s+(Number(x.amount)||0);},0);
-    var revRes  = await fetch(SB_URL + '/rest/v1/monthly_revenue?year_month=like.'+_profitYear+'-*&select=*&order=year_month.asc', { headers: sbHeaders() });
+    var bizFixed  = _fixedBiz.reduce(function(s,x){ return s+(Number(x.amount)||0); }, 0);
+    var persFixed = _fixedPers.reduce(function(s,x){ return s+(Number(x.amount)||0); }, 0);
+
+    /* DB에서 월별 수동입력값 + 변동비 */
+    var revRes  = await fetch(SB_URL + '/rest/v1/monthly_revenue?year_month=like.' + _profitYear + '-*&select=*&order=year_month.asc', { headers: sbHeaders() });
     var revRows = await revRes.json() || [];
-    var expRes  = await fetch(SB_URL + '/rest/v1/monthly_expenses?year_month=like.'+_profitYear+'-*&select=*', { headers: sbHeaders() });
+    var expRes  = await fetch(SB_URL + '/rest/v1/monthly_expenses?year_month=like.' + _profitYear + '-*&select=*', { headers: sbHeaders() });
     var expRows = await expRes.json() || [];
-    var contracted = loadContractedEstimates().filter(function(r){ return r.contractedAt && new Date(r.contractedAt).getFullYear()===_profitYear; });
+
+    /* iq_estimates에서 연간 계약 건 자동 집계 */
+    var allEst = loadContractedEstimates();
+
     var months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
-    var totals = {cashflow:0,cost:0,bizExp:0,persExp:0,profit:0};
+    var totals = { dopup:0, autoCost:0, autoProfit:0, cashflow:0, bizExp:0, persExp:0, balance:0 };
     var rows = '';
-    months.forEach(function(mm){
-        var ym  = _profitYear+'-'+mm;
-        var rev = revRows.find(function(r){ return r.year_month===ym; })||{};
+
+    months.forEach(function(mm) {
+        var ym  = _profitYear + '-' + mm;
+        var rev = revRows.find(function(r){ return r.year_month === ym; }) || {};
+
+        /* 이달 계약 건 자동집계 */
+        var monthEsts = allEst.filter(function(r){ return r.contractedAt && new Date(r.contractedAt).toISOString().slice(0,7) === ym; });
+        var autoDopup = 0, autoCost = 0, autoProfit = 0;
+        monthEsts.forEach(function(r) {
+            var f = extractFinancials(r);
+            var snap = r.costSnapshot || {};
+            var cost = Number(snap.matCost||0) + Number(snap.labCost||0);
+            if (!cost && snap.fin && snap.margin) cost = snap.fin - snap.margin;
+            autoDopup  += f.fin;
+            autoCost   += cost;
+            autoProfit += f.profit;
+        });
+
         var cashflow = Number(rev.cashflow_amount||0);
-        var cost     = (Number(rev.cost_material||0))+(Number(rev.cost_labor||0))+(Number(rev.cost_other||0));
-        var me  = expRows.filter(function(x){ return x.year_month===ym; });
-        var bv  = me.filter(function(x){ return x.bucket!=='personal'; }).reduce(function(s,x){ return s+(Number(x.amount)||0);},0);
-        var pv  = me.filter(function(x){ return x.bucket==='personal'; }).reduce(function(s,x){ return s+(Number(x.amount)||0);},0);
-        var be  = bizFixed+bv;
-        var pe  = persFixed+pv;
-        var bal = cashflow-cost-be-pe;
-        totals.cashflow+=cashflow; totals.cost+=cost; totals.bizExp+=be; totals.persExp+=pe; totals.profit+=bal;
-        var has = cashflow||cost||bv||pv;
-        rows+='<tr style="'+(has?'':'color:#ccc')+'">'+
-            '<td>'+parseInt(mm)+'월</td>'+
-            '<td>'+(cashflow?'\u20a9 '+cashflow.toLocaleString():'—')+'</td>'+
-            '<td>'+(cost?'\u20a9 '+cost.toLocaleString():'—')+'</td>'+
-            '<td>\u20a9 '+be.toLocaleString()+'</td>'+
-            '<td>\u20a9 '+pe.toLocaleString()+'</td>'+
-            '<td style="font-weight:700;color:'+(bal>=0?'#059669':'#dc2626')+'">'+
-              (has?(bal>=0?'\u20a9 ':'-\u20a9 ')+Math.abs(bal).toLocaleString():'—')+
+        var extra    = Number(rev.cost_material||0);
+        var overrun  = Number(rev.cost_labor||0);
+        var totalInc = cashflow + extra;
+
+        /* 변동비 */
+        var me  = expRows.filter(function(x){ return x.year_month === ym; });
+        var bv  = me.filter(function(x){ return x.bucket !== 'personal'; }).reduce(function(s,x){ return s+(Number(x.amount)||0); }, 0);
+        var pv  = me.filter(function(x){ return x.bucket === 'personal'; }).reduce(function(s,x){ return s+(Number(x.amount)||0); }, 0);
+        var be  = bizFixed + bv;
+        var pe  = persFixed + pv;
+        var realCost = autoCost + overrun;
+        var bal = totalInc - realCost - be - pe;
+
+        totals.dopup      += autoDopup;
+        totals.autoCost   += realCost;
+        totals.autoProfit += autoProfit;
+        totals.cashflow   += totalInc;
+        totals.bizExp     += be;
+        totals.persExp    += pe;
+        totals.balance    += bal;
+
+        var has = autoDopup || cashflow || extra;
+        rows += '<tr style="' + (has ? '' : 'color:#ccc') + '">' +
+            '<td>' + parseInt(mm) + '월</td>' +
+            '<td>' + (monthEsts.length ? monthEsts.length + '건' : '—') + '</td>' +
+            '<td>' + (autoDopup ? '&#8361; ' + autoDopup.toLocaleString() : '—') + '</td>' +
+            '<td>' + (cashflow  ? '&#8361; ' + cashflow.toLocaleString()  : '—') + '</td>' +
+            '<td>' + '&#8361; ' + be.toLocaleString() + '</td>' +
+            '<td>' + '&#8361; ' + pe.toLocaleString() + '</td>' +
+            '<td style="font-weight:700;color:' + (bal >= 0 ? '#059669' : '#dc2626') + '">' +
+              (has ? (bal >= 0 ? '&#8361; ' : '-&#8361; ') + Math.abs(bal).toLocaleString() : '—') +
             '</td></tr>';
     });
-    function kpi(label,val,color){
-        return '<div style="background:#fff;border-radius:10px;border:1px solid var(--border);padding:16px;text-align:center">'+
-            '<div style="font-size:12px;color:#888;margin-bottom:8px">'+label+'</div>'+
-            '<div style="font-size:16px;font-weight:800;color:'+(color||'var(--navy)')+'">&#8361; '+Math.abs(val).toLocaleString()+'</div></div>';
-    }
+
     var wrap = document.getElementById('annual-summary-wrap');
     if (!wrap) return;
+
     wrap.innerHTML =
-        '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">'+
-          kpi('&#128200; 연간 잔금입금',totals.cashflow,'')+
-          kpi('&#127959;&#65039; 공사 원가',totals.cost,'')+
-          kpi('&#127970; 사업 운영비',totals.bizExp,'')+
-          kpi('&#128181; 실질 잔액',totals.profit,totals.profit>=0?'#059669':'#dc2626')+
-        '</div>'+
-        '<div style="background:#fff;border-radius:10px;border:1px solid var(--border);overflow:hidden;overflow-x:auto">'+
-        '<table class="annual-tbl"><thead><tr>'+
-          '<th style="width:50px">월</th><th>잔금입금</th><th>공사원가</th><th>사업운영비</th><th>개인생활비</th><th>실질잔액</th>'+
-        '</tr></thead><tbody>'+rows+'</tbody>'+
-        '<tfoot><tr class="total-row">'+
-          '<td>합계</td>'+
-          '<td>\u20a9 '+totals.cashflow.toLocaleString()+'</td>'+
-          '<td>\u20a9 '+totals.cost.toLocaleString()+'</td>'+
-          '<td>\u20a9 '+totals.bizExp.toLocaleString()+'</td>'+
-          '<td>\u20a9 '+totals.persExp.toLocaleString()+'</td>'+
-          '<td style="color:'+(totals.profit>=0?'#059669':'#dc2626')+'">\u20a9 '+totals.profit.toLocaleString()+'</td>'+
-        '</tr></tfoot></table></div>'+
-        '<div style="margin-top:14px;padding:12px 16px;background:#f8fafc;border-radius:8px;font-size:12.5px;color:#666">'+
-        '※ 고정비는 등록된 월 금액의 12배로 산정됩니다. 사업고정비 연간: \u20a9 '+(bizFixed*12).toLocaleString()+' / 개인고정비 연간: \u20a9 '+(persFixed*12).toLocaleString()+'</div>';
+        '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">' +
+          _miniKpi('&#128200; 계약 도급 합계', '(자동)', '&#8361; ' + totals.dopup.toLocaleString(), 'var(--navy)') +
+          _miniKpi('&#128181; 실제 입금 합계', '(수동)', '&#8361; ' + totals.cashflow.toLocaleString(), '#1d4ed8') +
+          _miniKpi('&#127970; 사업+개인 지출', '', '&#8361; ' + (totals.bizExp + totals.persExp).toLocaleString(), '#d97706') +
+          _miniKpi('&#127881; 연간 실질 잔액', '', '&#8361; ' + totals.balance.toLocaleString(), totals.balance >= 0 ? '#059669' : '#dc2626') +
+        '</div>' +
+        '<div style="background:#fff;border-radius:10px;border:1px solid var(--border);overflow:hidden;overflow-x:auto">' +
+        '<table class="annual-tbl">' +
+          '<thead><tr>' +
+            '<th style="width:45px">월</th>' +
+            '<th>계약건수</th><th>도급금액(자동)</th><th>실입금(수동)</th>' +
+            '<th>사업운영비</th><th>개인생활비</th><th>실질잔액</th>' +
+          '</tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
+          '<tfoot><tr class="total-row">' +
+            '<td>합계</td>' +
+            '<td>—</td>' +
+            '<td>&#8361; ' + totals.dopup.toLocaleString() + '</td>' +
+            '<td>&#8361; ' + totals.cashflow.toLocaleString() + '</td>' +
+            '<td>&#8361; ' + totals.bizExp.toLocaleString() + '</td>' +
+            '<td>&#8361; ' + totals.persExp.toLocaleString() + '</td>' +
+            '<td style="color:' + (totals.balance >= 0 ? '#059669' : '#dc2626') + '">&#8361; ' + totals.balance.toLocaleString() + '</td>' +
+          '</tr></tfoot>' +
+        '</table></div>' +
+        '<div style="margin-top:14px;padding:12px 16px;background:#f8fafc;border-radius:8px;font-size:12px;color:#666">' +
+          '※ 도급금액은 계약관리 데이터 자동 집계 / 실입금은 월간손익 탭에서 수동 입력 / 고정비는 등록 금액 x12 기준' +
+        '</div>';
 }
 
-
-/* ── 계약 목록에서 계약서/서명 현황 보기 ── */
-async function openContractSignStatus(estId) {
-    try {
-        var r = await fetch(SB_URL + '/rest/v1/contracts?estimate_id=eq.' + encodeURIComponent(estId) + '&select=*&limit=1', { headers: sbHeaders() });
-        var rows = await r.json();
-        if (!Array.isArray(rows) || !rows.length) {
-            showToast('연결된 계약서가 없습니다. 계약서 템플릿 탭에서 먼저 작성 후 저장해 주세요.');
-            return;
-        }
-        var c = rows[0];
-        openSendLinkModal(c.id);
-    } catch(e) {
-        showToast('계약서 조회 실패: ' + e.message);
-    }
-}
 
 /* ════════════════════════════════════════════════════════
    영수증 저장 — receipt.js 팝업에서 호출
