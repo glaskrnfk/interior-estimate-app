@@ -333,7 +333,8 @@ input[type=number] { user-select:none; }
 .pl-val.neg { color: #dc2626; }
 
 /* 연간 테이블 */
-.annual-tbl { width:100%; border-collapse:collapse; font-size:12.5px; }
+.annual-tbl { width:100%; border-collapse:collapse; font-size:12.5px; min-width:0; }
+.pl-section { max-width:100%; box-sizing:border-box; }
 .annual-tbl th { background:var(--navy); color:#fff; padding:8px 10px; text-align:center; }
 .annual-tbl td { padding:7px 10px; border-bottom:1px solid #f0f4f8; text-align:right; }
 .annual-tbl td:first-child { text-align:center; font-weight:700; color:var(--navy); }
@@ -1137,54 +1138,8 @@ input[type=number] { user-select:none; }
     </div>
 
 
-
-        <!-- 사업 고정비 -->
-        <div class="card" style="padding:20px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <h3 style="font-size:14px;font-weight:800;color:var(--navy)"><i class="fas fa-building" style="margin-right:6px"></i>사업 고정비</h3>
-            <button class="btn btn-secondary" onclick="addFixedExpense('biz')" style="font-size:12px;padding:5px 12px"><i class="fas fa-plus"></i> 추가</button>
-          </div>
-          <div id="biz-fixed-list"></div>
-          <div style="border-top:2px solid var(--border);padding-top:10px;margin-top:10px;text-align:right;font-size:13px;font-weight:800;color:var(--navy)">
-            월 합계: <span id="biz-fixed-total">₩0</span>
-          </div>
-        </div>
-
-        <!-- 개인 고정비 -->
-        <div class="card" style="padding:20px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <h3 style="font-size:14px;font-weight:800;color:#7c3aed"><i class="fas fa-home" style="margin-right:6px"></i>개인 고정비</h3>
-            <button class="btn btn-secondary" onclick="addFixedExpense('personal')" style="font-size:12px;padding:5px 12px"><i class="fas fa-plus"></i> 추가</button>
-          </div>
-          <div id="personal-fixed-list"></div>
-          <div style="border-top:2px solid var(--border);padding-top:10px;margin-top:10px;text-align:right;font-size:13px;font-weight:800;color:#7c3aed">
-            월 합계: <span id="personal-fixed-total">₩0</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 월별 변동비 -->
-      <div class="card" style="padding:20px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <h3 style="font-size:14px;font-weight:800;color:var(--text)">
-            <i class="fas fa-receipt" style="margin-right:6px"></i>변동 지출
-            <span style="font-size:12px;font-weight:400;color:#888;margin-left:8px">
-              <input type="month" id="var-expense-month" style="border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:12px"
-                onchange="loadVarExpenses()">
-            </span>
-          </h3>
-          <button class="btn btn-primary" onclick="openAddVarExpense()" style="font-size:12px;padding:5px 14px"><i class="fas fa-plus"></i> 지출 추가</button>
-        </div>
-        <div id="var-expense-list"></div>
-        <div style="border-top:2px solid var(--border);padding-top:10px;margin-top:10px;display:flex;justify-content:flex-end;gap:24px;font-size:13px;font-weight:700">
-          <span>사업 변동비: <span id="biz-var-total" style="color:var(--navy)">₩0</span></span>
-          <span>개인 변동비: <span id="personal-var-total" style="color:#7c3aed">₩0</span></span>
-        </div>
-      </div>
-    </div>
-
     <!-- ② 월간 손익 -->
-    <div id="profit-monthly" class="profit-pane" style="display:none">
+    <div id="profit-monthly" class="profit-pane" style="display:none;width:100%;box-sizing:border-box">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
         <button onclick="changeMonthlyPeriod(-1)" style="border:none;background:var(--navy-bg);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:16px">◀</button>
         <span id="monthly-period-label" style="font-size:16px;font-weight:800;color:var(--navy);min-width:120px;text-align:center"></span>
@@ -1241,7 +1196,7 @@ input[type=number] { user-select:none; }
     </div>
 
     <!-- ③ 연간 요약 -->
-    <div id="profit-annual" class="profit-pane" style="display:none">
+    <div id="profit-annual" class="profit-pane" style="display:none;width:100%;box-sizing:border-box">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
         <button onclick="changeAnnualYear(-1)" style="border:none;background:var(--navy-bg);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:16px">◀</button>
         <span id="annual-year-label" style="font-size:18px;font-weight:800;color:var(--navy);min-width:80px;text-align:center"></span>
@@ -4965,13 +4920,13 @@ async function loadAnnualSummary() {
     var wrap = document.getElementById('annual-summary-wrap');
     if (!wrap) return;
     wrap.innerHTML =
-        '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">' +
+        '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;width:100%;box-sizing:border-box">' +
           _miniKpi('&#128200; 계약 도급 합계','자동','&#8361; '+totals.dopup.toLocaleString(),'var(--navy)') +
           _miniKpi('&#128181; 실제 입금 합계','수동+추가수입','&#8361; '+totals.cashflow.toLocaleString(),'#1d4ed8') +
           _miniKpi('&#127970; 사업+개인 지출','','&#8361; '+(totals.bizExp+totals.persExp).toLocaleString(),'#d97706') +
           _miniKpi('&#127881; 연간 실질 잔액','','&#8361; '+totals.balance.toLocaleString(),totals.balance>=0?'#059669':'#dc2626') +
         '</div>' +
-        '<div style="background:#fff;border-radius:10px;border:1px solid var(--border);overflow:hidden;overflow-x:auto">' +
+        '<div style="background:#fff;border-radius:10px;border:1px solid var(--border);overflow-x:auto;width:100%;box-sizing:border-box">' +
         '<table class="annual-tbl"><thead><tr>' +
           '<th style="width:45px">월</th><th>계약건수</th><th>도급금액(자동)</th><th>실수입(입금+추가)</th><th>사업운영비</th><th>개인생활비</th><th>실질잔액</th>' +
         '</tr></thead><tbody>'+rows+'</tbody>' +
