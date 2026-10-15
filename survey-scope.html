@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>공사범위 체크리스트 — 정결 Design Studio</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root {
+  --navy:#1a3e72; --navy2:#2563eb; --navy-bg:#f0f4ff;
+  --gold:#d4a017; --border:#e1e4e8; --red:#dc2626;
+  --green:#059669; --text:#24292f; --text2:#586069;
+  --bg:#f6f8fa; --card:#fff;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;font-family:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6}
+
+/* 헤더 */
+.top-bar{background:var(--navy);color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+.top-bar .logo{font-size:15px;font-weight:800;letter-spacing:-.3px}
+.top-bar .subtitle{font-size:12px;opacity:.75;margin-top:2px}
+
+/* 진행 바 */
+.progress-wrap{background:#fff;border-bottom:1px solid var(--border);padding:10px 20px;position:sticky;top:57px;z-index:99}
+.progress-bar{height:4px;background:#e1e4e8;border-radius:99px;overflow:hidden}
+.progress-fill{height:100%;background:var(--navy2);border-radius:99px;transition:width .3s}
+.progress-label{font-size:11.5px;color:var(--text2);margin-top:5px;text-align:right}
+
+/* 카드 */
+.card{background:var(--card);border-radius:12px;border:1px solid var(--border);padding:20px;margin:12px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.card-title{font-size:15px;font-weight:800;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-title i{font-size:14px}
+
+/* 스텝 섹션 */
+.step-section{display:none}
+.step-section.active{display:block}
+
+/* 공종 탭 */
+.cat-tabs{display:flex;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;border-bottom:2px solid var(--border);margin:0 16px;padding-bottom:0}
+.cat-tab{flex-shrink:0;padding:8px 14px;border:none;background:none;font-size:12.5px;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:.15s}
+.cat-tab.active{color:var(--navy2);border-bottom-color:var(--navy2);background:var(--navy-bg)}
+.cat-tab.done{color:var(--green)}
+.cat-pane{display:none}
+.cat-pane.active{display:block}
+
+/* 항목 체크박스 */
+.check-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:14px}
+.check-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:.15s;font-size:13px;font-weight:500}
+.check-item:hover{border-color:var(--navy2);background:var(--navy-bg)}
+.check-item.checked{border-color:var(--navy2);background:var(--navy-bg);color:var(--navy2);font-weight:700}
+.check-item input[type=checkbox]{width:15px;height:15px;accent-color:var(--navy2);flex-shrink:0}
+
+/* 공통 옵션 */
+.common-opts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.common-btn{padding:6px 14px;border:1.5px solid var(--border);border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text2);transition:.15s}
+.common-btn.selected{border-color:#f59e0b;background:#fef3c7;color:#92400e}
+.common-btn.selected.na{border-color:#9ca3af;background:#f3f4f6;color:#6b7280}
+
+/* 입력 필드 */
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px}
+.fg input,.fg textarea,.fg select{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:13.5px;outline:none;font-family:inherit;transition:.15s;box-sizing:border-box}
+.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--navy2);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.fg textarea{resize:vertical;min-height:70px}
+.req{color:var(--red)}
+
+/* 버튼 */
+.btn{padding:12px 20px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:.15s;font-family:inherit}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-primary:hover{background:#1e4a8a}
+.btn-secondary{background:#fff;color:var(--text2);border:1.5px solid var(--border)}
+.btn-success{background:var(--green);color:#fff}
+.btn-row{display:flex;gap:10px;padding:16px;position:sticky;bottom:0;background:#fff;border-top:1px solid var(--border);z-index:90}
+.btn-row .btn{flex:1;justify-content:center}
+
+/* 완료 화면 */
+.done-wrap{text-align:center;padding:40px 20px}
+.done-icon{font-size:56px;margin-bottom:16px}
+.done-title{font-size:20px;font-weight:800;color:var(--navy);margin-bottom:8px}
+.done-sub{font-size:13.5px;color:var(--text2);line-height:1.8}
+
+/* 로딩 */
+.loading-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px;color:var(--text2)}
+.spinner{width:36px;height:36px;border:4px solid var(--border);border-top-color:var(--navy2);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 섹션 헤더 */
+.section-badge{display:inline-flex;align-items:center;gap:6px;background:var(--navy);color:#fff;padding:4px 12px;border-radius:99px;font-size:11.5px;font-weight:700;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<div class="top-bar">
+  <div>
+    <div class="logo"><i class="fas fa-hard-hat"></i> 정결 Design Studio</div>
+    <div class="subtitle">공사범위 체크리스트</div>
+  </div>
+</div>
+
+<!-- 진행 바 -->
+<div class="progress-wrap">
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  <div class="progress-label" id="progress-label">기본정보 입력</div>
+</div>
+
+<!-- 로딩 -->
+<div id="screen-loading" class="loading-wrap">
+  <div class="spinner"></div>
+  <div>공종 항목을 불러오는 중…</div>
+</div>
+
+<!-- STEP 1: 기본 정보 -->
+<div id="step-1" class="step-section">
+  <div class="card">
+    <div class="card-title"><i class="fas fa-user"></i> 기본 정보</div>
+    <div class="fg"><label>이름 <span class="req">*</span></label><input type="text" id="info-name" placeholder="홍길동"></div>
+    <div class="fg"><label>연락처 <span class="req">*</span></label><input type="tel" id="info-phone" placeholder="010-0000-0000"></div>
+    <div class="fg"><label>공사 주소 <span class="req">*</span></label><input type="text" id="info-address" placeholder="서울 강남구 ○○동 ○○아파트 ○○○호"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="fg" style="margin:0"><label>평수</label><input type="text" id="info-size" placeholder="예: 34평"></div>
+      <div class="fg" style="margin:0"><label>예산 (만원)</label><input type="text" id="info-budget" placeholder="예: 3,000만원"></div>
+    </div>
+    <div class="fg" style="margin-top:14px"><label>희망 공사 시작일</label><input type="date" id="info-start"></div>
+    <div class="fg"><label>추가 메모</label><textarea id="info-memo" placeholder="궁금한 점이나 특이사항을 적어주세요"></textarea></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="goStep2()"><i class="fas fa-arrow-right"></i> 공사범위 선택</button>
+  </div>
+</div>
+
+<!-- STEP 2: 공종별 체크 -->
+<div id="step-2" class="step-section">
+  <div style="padding:12px 16px 4px;font-size:12.5px;color:var(--text2)">
+    <i class="fas fa-info-circle" style="color:var(--navy2)"></i> 각 공종을 탭으로 이동하며 해당 항목을 선택해 주세요.
+  </div>
+  <div class="cat-tabs" id="cat-tabs"></div>
+  <div id="cat-panes"></div>
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="goStep(1)"><i class="fas fa-arrow-left"></i> 이전</button>
+    <button class="btn btn-success" onclick="submitScope()"><i class="fas fa-paper-plane"></i> 제출하기</button>
+  </div>
+</div>
+
+<!-- STEP 3: 완료 -->
+<div id="step-3" class="step-section">
+  <div class="done-wrap">
+    <div class="done-icon">🎉</div>
+    <div class="done-title">제출 완료!</div>
+    <div class="done-sub">공사범위 체크리스트가 정결 Design Studio에<br>전달되었습니다.<br><br>담당자가 확인 후 연락드리겠습니다.<br>감사합니다.</div>
+  </div>
+</div>
+
+<script>
+var SB_URL = 'https://isrimiwqqytzzqjovtot.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzcmltaXdxcXl0enpxam92dG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0Mjg5NDEsImV4cCI6MjA5MjAwNDk0MX0.DescofNz1_U0eCp1CY0Nstxd3OzB_xlRMCv0IBiZAGA';
+
+var _categories = [];
+var _items      = {};   /* cat_id → [item, …] */
+var _selections = {};   /* cat_id → { checked:[], common:'', note:'' } */
+var _currentCat = 0;
+var _currentStep = 0;
+
+function sbHdr() {
+    return { 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY };
+}
+
+/* ── 초기화 ── */
+async function init() {
+    try {
+        var r1 = await fetch(SB_URL+'/rest/v1/scope_categories?select=*&order=sort_order.asc', { headers: sbHdr() });
+        _categories = await r1.json() || [];
+        var r2 = await fetch(SB_URL+'/rest/v1/scope_items?select=*&order=sort_order.asc', { headers: sbHdr() });
+        var allItems = await r2.json() || [];
+        _categories.forEach(function(cat) {
+            _items[cat.id] = allItems.filter(function(x){ return x.category_id === cat.id; });
+            _selections[cat.id] = { checked:[], common:'', note:'' };
+        });
+        buildCatTabs();
+        document.getElementById('screen-loading').style.display = 'none';
+        goStep(1);
+    } catch(e) {
+        document.getElementById('screen-loading').innerHTML = '<div style="color:#dc2626;padding:20px">항목 로드 실패. 페이지를 새로고침 해주세요.<br><small>'+e.message+'</small></div>';
+    }
+}
+
+/* ── 탭/패널 빌드 ── */
+function buildCatTabs() {
+    var tabsEl  = document.getElementById('cat-tabs');
+    var panesEl = document.getElementById('cat-panes');
+    tabsEl.innerHTML  = '';
+    panesEl.innerHTML = '';
+
+    _categories.forEach(function(cat, idx) {
+        /* 탭 버튼 */
+        var btn = document.createElement('button');
+        btn.className = 'cat-tab' + (idx === 0 ? ' active' : '');
+        btn.id = 'tab-' + cat.id;
+        btn.textContent = cat.name;
+        btn.onclick = (function(c, i){ return function(){ switchCat(c, i); }; })(cat.id, idx);
+        tabsEl.appendChild(btn);
+
+        /* 패널 */
+        var pane = document.createElement('div');
+        pane.className = 'cat-pane' + (idx === 0 ? ' active' : '');
+        pane.id = 'pane-' + cat.id;
+        pane.innerHTML = buildPaneHTML(cat);
+        panesEl.appendChild(pane);
+    });
+
+    _currentCat = 0;
+}
+
+function buildPaneHTML(cat) {
+    var items = _items[cat.id] || [];
+    var checks = items.map(function(item) {
+        return '<label class="check-item" id="lbl-'+item.id+'">' +
+            '<input type="checkbox" id="chk-'+item.id+'" value="'+item.id+'" onchange="onCheck(\''+cat.id+'\',\''+item.id+'\',this)">' +
+            item.label + '</label>';
+    }).join('');
+
+    return '<div class="card" style="margin-top:8px">' +
+        '<div class="section-badge"><i class="fas fa-tools"></i> '+cat.name+'</div>' +
+        '<div class="check-grid">' + checks + '</div>' +
+        '<div style="margin-bottom:10px">' +
+            '<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:7px">공통 선택</div>' +
+            '<div class="common-opts">' +
+                '<button class="common-btn" id="com-na-'+cat.id+'" onclick="setCommon(\''+cat.id+'\',\'해당사항없음\',this)">해당사항없음</button>' +
+                '<button class="common-btn" id="com-co-'+cat.id+'" onclick="setCommon(\''+cat.id+'\',\'협의후진행\',this)">협의후진행</button>' +
+                '<button class="common-btn" id="com-cf-'+cat.id+'" onclick="setCommon(\''+cat.id+'\',\'현장확인필요\',this)">현장확인필요</button>' +
+            '</div>' +
+        '</div>' +
+        '<div class="fg" style="margin:0">' +
+            '<label>비고 (자유 입력)</label>' +
+            '<textarea id="note-'+cat.id+'" placeholder="추가로 궁금한 점이나 요청사항을 적어주세요" onchange="onNote(\''+cat.id+'\',this)"></textarea>' +
+        '</div>' +
+    '</div>';
+}
+
+function switchCat(catId, idx) {
+    document.querySelectorAll('.cat-tab').forEach(function(b){ b.classList.remove('active'); });
+    document.querySelectorAll('.cat-pane').forEach(function(p){ p.classList.remove('active'); });
+    document.getElementById('tab-'+catId).classList.add('active');
+    document.getElementById('pane-'+catId).classList.add('active');
+    _currentCat = idx;
+    updateProgress();
+    /* 탭 스크롤 */
+    var tab = document.getElementById('tab-'+catId);
+    if (tab) tab.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
+}
+
+/* ── 선택 핸들러 ── */
+function onCheck(catId, itemId, el) {
+    var lbl = document.getElementById('lbl-'+itemId);
+    if (el.checked) {
+        _selections[catId].checked.push(itemId);
+        if (lbl) lbl.classList.add('checked');
+    } else {
+        _selections[catId].checked = _selections[catId].checked.filter(function(x){ return x !== itemId; });
+        if (lbl) lbl.classList.remove('checked');
+    }
+    updateTabDone(catId);
+}
+
+function setCommon(catId, val, btn) {
+    var prev = _selections[catId].common;
+    if (prev === val) {
+        _selections[catId].common = '';
+        btn.classList.remove('selected');
+    } else {
+        _selections[catId].common = val;
+        document.querySelectorAll('[id^="com-na-'+catId+'"], [id^="com-co-'+catId+'"], [id^="com-cf-'+catId+'"]').forEach(function(b){ b.classList.remove('selected'); });
+        btn.classList.add('selected');
+    }
+    updateTabDone(catId);
+}
+
+function onNote(catId, el) {
+    _selections[catId].note = el.value;
+    updateTabDone(catId);
+}
+
+function updateTabDone(catId) {
+    var sel = _selections[catId];
+    var done = sel.checked.length > 0 || sel.common || sel.note;
+    var tab = document.getElementById('tab-'+catId);
+    if (tab) {
+        if (done) tab.classList.add('done');
+        else tab.classList.remove('done');
+    }
+}
+
+/* ── 스텝 이동 ── */
+function goStep(n) {
+    document.querySelectorAll('.step-section').forEach(function(s){ s.classList.remove('active'); });
+    var el = document.getElementById('step-'+n);
+    if (el) el.classList.add('active');
+    _currentStep = n;
+    updateProgress();
+    window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function goStep2() {
+    var name    = (document.getElementById('info-name').value||'').trim();
+    var phone   = (document.getElementById('info-phone').value||'').trim();
+    var address = (document.getElementById('info-address').value||'').trim();
+    if (!name || !phone || !address) {
+        alert('이름, 연락처, 주소는 필수입니다.');
+        return;
+    }
+    goStep(2);
+}
+
+function updateProgress() {
+    var total = 2;
+    var cur   = _currentStep === 3 ? total : (_currentStep === 1 ? 0 : Math.min(_currentCat+1, _categories.length));
+    var pct   = Math.round(cur / total * 100);
+    var fill  = document.getElementById('progress-fill');
+    var label = document.getElementById('progress-label');
+    if (fill)  fill.style.width = pct + '%';
+    if (label) label.textContent = _currentStep === 1 ? '기본정보 입력' : _currentStep === 3 ? '제출 완료' : (_currentCat+1) + ' / ' + _categories.length + ' 공종 선택 중';
+}
+
+/* ── 제출 ── */
+async function submitScope() {
+    var name    = (document.getElementById('info-name').value||'').trim();
+    var phone   = (document.getElementById('info-phone').value||'').trim();
+    var address = (document.getElementById('info-address').value||'').trim();
+    var size    = (document.getElementById('info-size').value||'').trim();
+    var budget  = (document.getElementById('info-budget').value||'').trim();
+    var start   = (document.getElementById('info-start').value||'');
+    var memo    = (document.getElementById('info-memo').value||'').trim();
+
+    /* 공종 선택 데이터 빌드 */
+    var scopeData = {};
+    _categories.forEach(function(cat) {
+        var sel = _selections[cat.id];
+        var checkedLabels = sel.checked.map(function(id) {
+            var items = _items[cat.id] || [];
+            var found = items.find(function(x){ return x.id === id; });
+            return found ? found.label : id;
+        });
+        if (checkedLabels.length || sel.common || sel.note) {
+            scopeData[cat.name] = { items: checkedLabels, common: sel.common, note: sel.note };
+        }
+    });
+
+    var payload = {
+        id           : 'scope_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+        type         : 'scope',
+        client_name  : name,
+        client_phone : phone,
+        site_address : address,
+        site_size    : size,
+        budget       : budget,
+        start_date   : start || null,
+        additional_notes: memo,
+        construction_scope: JSON.stringify(scopeData),
+        status       : 'new',
+        admin_status : 'unread',
+        submitted_at : new Date().toISOString()
+    };
+
+    try {
+        var res = await fetch(SB_URL + '/rest/v1/survey_responses', {
+            method : 'POST',
+            headers: Object.assign(sbHdr(), { 'Prefer': 'return=minimal' }),
+            body   : JSON.stringify(payload)
+        });
+        if (!res.ok) {
+            var err = await res.text();
+            throw new Error(err);
+        }
+        goStep(3);
+    } catch(e) {
+        alert('제출 중 오류가 발생했습니다.\n' + e.message);
+    }
+}
+
+/* 시작 */
+init();
+</script>
+</body>
+</html>
