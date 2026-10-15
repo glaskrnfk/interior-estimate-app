@@ -799,7 +799,36 @@ input[type=number] { user-select:none; }
           </div>
           <div style="font-size:11px;color:#888;margin-top:5px">인스타그램·블로그 등 SNS 프로필에 연결하면 예비 고객이 스스로 진단 후 접수합니다.</div>
         </div>
+
+        <!-- 링크 3: 공사범위 체크리스트 -->
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #dce7f5">
+          <div style="font-size:11px;font-weight:700;color:#586069;margin-bottom:6px">
+            🏠 공사범위 체크리스트 <span style="font-weight:400;color:#aaa">(1차 상담 후 개별 발송)</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span id="survey-scope-url-display" style="font-family:monospace;background:#fff;padding:3px 8px;border-radius:4px;font-size:11px;color:#333;border:1px solid #dce7f5;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+            <button onclick="copyScopeSurveyUrl()" class="btn btn-secondary" style="font-size:12px;padding:4px 12px;flex-shrink:0">
+              <i class="fas fa-copy"></i> 복사
+            </button>
+          </div>
+          <div style="font-size:11px;color:#888;margin-top:4px">공사 범위 파악이 필요한 고객에게 개별 발송합니다.</div>
+        </div>
       </div>
+
+      <!-- 서브탭: 사전체크리스트 / 공사범위 -->
+      <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:14px">
+        <button id="svtab-checklist" onclick="setSurveyTypeTab('checklist',this)"
+          style="padding:9px 18px;border:none;background:none;font:600 13px 'Noto Sans KR',sans-serif;color:var(--navy2);cursor:pointer;border-bottom:3px solid var(--navy2);margin-bottom:-2px">
+          📋 사전 체크리스트
+          <span id="sv-checklist-cnt" style="background:#dbeafe;color:#1d4ed8;padding:1px 7px;border-radius:99px;font-size:10.5px;margin-left:4px">0</span>
+        </button>
+        <button id="svtab-scope" onclick="setSurveyTypeTab('scope',this)"
+          style="padding:9px 18px;border:none;background:none;font:600 13px 'Noto Sans KR',sans-serif;color:var(--text2);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px">
+          🏠 공사범위 체크리스트
+          <span id="sv-scope-cnt" style="background:#e5e7eb;color:#374151;padding:1px 7px;border-radius:99px;font-size:10.5px;margin-left:4px">0</span>
+        </button>
+      </div>
+
       <!-- ★수정 #6: 상태 카운트 배지 – 취소/계약완료 추가 (6열) -->
       <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px">
         <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 14px;text-align:center">
@@ -838,6 +867,30 @@ input[type=number] { user-select:none; }
       <div id="survey-list-body">
         <div style="text-align:center;padding:40px;color:#aaa">
           <i class="fas fa-spinner fa-spin" style="font-size:28px;display:block;margin-bottom:12px"></i>로딩 중…
+        </div>
+      </div>
+    </div>
+      <!-- 공종 항목 관리 섹션 -->
+      <div class="card" style="margin-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <h3 style="font-size:13.5px;font-weight:800;color:var(--navy);margin:0">
+            <i class="fas fa-tools" style="margin-right:6px"></i>공종 항목 관리
+            <span style="font-size:11px;font-weight:400;color:#aaa;margin-left:6px">공사범위 체크리스트 항목을 직접 수정합니다</span>
+          </h3>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary" onclick="loadScopeCategories()" style="font-size:12px;padding:5px 12px">
+              <i class="fas fa-sync-alt"></i> 불러오기
+            </button>
+            <button class="btn btn-secondary" onclick="addScopeCategory()" style="font-size:12px;padding:5px 12px;color:#059669;border-color:#059669">
+              <i class="fas fa-plus"></i> 공종 추가
+            </button>
+          </div>
+        </div>
+        <div id="scope-manager-wrap">
+          <div style="text-align:center;color:#bbb;padding:20px;font-size:12.5px">
+            <i class="fas fa-tools" style="font-size:24px;display:block;margin-bottom:8px;opacity:.3"></i>
+            "불러오기" 버튼을 클릭하면 공종 항목이 표시됩니다.
+          </div>
         </div>
       </div>
     </div>
@@ -3034,10 +3087,38 @@ function initSurveyUrl() {
     var base = location.href.replace(/admin\.html.*$/, '');
     var url  = base + 'survey.html';
     var urlPublic = base + 'survey-public.html';
+    var urlScope  = base + 'survey-scope.html';
     var el = document.getElementById('survey-url-display');
     if (el) el.textContent = url;
     var el2 = document.getElementById('survey-public-url-display');
     if (el2) el2.textContent = urlPublic;
+    var el3 = document.getElementById('survey-scope-url-display');
+    if (el3) el3.textContent = urlScope;
+}
+
+function copyScopeSurveyUrl() {
+    var base = location.href.replace(/admin\.html.*$/, '');
+    var url  = base + 'survey-scope.html';
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(url)
+            .then(function(){ showToast('✅ 공사범위 체크리스트 링크가 복사되었습니다!'); })
+            .catch(function(){ showToast('링크: ' + url); });
+    } else { showToast('링크: ' + url); }
+}
+
+/* 서브탭 전환 (사전체크리스트 / 공사범위) */
+var _surveyTypeFilter = 'checklist';
+function setSurveyTypeTab(type, btn) {
+    _surveyTypeFilter = type;
+    /* 탭 스타일 */
+    ['svtab-checklist','svtab-scope'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var isActive = el === btn;
+        el.style.color      = isActive ? 'var(--navy2)' : 'var(--text2)';
+        el.style.borderBottom = isActive ? '3px solid var(--navy2)' : '3px solid transparent';
+    });
+    renderSurveyList();
 }
 function copySurveyUrl() {
     var base = location.href.replace(/admin\.html.*$/, '');
@@ -3108,7 +3189,19 @@ function renderSurveyList() {
     var kw  = ((document.getElementById('survey-search') || {}).value || '').toLowerCase();
     /* ★수정: _surveyRecords 가 아직 비어있으면 로딩 중 메시지 유지 후 종료 */
     if (!Array.isArray(_surveyRecords)) return;
+    /* 타입별 카운트 배지 업데이트 */
+    var chkCnt   = _surveyRecords.filter(function(r){ return !r.type || r.type === 'checklist'; }).length;
+    var scopeCnt = _surveyRecords.filter(function(r){ return r.type === 'scope'; }).length;
+    var cntEl1 = document.getElementById('sv-checklist-cnt');
+    var cntEl2 = document.getElementById('sv-scope-cnt');
+    if (cntEl1) cntEl1.textContent = chkCnt;
+    if (cntEl2) cntEl2.textContent = scopeCnt;
+
     var list = _surveyRecords.filter(function(r) {
+        /* 타입 필터 */
+        var rType = r.type || 'checklist';
+        if (_surveyTypeFilter === 'checklist' && rType !== 'checklist') return false;
+        if (_surveyTypeFilter === 'scope'     && rType !== 'scope')     return false;
         var status = r.adminStatus || r.status || '신규';
         if (_surveyFilter !== 'all' && status !== _surveyFilter) return false;
         if (kw) {
@@ -3136,10 +3229,14 @@ function renderSurveyList() {
             : '—';
         var scope   = Array.isArray(r.constructionScope) ? r.constructionScope.join(', ') : (r.constructionScope||'');
         var purpose = Array.isArray(r.purpose)           ? r.purpose.join(', ')           : (r.purpose||'');
-        /* ★수정: onclick ID는 data-attribute로 안전하게 전달 (이스케이프 문제 방지) */
-        html += '<div class="survey-card ' + cardCls + '" data-sid="' + escHtml(r.id) + '" onclick="openSurveyDetail(this.dataset.sid)">' +
+        /* onclick: scope 타입은 openScopeDetail, 나머지는 openSurveyDetail */
+        var clickFn = (r.type === 'scope') ? 'openScopeDetail' : 'openSurveyDetail';
+        var typeBadge = (r.type === 'scope')
+            ? '<span style="background:#d1fae5;color:#065f46;padding:1px 7px;border-radius:99px;font-size:10px;font-weight:700;margin-left:6px">🏠 공사범위</span>'
+            : '<span style="background:#dbeafe;color:#1d4ed8;padding:1px 7px;border-radius:99px;font-size:10px;font-weight:700;margin-left:6px">📋 사전체크</span>';
+        html += '<div class="survey-card ' + cardCls + '" data-sid="' + escHtml(r.id) + '" onclick="' + clickFn + '(this.dataset.sid)">' +
             '<div class="sv-header">' +
-            '<div><span class="sv-name">' + escHtml(r.clientName||'이름없음') + '</span>' +
+            '<div><span class="sv-name">' + escHtml(r.clientName||'이름없음') + '</span>' + typeBadge +
             '<span class="sv-phone">' + escHtml(r.clientPhone||'—') + '</span></div>' +
             '<span class="sv-date">' + date + '</span></div>' +
             '<div class="sv-badges">' +
@@ -6115,6 +6212,154 @@ function clPrint(blank) {
             /* pw.close(); */
         }, 400);
     };
+}
+
+/* ════════════════════════════════════════════════════════
+   공사범위 체크리스트 — 상세보기 + 공종 항목 관리
+════════════════════════════════════════════════════════ */
+
+/* 공사범위 응답 상세 모달 */
+function openScopeDetail(id) {
+    var r = _surveyRecords.find(function(x){ return x.id === id; });
+    if (!r) return;
+
+    var scopeData = {};
+    try { scopeData = JSON.parse(r.constructionScope || r.construction_scope || '{}'); } catch(e) {}
+
+    var scopeHtml = '';
+    Object.keys(scopeData).forEach(function(catName) {
+        var d = scopeData[catName];
+        var items = (d.items || []).join(', ');
+        scopeHtml +=
+            '<div style="margin-bottom:12px;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid var(--border)">' +
+            '<div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:5px">' + escHtml(catName) + '</div>' +
+            (items ? '<div style="font-size:12.5px;margin-bottom:3px">선택: <span style="color:var(--navy2);font-weight:600">' + escHtml(items) + '</span></div>' : '') +
+            (d.common ? '<div style="font-size:12px;color:#d97706">공통: ' + escHtml(d.common) + '</div>' : '') +
+            (d.note   ? '<div style="font-size:12px;color:#555;margin-top:3px">비고: ' + escHtml(d.note) + '</div>' : '') +
+            '</div>';
+    });
+    if (!scopeHtml) scopeHtml = '<div style="color:#aaa;padding:16px;text-align:center">선택된 항목이 없습니다.</div>';
+
+    var existing = document.getElementById('scope-detail-modal');
+    if (existing) existing.remove();
+
+    var modal = document.createElement('div');
+    modal.id = 'scope-detail-modal';
+    modal.className = 'modal-overlay';
+    modal.style.cssText = 'display:flex;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.5);align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px';
+    modal.innerHTML =
+        '<div class="modal-box" style="max-width:560px;width:100%;margin:auto">' +
+        '<div class="modal-header">' +
+          '<span><i class="fas fa-hard-hat" style="margin-right:8px"></i>공사범위 체크리스트 — ' + escHtml(r.clientName||'') + '</span>' +
+          '<button onclick="document.getElementById(\'scope-detail-modal\').remove()">×</button>' +
+        '</div>' +
+        '<div class="modal-body">' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:12.5px">' +
+            '<div><span style="color:#888">이름:</span> <strong>' + escHtml(r.clientName||'—') + '</strong></div>' +
+            '<div><span style="color:#888">연락처:</span> ' + escHtml(r.clientPhone||'—') + '</div>' +
+            '<div><span style="color:#888">주소:</span> ' + escHtml(r.siteAddress||'—') + '</div>' +
+            '<div><span style="color:#888">평수:</span> ' + escHtml(r.siteSize||r.site_size||'—') + '</div>' +
+            '<div><span style="color:#888">예산:</span> ' + escHtml(r.budget||'—') + '</div>' +
+            '<div><span style="color:#888">접수일:</span> ' + (r.submittedAt||r.submitted_at||'').slice(0,10) + '</div>' +
+          '</div>' +
+          (r.additionalNotes||r.additional_notes ? '<div style="background:#fff8e1;border-radius:7px;padding:10px;margin-bottom:14px;font-size:12.5px"><strong>메모:</strong> ' + escHtml(r.additionalNotes||r.additional_notes) + '</div>' : '') +
+          '<div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:10px">공사범위 선택 내용</div>' +
+          scopeHtml +
+        '</div>' +
+        '<div class="modal-footer">' +
+          '<button class="btn btn-secondary" onclick="document.getElementById(\'scope-detail-modal\').remove()">닫기</button>' +
+          '<button class="btn btn-primary" onclick="printScopeDetail(\'' + id + '\')"><i class="fas fa-print"></i> 인쇄</button>' +
+        '</div>' +
+        '</div>';
+
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
+}
+
+function printScopeDetail(id) {
+    var modal = document.getElementById('scope-detail-modal');
+    if (!modal) return;
+    var content = modal.querySelector('.modal-box').innerHTML;
+    var win = window.open('', '_blank');
+    win.document.write('<html><head><title>공사범위 체크리스트</title><style>body{font-family:"Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding:20px;font-size:13px}</style></head><body>' + content + '</body></html>');
+    win.document.close();
+    win.print();
+}
+
+/* ════════════════════════════════════════════════════════
+   공종 항목 관리 (어드민에서 직접 수정)
+════════════════════════════════════════════════════════ */
+var _scopeCats  = [];
+var _scopeItems = {};
+
+async function loadScopeCategories() {
+    try {
+        var r1 = await fetch(SB_URL + '/rest/v1/scope_categories?select=*&order=sort_order.asc', { headers: sbHeaders() });
+        _scopeCats = await r1.json() || [];
+        var r2 = await fetch(SB_URL + '/rest/v1/scope_items?select=*&order=sort_order.asc', { headers: sbHeaders() });
+        var allItems = await r2.json() || [];
+        _scopeCats.forEach(function(cat) {
+            _scopeItems[cat.id] = allItems.filter(function(x){ return x.category_id === cat.id; });
+        });
+        renderScopeManager();
+    } catch(e) { showToast('공종 로드 실패: ' + e.message); }
+}
+
+function renderScopeManager() {
+    var wrap = document.getElementById('scope-manager-wrap');
+    if (!wrap) return;
+
+    var html = _scopeCats.map(function(cat) {
+        var items = (_scopeItems[cat.id] || []).map(function(item) {
+            return '<span style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:12px;margin:2px">' +
+                escHtml(item.label) +
+                '<button onclick="deleteScopeItem(\'' + item.id + '\',\'' + cat.id + '\')" style="border:none;background:none;cursor:pointer;color:var(--red);font-size:11px;padding:0 2px" title="삭제">✕</button>' +
+                '</span>';
+        }).join('');
+
+        return '<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
+              '<span style="font-size:13px;font-weight:800;color:var(--navy)">' + escHtml(cat.name) + '</span>' +
+              '<button class="btn btn-secondary" onclick="addScopeItem(\'' + cat.id + '\')" style="font-size:11.5px;padding:3px 10px"><i class="fas fa-plus"></i> 항목 추가</button>' +
+            '</div>' +
+            '<div>' + (items || '<span style="color:#bbb;font-size:12px">항목 없음</span>') + '</div>' +
+            '</div>';
+    }).join('');
+
+    wrap.innerHTML = html || '<div style="color:#aaa;padding:16px;text-align:center">등록된 공종이 없습니다.</div>';
+}
+
+async function addScopeItem(catId) {
+    var label = prompt('추가할 항목명:');
+    if (!label || !label.trim()) return;
+    var id = 'itm_' + Date.now() + '_' + Math.random().toString(36).slice(2,5);
+    await fetch(SB_URL + '/rest/v1/scope_items', {
+        method: 'POST',
+        headers: Object.assign(sbHeaders(), { 'Prefer': 'return=minimal' }),
+        body: JSON.stringify({ id: id, category_id: catId, label: label.trim(), sort_order: 999 })
+    });
+    showToast('✅ 항목이 추가되었습니다.');
+    loadScopeCategories();
+}
+
+async function deleteScopeItem(itemId, catId) {
+    if (!confirm('이 항목을 삭제하시겠습니까?')) return;
+    await fetch(SB_URL + '/rest/v1/scope_items?id=eq.' + itemId, { method: 'DELETE', headers: sbHeaders() });
+    showToast('삭제되었습니다.');
+    loadScopeCategories();
+}
+
+async function addScopeCategory() {
+    var name = prompt('새 공종 이름:');
+    if (!name || !name.trim()) return;
+    var id = 'cat_' + Date.now();
+    await fetch(SB_URL + '/rest/v1/scope_categories', {
+        method: 'POST',
+        headers: Object.assign(sbHeaders(), { 'Prefer': 'return=minimal' }),
+        body: JSON.stringify({ id: id, name: name.trim(), sort_order: 999 })
+    });
+    showToast('✅ 공종이 추가되었습니다.');
+    loadScopeCategories();
 }
 
 /* ── HTML 이스케이프 헬퍼 (admin에 없을 경우 대비) ── */
