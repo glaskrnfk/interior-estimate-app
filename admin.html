@@ -1771,6 +1771,7 @@ function sbToCamel(r) {
         status           : r.status         || '신규',
         adminStatus      : r.admin_status   || r.status || '신규',
         adminMemo        : r.admin_memo     || '',
+        type             : r.type           || 'checklist',   /* 공사범위: 'scope', 사전체크: 'checklist' */
         clientName       : r.client_name    || '',
         clientPhone      : r.client_phone   || '',
         purpose          : _parseArr(r.purpose),
@@ -1785,7 +1786,11 @@ function sbToCamel(r) {
         siteSize         : r.site_size      || '',
         aptType          : r.apt_type       || '',
         moveStatus       : r.move_status    || '',
-        constructionScope: _parseArr(r.construction_scope),
+        constructionScope: (function(v) {
+            if (!v) return {};
+            if (typeof v === 'object') return v;
+            try { return JSON.parse(v); } catch(e) { return {}; }
+        })(r.construction_scope),
         kitchenStyle     : r.kitchen_style  || '',
         kitchenNotes     : r.kitchen_notes  || '',
         bathroomCount    : r.bathroom_count || '',
@@ -6224,7 +6229,12 @@ function openScopeDetail(id) {
     if (!r) return;
 
     var scopeData = {};
-    try { scopeData = JSON.parse(r.constructionScope || r.construction_scope || '{}'); } catch(e) {}
+    var raw = r.constructionScope || r.construction_scope || {};
+    if (typeof raw === 'object') {
+        scopeData = raw;
+    } else {
+        try { scopeData = JSON.parse(raw); } catch(e) { scopeData = {}; }
+    }
 
     var scopeHtml = '';
     Object.keys(scopeData).forEach(function(catName) {
