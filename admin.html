@@ -3232,7 +3232,12 @@ function renderSurveyList() {
         var date   = (r.submittedAt || r.created_at)
             ? new Date(r.submittedAt||r.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'})
             : '—';
-        var scope   = Array.isArray(r.constructionScope) ? r.constructionScope.join(', ') : (r.constructionScope||'');
+        /* constructionScope는 {공종명:{items,common,note}} 형태 객체 */
+        var scope = '';
+        if (r.constructionScope && typeof r.constructionScope === 'object') {
+            var scopeKeys = Object.keys(r.constructionScope);
+            if (scopeKeys.length) scope = scopeKeys.join(', ');
+        }
         var purpose = Array.isArray(r.purpose)           ? r.purpose.join(', ')           : (r.purpose||'');
         /* onclick: scope 타입은 openScopeDetail, 나머지는 openSurveyDetail */
         var clickFn = (r.type === 'scope') ? 'openScopeDetail' : 'openSurveyDetail';
@@ -6278,12 +6283,49 @@ function openScopeDetail(id) {
         '</div>' +
         '<div class="modal-footer">' +
           '<button class="btn btn-secondary" onclick="document.getElementById(\'scope-detail-modal\').remove()">닫기</button>' +
+          '<select id="scope-status-sel" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;cursor:pointer" onchange="saveScopeStatus(\'' + id + '\',this.value)">' +
+            '<option value="unread"'  + (r.adminStatus==='unread'  ?'selected':'') + '>🟡 신규</option>' +
+            '<option value="상담중"'  + (r.adminStatus==='상담중'  ?'selected':'') + '>🔵 상담중</option>' +
+            '<option value="미팅완료"'+ (r.adminStatus==='미팅완료'?'selected':'') + '>✅ 미팅완료</option>' +
+            '<option value="계약완료"'+ (r.adminStatus==='계약완료'?'selected':'') + '>🤝 계약완료</option>' +
+            '<option value="취소"'    + (r.adminStatus==='취소'    ?'selected':'') + '>❌ 취소</option>' +
+          '</select>' +
+          '<button class="btn" style="background:#fee2e2;color:#dc2626;border:1.5px solid #fca5a5" onclick="deleteScopeResponse(\'' + id + '\')"><i class="fas fa-trash"></i> 삭제</button>' +
           '<button class="btn btn-primary" onclick="printScopeDetail(\'' + id + '\')"><i class="fas fa-print"></i> 인쇄</button>' +
         '</div>' +
         '</div>';
 
     document.body.appendChild(modal);
     modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
+}
+
+async function saveScopeStatus(id, status) {
+    try {
+        await fetch(SB_URL + '/rest/v1/survey_responses?id=eq.' + id, {
+            method : 'PATCH',
+            headers: Object.assign(sbHeaders(), { 'Prefer': 'return=minimal' }),
+            body   : JSON.stringify({ admin_status: status })
+        });
+        /* 로컬 캐시 업데이트 */
+        var rec = _surveyRecords.find(function(x){ return x.id === id; });
+        if (rec) rec.adminStatus = status;
+        showToast('✅ 상태가 변경되었습니다.');
+        renderSurveyList();
+    } catch(e) { showToast('❌ 상태 변경 실패: ' + e.message); }
+}
+
+async function deleteScopeResponse(id) {
+    if (!confirm('이 공사범위 체크리스트를 삭제하시겠습니까?')) return;
+    try {
+        await fetch(SB_URL + '/rest/v1/survey_responses?id=eq.' + id, {
+            method : 'DELETE',
+            headers: sbHeaders()
+        });
+        _surveyRecords = _surveyRecords.filter(function(x){ return x.id !== id; });
+        document.getElementById('scope-detail-modal').remove();
+        showToast('삭제되었습니다.');
+        renderSurveyList();
+    } catch(e) { showToast('❌ 삭제 실패: ' + e.message); }
 }
 
 function printScopeDetail(id) {

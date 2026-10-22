@@ -135,13 +135,14 @@ body{margin:0;font-family:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',s
 <!-- STEP 2: 공종별 체크 -->
 <div id="step-2" class="step-section">
   <div style="padding:12px 16px 4px;font-size:12.5px;color:var(--text2)">
-    <i class="fas fa-info-circle" style="color:var(--navy2)"></i> 각 공종을 탭으로 이동하며 해당 항목을 선택해 주세요.
+    <i class="fas fa-info-circle" style="color:var(--navy2)"></i> 각 공종을 확인하며 해당 항목을 선택해 주세요. <span style="color:#aaa">모르시겠다면 넘어가도 됩니다.</span>
   </div>
   <div class="cat-tabs" id="cat-tabs"></div>
   <div id="cat-panes"></div>
-  <div class="btn-row">
-    <button class="btn btn-secondary" onclick="goStep(1)"><i class="fas fa-arrow-left"></i> 이전</button>
-    <button class="btn btn-success" onclick="submitScope()"><i class="fas fa-paper-plane"></i> 제출하기</button>
+  <div class="btn-row" id="step2-btn-row">
+    <button class="btn btn-secondary" id="btn-cat-prev" onclick="moveCat(-1)"><i class="fas fa-arrow-left"></i> 이전</button>
+    <button class="btn btn-primary"   id="btn-cat-next" onclick="moveCat(1)"><i class="fas fa-arrow-right"></i> 다음</button>
+    <button class="btn btn-success"   id="btn-submit" style="display:none" onclick="submitScope()"><i class="fas fa-paper-plane"></i> 제출하기</button>
   </div>
 </div>
 
@@ -212,6 +213,7 @@ function buildCatTabs() {
     });
 
     _currentCat = 0;
+    updateCatButtons();
 }
 
 function buildPaneHTML(cat) {
@@ -247,9 +249,30 @@ function switchCat(catId, idx) {
     document.getElementById('pane-'+catId).classList.add('active');
     _currentCat = idx;
     updateProgress();
+    updateCatButtons();
     /* 탭 스크롤 */
     var tab = document.getElementById('tab-'+catId);
     if (tab) tab.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function updateCatButtons() {
+    var isLast  = _currentCat >= _categories.length - 1;
+    var isFirst = _currentCat === 0;
+    var prevBtn   = document.getElementById('btn-cat-prev');
+    var nextBtn   = document.getElementById('btn-cat-next');
+    var submitBtn = document.getElementById('btn-submit');
+    if (prevBtn)   prevBtn.style.display   = isFirst ? 'none' : '';
+    if (nextBtn)   nextBtn.style.display   = isLast  ? 'none' : '';
+    if (submitBtn) submitBtn.style.display = isLast  ? ''     : 'none';
+}
+
+function moveCat(delta) {
+    var newIdx = _currentCat + delta;
+    if (newIdx < 0) { goStep(1); return; }
+    if (newIdx >= _categories.length) return;
+    var cat = _categories[newIdx];
+    switchCat(cat.id, newIdx);
 }
 
 /* ── 선택 핸들러 ── */
