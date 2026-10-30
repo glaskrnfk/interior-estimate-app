@@ -975,29 +975,44 @@ input[type=number] { user-select:none; }
           <div class="fg"><label>공사 목적물 (아파트명/평형)</label><input id="ct-site-name" placeholder="잠원 한신아파트 28평형" oninput="renderContractTmpl()"></div>
         </div>
         <div class="frow frow3">
-          <div class="fg"><label>도급 금액 (원) <span class="req">*</span></label><input id="ct-amount" type="number" placeholder="25000000" oninput="renderContractTmpl()"></div>
+          <div class="fg"><label>도급 금액 (원) <span class="req">*</span></label><input id="ct-amount" type="number" placeholder="25000000" oninput="calcPayments()"></div>
           <div class="fg"><label>착공일</label><input id="ct-start" type="date" oninput="renderContractTmpl()"></div>
           <div class="fg"><label>준공일</label><input id="ct-end" type="date" oninput="renderContractTmpl()"></div>
         </div>
 
         <!-- 대금 지급 스케줄 -->
-        <div style="font-size:11px;font-weight:700;color:#888;margin:14px 0 6px;letter-spacing:.5px">▶ 대금 지급 스케줄 <span style="font-weight:400;font-size:10px">(합계 100%가 되도록 설정)</span></div>
+        <div style="font-size:11px;font-weight:700;color:#888;margin:14px 0 6px;letter-spacing:.5px">▶ 대금 지급 스케줄 <span style="font-weight:400;font-size:10px">(% 또는 금액 중 편한 쪽을 입력하세요. 나머지는 자동 계산되며 잔금은 남는 금액으로 자동 산정됩니다)</span></div>
         <div style="background:#fff;border:1px solid #e1e8f4;border-radius:7px;padding:12px 16px">
-          <div class="frow frow3" style="margin-bottom:0">
+          <div class="frow frow3" style="margin-bottom:0;align-items:flex-start">
             <div class="fg">
-              <label>계약금 (%)</label>
-              <input id="ct-pay1-pct" type="number" value="30" min="0" max="100" oninput="calcPayments()" style="width:60px;display:inline-block">
-              <span style="font-size:11px;color:#888;margin-left:4px">지급일: 계약 체결일</span>
+              <label>계약금</label>
+              <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+                <input id="ct-pay1-pct" type="number" step="0.01" value="30" min="0" max="100" oninput="onPayPctInput(1)" style="width:70px">
+                <span style="font-size:12px;color:#888">%</span>
+                <input id="ct-pay1-amt" type="text" inputmode="numeric" placeholder="금액(원)" oninput="onPayAmtInput(1)" style="width:120px;text-align:right">
+                <span style="font-size:12px;color:#888">원</span>
+              </div>
+              <span style="font-size:11px;color:#888">지급일: 계약 체결일</span>
             </div>
             <div class="fg">
-              <label>중도금 (%)</label>
-              <input id="ct-pay2-pct" type="number" value="40" min="0" max="100" oninput="calcPayments()" style="width:60px;display:inline-block">
-              <input id="ct-pay2-date" type="date" oninput="renderContractTmpl()" style="margin-left:6px;flex:1">
+              <label>중도금</label>
+              <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+                <input id="ct-pay2-pct" type="number" step="0.01" value="40" min="0" max="100" oninput="onPayPctInput(2)" style="width:70px">
+                <span style="font-size:12px;color:#888">%</span>
+                <input id="ct-pay2-amt" type="text" inputmode="numeric" placeholder="금액(원)" oninput="onPayAmtInput(2)" style="width:120px;text-align:right">
+                <span style="font-size:12px;color:#888">원</span>
+              </div>
+              <input id="ct-pay2-date" type="date" oninput="renderContractTmpl()" style="margin-top:5px;width:100%">
             </div>
             <div class="fg">
-              <label>잔금 (%)</label>
-              <input id="ct-pay3-pct" type="number" value="30" min="0" max="100" oninput="calcPayments()" style="width:60px;display:inline-block">
-              <span style="font-size:11px;color:#888;margin-left:4px">지급일: 준공 후</span>
+              <label>잔금 <span style="font-weight:400;font-size:10.5px;color:#888">(자동: 도급금액 − 계약금 − 중도금)</span></label>
+              <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+                <input id="ct-pay3-pct" type="number" step="0.01" value="30" readonly style="width:70px;background:#f6f8fa;color:#555">
+                <span style="font-size:12px;color:#888">%</span>
+                <input id="ct-pay3-amt" type="text" readonly placeholder="자동계산" style="width:120px;text-align:right;background:#f6f8fa;color:#555">
+                <span style="font-size:12px;color:#888">원</span>
+              </div>
+              <span style="font-size:11px;color:#888">지급일: 준공 후</span>
             </div>
           </div>
           <div id="ct-pay-preview" style="font-size:12px;color:#555;margin-top:8px;padding-top:8px;border-top:1px solid #f0f4f8"></div>
@@ -3766,23 +3781,93 @@ function ctDate(id) {
 function ctBlank(v, placeholder) { return v || placeholder || '________________'; }
 
 /* ── 대금 지급 계산 (폼 입력값 기반) ── */
+/* ════════════════════════════════════════════════════════
+   대금 지급 스케줄 — % 또는 금액 어느 쪽으로 입력해도 상호 자동 계산
+   - 잔금 = 도급금액 - 계약금 - 중도금 (항상 합계 100%)
+   - % 는 소수점 2자리까지만 표시
+════════════════════════════════════════════════════════ */
+var _payBusy = false;   /* 상호 갱신 시 무한 루프 방지 */
+var _payLastTotal = -1; /* 마지막으로 계산한 도급금액 (변경 감지용) */
+
+function _payTotal() {
+    return Math.floor((parseFloat(ctVal('ct-amount')) || 0) / 10000) * 10000;
+}
+function _payNum(str) {
+    return parseInt(String(str || '').replace(/[^0-9]/g, ''), 10) || 0;
+}
+function _payRound2(n) {
+    return Math.round(n * 100) / 100;
+}
+function _payEl(id) { return document.getElementById(id); }
+
+/* % 입력 → 금액 자동 계산 */
+function onPayPctInput(n) {
+    if (_payBusy) return;
+    _payBusy = true;
+    var total = _payTotal();
+    var pct   = parseFloat((_payEl('ct-pay' + n + '-pct') || {}).value) || 0;
+    var amtEl = _payEl('ct-pay' + n + '-amt');
+    if (amtEl) amtEl.value = total > 0 ? Math.round(total * pct / 100).toLocaleString() : '';
+    _payBusy = false;
+    calcPayments();
+}
+
+/* 금액 입력 → % 자동 계산 (소수점 2자리) */
+function onPayAmtInput(n) {
+    if (_payBusy) return;
+    _payBusy = true;
+    var total = _payTotal();
+    var amtEl = _payEl('ct-pay' + n + '-amt');
+    var amt   = _payNum(amtEl ? amtEl.value : '');
+    if (amtEl && amtEl.value !== '') amtEl.value = amt.toLocaleString();   /* 입력 중 천단위 콤마 */
+    var pctEl = _payEl('ct-pay' + n + '-pct');
+    if (pctEl) pctEl.value = total > 0 ? _payRound2(amt / total * 100) : 0;
+    _payBusy = false;
+    calcPayments();
+}
+
 function calcPayments() {
-    var amt   = Math.floor((parseFloat(ctVal('ct-amount')) || 0) / 10000) * 10000;
-    var p1    = parseFloat(document.getElementById('ct-pay1-pct') ? document.getElementById('ct-pay1-pct').value : 30) || 30;
-    var p2    = parseFloat(document.getElementById('ct-pay2-pct') ? document.getElementById('ct-pay2-pct').value : 40) || 40;
-    var p3    = parseFloat(document.getElementById('ct-pay3-pct') ? document.getElementById('ct-pay3-pct').value : 30) || 30;
-    var sum   = p1 + p2 + p3;
-    var prev  = document.getElementById('ct-pay-preview');
+    var total = _payTotal();
+    var p1 = parseFloat((_payEl('ct-pay1-pct') || {}).value) || 0;
+    var p2 = parseFloat((_payEl('ct-pay2-pct') || {}).value) || 0;
+
+    /* 금액: 계약금·중도금은 입력값 기준, 잔금은 남는 금액 */
+    var a1 = _payNum((_payEl('ct-pay1-amt') || {}).value);
+    var a2 = _payNum((_payEl('ct-pay2-amt') || {}).value);
+    /* % 로 입력해서 금액칸이 비어 있거나 도급금액이 바뀐 경우 → % 기준 재계산 */
+    /* 금액칸이 비어 있거나 도급금액이 바뀐 경우에만 % 기준으로 재계산.
+       (저장된 계약서를 열 때 입력해 둔 원 단위 금액이 반올림 오차로 어긋나지 않도록) */
+    if (total > 0 && !_payBusy) {
+        var ae1 = _payEl('ct-pay1-amt'), ae2 = _payEl('ct-pay2-amt');
+        var focused = document.activeElement;
+        var totalChanged = (total !== _payLastTotal);
+        if (ae1 && focused !== ae1 && (a1 === 0 || totalChanged)) {
+            a1 = Math.round(total * p1 / 100); ae1.value = a1.toLocaleString();
+        }
+        if (ae2 && focused !== ae2 && (a2 === 0 || totalChanged)) {
+            a2 = Math.round(total * p2 / 100); ae2.value = a2.toLocaleString();
+        }
+    }
+    _payLastTotal = total;
+    var a3raw = total > 0 ? (total - a1 - a2) : 0;
+    var overflow = a3raw < 0;                      /* 계약금+중도금이 도급금액을 초과 */
+    var a3 = overflow ? 0 : a3raw;                 /* 잔금은 음수로 표시하지 않음 */
+    var p3 = total > 0 ? _payRound2(a3 / total * 100) : _payRound2(100 - p1 - p2);
+
+    var p3El = _payEl('ct-pay3-pct'), a3El = _payEl('ct-pay3-amt');
+    if (p3El) p3El.value = p3;
+    if (a3El) a3El.value = total > 0 ? a3.toLocaleString() : '';
+
+    var prev = _payEl('ct-pay-preview');
     if (prev) {
-        if (amt > 0) {
-            var v1 = Math.round(amt * p1 / 100);
-            var v2 = Math.round(amt * p2 / 100);
-            var v3 = amt - v1 - v2;
+        if (total > 0) {
+            var warn = '';
+            if (overflow) warn = ' &nbsp;<span style="color:#dc2626">⚠ 계약금+중도금이 도급금액을 초과했습니다. 금액을 다시 확인해 주세요</span>';
+            else        warn = ' &nbsp;<span style="color:#16a34a">✔ 합계 100%</span>';
             prev.innerHTML =
-                '계약금 ' + p1 + '% = <strong>' + v1.toLocaleString() + '원</strong>' +
-                ' &nbsp;|&nbsp; 중도금 ' + p2 + '% = <strong>' + v2.toLocaleString() + '원</strong>' +
-                ' &nbsp;|&nbsp; 잔금 ' + p3 + '% = <strong>' + v3.toLocaleString() + '원</strong>' +
-                (Math.abs(sum - 100) > 0.1 ? ' &nbsp;<span style="color:#dc2626">⚠ 합계 ' + sum + '%</span>' : ' &nbsp;<span style="color:#16a34a">✔ 합계 100%</span>');
+                '계약금 ' + _payRound2(p1) + '% = <strong>' + a1.toLocaleString() + '원</strong>' +
+                ' &nbsp;|&nbsp; 중도금 ' + _payRound2(p2) + '% = <strong>' + a2.toLocaleString() + '원</strong>' +
+                ' &nbsp;|&nbsp; 잔금 ' + p3 + '% = <strong>' + a3.toLocaleString() + '원</strong>' + warn;
         } else {
             prev.innerHTML = '<span style="color:#aaa">도급 금액을 입력하면 각 회차 금액이 표시됩니다.</span>';
         }
@@ -3817,14 +3902,26 @@ function buildInteriorContract() {
     var allSpecial   = adminSpecial && adminSpecial.trim() ? adminSpecial.trim() : '';
 
     /* 대금 지급 스케줄 */
-    var p1Pct = parseFloat((document.getElementById('ct-pay1-pct')||{}).value || 30);
-    var p2Pct = parseFloat((document.getElementById('ct-pay2-pct')||{}).value || 40);
-    var p3Pct = 100 - p1Pct - p2Pct;
-    if (p3Pct < 0) p3Pct = 0;
+    var _r2 = function(n) { return Math.round(n * 100) / 100; };
+    var p1Pct = parseFloat((document.getElementById('ct-pay1-pct')||{}).value);
+    var p2Pct = parseFloat((document.getElementById('ct-pay2-pct')||{}).value);
+    if (isNaN(p1Pct)) p1Pct = 30;
+    if (isNaN(p2Pct)) p2Pct = 40;
     var pay2Date = ctDate('ct-pay2-date');
-    var v1 = amountNum ? Math.round(amountNum * p1Pct / 100) : 0;
-    var v2 = amountNum ? Math.round(amountNum * p2Pct / 100) : 0;
+    /* 금액칸에 입력된 값이 있으면 그 금액을 우선 사용, 없으면 % 기준 계산 */
+    var _amt1 = parseInt(String((document.getElementById('ct-pay1-amt')||{}).value || '').replace(/[^0-9]/g,''), 10) || 0;
+    var _amt2 = parseInt(String((document.getElementById('ct-pay2-amt')||{}).value || '').replace(/[^0-9]/g,''), 10) || 0;
+    var v1 = amountNum ? (_amt1 || Math.round(amountNum * p1Pct / 100)) : 0;
+    var v2 = amountNum ? (_amt2 || Math.round(amountNum * p2Pct / 100)) : 0;
     var v3 = amountNum ? (amountNum - v1 - v2) : 0;
+    if (v3 < 0) v3 = 0;
+    /* 표시용 % 는 실제 금액 기준으로 환산해 소수점 2자리까지 */
+    if (amountNum) {
+        p1Pct = _r2(v1 / amountNum * 100);
+        p2Pct = _r2(v2 / amountNum * 100);
+    }
+    var p3Pct = amountNum ? _r2(v3 / amountNum * 100) : _r2(100 - p1Pct - p2Pct);
+    if (p3Pct < 0) p3Pct = 0;
     var fmtWon = function(n) { return n > 0 ? n.toLocaleString() + '원' : '___________원'; };
     var pay2DateStr = ctVal('ct-pay2-date') ? pay2Date : '공사 착공 후 50% 공정 완료 시';
 
@@ -4159,7 +4256,7 @@ function renderContractTmpl() {
 var CT_FIELD_IDS = [
     'ct-client-name','ct-client-bizno','ct-client-addr','ct-client-tel',
     'ct-site-addr','ct-site-name','ct-amount','ct-start','ct-end',
-    'ct-pay1-pct','ct-pay2-pct','ct-pay2-date','ct-pay3-pct',
+    'ct-pay1-pct','ct-pay1-amt','ct-pay2-pct','ct-pay2-amt','ct-pay2-date','ct-pay3-pct',
     'ct-company','ct-rep','ct-bizno','ct-tel','ct-fax','ct-co-addr',
     'ct-date','ct-admin-special'
 ];
