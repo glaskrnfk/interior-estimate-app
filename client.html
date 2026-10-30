@@ -876,12 +876,23 @@ function renderContractDoc(fd) {
 
     var amt    = parseInt(v('ct-amount')||'0',10);
     var amtFmt = amt ? ('금 ' + fmtNum(amt) + '원 (부가세 별도)') : '금 ___________원';
-    var p1Pct  = parseFloat(v('ct-pay1-pct')||30);
-    var p2Pct  = parseFloat(v('ct-pay2-pct')||40);
-    var p3Pct  = 100 - p1Pct - p2Pct;
-    var v1 = amt ? Math.round(amt*p1Pct/100) : 0;
-    var v2 = amt ? Math.round(amt*p2Pct/100) : 0;
-    var v3 = amt ? (amt-v1-v2) : 0;
+    /* ── 대금 지급 계산: PC(admin.html)와 동일한 규칙 ──
+       - 기준 금액: 만원 미만 절삭 (PC 계약서와 동일)
+       - 저장된 금액(ct-pay1-amt / ct-pay2-amt)이 있으면 그 금액 우선, 없으면 % 기준
+       - 잔금 = 기준금액 - 계약금 - 중도금 (항상 합계 100%)
+       - % 는 실제 금액 기준으로 환산해 소수점 2자리까지만 표시 */
+    function r2(n) { return Math.round(n * 100) / 100; }
+    function amtOf(id) { return parseInt(String(v(id) || '').replace(/[^0-9]/g, ''), 10) || 0; }
+    var payBase = amt ? Math.floor(amt / 10000) * 10000 : 0;
+    var p1Pct  = parseFloat(v('ct-pay1-pct')); if (isNaN(p1Pct)) p1Pct = 30;
+    var p2Pct  = parseFloat(v('ct-pay2-pct')); if (isNaN(p2Pct)) p2Pct = 40;
+    var v1 = payBase ? (amtOf('ct-pay1-amt') || Math.round(payBase * p1Pct / 100)) : 0;
+    var v2 = payBase ? (amtOf('ct-pay2-amt') || Math.round(payBase * p2Pct / 100)) : 0;
+    var v3 = payBase ? (payBase - v1 - v2) : 0;
+    if (v3 < 0) v3 = 0;
+    if (payBase) { p1Pct = r2(v1 / payBase * 100); p2Pct = r2(v2 / payBase * 100); }
+    var p3Pct = payBase ? r2(v3 / payBase * 100) : r2(100 - p1Pct - p2Pct);
+    if (p3Pct < 0) p3Pct = 0;
     function fw(n) { return n>0 ? n.toLocaleString()+'원' : '___________원'; }
     var pay2Str = v('ct-pay2-date') ? fmtDate('ct-pay2-date') : '공사 착공 후 50% 공정 완료 시';
     var special = v('ct-admin-special');

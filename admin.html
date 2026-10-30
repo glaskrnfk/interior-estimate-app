@@ -4464,6 +4464,8 @@ async function openSendLinkModal(contractId) {
     var fd = (c && c.contract_data) || {};
     var tel = fd['ct-client-tel'] || '';
     var last4 = tel.replace(/\D/g,'').slice(-4) || '';
+    var _savedAcct = loadSavedAccounts();   /* 시공사 정보에 저장된 계좌 */
+    var _initMsg = buildKakaoMsg(clientName, linkUrl, _savedAcct.biz, _savedAcct.gen);
 
     /* 모달 HTML */
     var existingModal = document.getElementById('send-link-modal');
@@ -4512,6 +4514,22 @@ async function openSendLinkModal(contractId) {
         '</select>' +
         '</div>' +
 
+        /* 입금 계좌 (최대 2개) */
+        '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 14px;margin-bottom:18px">' +
+        '<div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:10px"><i class="fas fa-university" style="margin-right:5px"></i>입금 계좌 안내 <span style="font-weight:400;color:#86a897;font-size:11px">(비워 두면 메시지에 표시되지 않습니다)</span></div>' +
+        '<div class="fg" style="margin-bottom:10px">' +
+        '<label style="font-size:11.5px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px">🧾 사업자 계좌 <span style="font-weight:400;color:#aaa">(세금계산서 발행 시)</span></label>' +
+        '<input id="sl-acct-biz" type="text" value="' + escHtml(_savedAcct.biz) + '" placeholder="예: 국민은행 123-45-678901 (정결디자인스튜디오)" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;outline:none">' +
+        '</div>' +
+        '<div class="fg" style="margin-bottom:10px">' +
+        '<label style="font-size:11.5px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px">💵 일반 계좌 <span style="font-weight:400;color:#aaa">(세금계산서 미발행 시)</span></label>' +
+        '<input id="sl-acct-gen" type="text" value="' + escHtml(_savedAcct.gen) + '" placeholder="예: 신한은행 110-123-456789 (장윤우)" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;outline:none">' +
+        '</div>' +
+        '<label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#166534;cursor:pointer">' +
+        '<input id="sl-acct-save" type="checkbox" checked style="width:14px;height:14px;accent-color:#16a34a"> 다음 발송부터 자동으로 채우기 (시공사 정보에 저장)' +
+        '</label>' +
+        '</div>' +
+
         /* 생성된 링크 */
         '<div style="background:#f0f4f8;border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:16px">' +
         '<div style="font-size:11.5px;color:#888;margin-bottom:6px">발송할 링크 미리보기</div>' +
@@ -4521,8 +4539,8 @@ async function openSendLinkModal(contractId) {
         /* 카톡 메시지 템플릿 */
         '<div style="background:#fff8e1;border:1px solid #ffd54f;border-radius:8px;padding:12px 14px;margin-bottom:18px">' +
         '<div style="font-size:11.5px;font-weight:700;color:#f57f17;margin-bottom:8px"><i class="fas fa-comment" style="margin-right:4px"></i>카카오톡 발송 메시지 (복사 후 전송)</div>' +
-        '<div id="sl-kakao-msg" style="font-size:12.5px;color:#333;line-height:1.9;white-space:pre-wrap;background:#fff;padding:10px;border-radius:6px;border:1px solid #ffe082">' +
-        escHtml('[정결 Design Studio] 계약서 확인 요청\n\n안녕하세요 ' + clientName + '님,\n인테리어 계약서가 준비되었습니다.\n아래 링크를 터치하여 확인 및 서명해 주세요.\n\n' + linkUrl + '\n\n접속 비밀번호: 연락처 뒷 4자리\n(링크 미리보기와 동일한 주소입니다)') +
+        '<div id="sl-kakao-msg" data-client="' + escHtml(clientName) + '" style="font-size:12.5px;color:#333;line-height:1.9;white-space:pre-wrap;background:#fff;padding:10px;border-radius:6px;border:1px solid #ffe082">' +
+        escHtml(_initMsg) +
         '</div>' +
         '</div>' +
 
@@ -4539,9 +4557,65 @@ async function openSendLinkModal(contractId) {
     document.body.insertAdjacentHTML('beforeend', html);
 
     /* 전화번호 4자리 변경 시 미리보기 + 메시지 업데이트 */
-    document.getElementById('sl-phone4').addEventListener('input', function() {
-        updateLinkPreview(contractId, token, baseUrl, clientName);
+    ['sl-phone4', 'sl-acct-biz', 'sl-acct-gen'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', function() {
+            updateLinkPreview(contractId, token, baseUrl, clientName);
+        });
     });
+}
+
+/* ════════════════════════════════════════════════════════
+   카카오 발송 메시지 — 단일 생성 함수 (모달 초기표시 / 입력변경 / 복사가 모두 이 함수를 사용)
+   ※ 문구를 바꿀 때는 이 함수만 수정하면 된다. (세 곳 불일치 방지)
+════════════════════════════════════════════════════════ */
+function buildKakaoMsg(clientName, url, bizAcct, genAcct) {
+    /* 계좌: 인자로 넘기면 그 값을, 생략하면 모달 입력칸의 현재 값을 사용 */
+    if (bizAcct === undefined) bizAcct = (document.getElementById('sl-acct-biz') || {}).value;
+    if (genAcct === undefined) genAcct = (document.getElementById('sl-acct-gen') || {}).value;
+    bizAcct = (bizAcct || '').trim();
+    genAcct = (genAcct || '').trim();
+
+    /* 호칭: 이미 "님"으로 끝나면(예: "박소연 고객님") 다시 붙이지 않는다 */
+    var name  = (clientName || '').trim() || '고객';
+    var greet = /님$/.test(name) ? name : name + '님';
+
+    var msg = '[정결 Design Studio] 계약서 확인 요청\n\n' +
+              '안녕하세요 ' + greet + ',\n' +
+              '인테리어 계약서가 준비되었습니다.\n' +
+              '아래 링크를 터치하여 확인 및 서명해 주세요.\n\n' +
+              url + '\n\n' +
+              '접속 비밀번호: 연락처 뒷 4자리';
+
+    /* 입력된 계좌만 안내 (비워 두면 해당 줄 생략) */
+    if (bizAcct || genAcct) {
+        msg += '\n\n[입금 계좌 안내]';
+        if (bizAcct) msg += '\n▶ 세금계산서 발행 시: ' + bizAcct;
+        if (genAcct) msg += '\n▶ 세금계산서 미발행 시: ' + genAcct;
+    }
+    return msg;
+}
+
+/* 시공사 정보에 저장된 계좌 읽기 */
+function loadSavedAccounts() {
+    var co = {};
+    try { co = (typeof loadCompany === 'function' ? loadCompany() : {}) || {}; } catch(e) {}
+    return { biz: co.bankBiz || '', gen: co.bankGen || '' };
+}
+
+/* 발송 시 "다음에도 사용" 체크되어 있으면 시공사 정보에 계좌 저장 */
+async function saveAccountsIfChecked() {
+    var chk = document.getElementById('sl-acct-save');
+    if (!chk || !chk.checked) return;
+    var bizEl = document.getElementById('sl-acct-biz');
+    var genEl = document.getElementById('sl-acct-gen');
+    if (!bizEl || !genEl) return;
+    try {
+        var co = (typeof loadCompany === 'function' ? loadCompany() : {}) || {};
+        co.bankBiz = bizEl.value.trim();
+        co.bankGen = genEl.value.trim();
+        await saveCompany(co);
+    } catch(e) { console.warn('계좌 저장 실패(발송은 계속 진행):', e); }
 }
 
 function updateLinkPreview(contractId, token, baseUrl, clientName) {
@@ -4550,8 +4624,7 @@ function updateLinkPreview(contractId, token, baseUrl, clientName) {
     if (!linkEl || !msgEl) return;
     var url = baseUrl + '?token=' + token;
     linkEl.textContent = url;
-    /* URL 앞뒤 빈 줄로 분리 - 카카오톡이 하이퍼링크로 인식하도록 */
-    msgEl.textContent  = '[정결 Design Studio] 계약서 확인 요청\n\n안녕하세요 ' + clientName + '님,\n인테리어 계약서가 준비되었습니다.\n아래 링크를 터치하여 확인 및 서명해 주세요.\n\n' + url + '\n\n접속 비밀번호: 연락처 뒷 4자리\n(링크 미리보기와 동일한 주소입니다)';
+    msgEl.textContent  = buildKakaoMsg(clientName, url);
 }
 
 async function copyKakaoMsg(contractId) {
@@ -4564,23 +4637,15 @@ async function copyKakaoMsg(contractId) {
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-copy"></i> 메시지 복사'; }
     if (!saveOk) return;
 
-    /* 2단계: 미리보기 URL(sl-link-preview)에서 실제 저장된 URL을 읽어와
-       카카오 메시지를 새로 구성 — DOM의 메시지 텍스트 대신 직접 구성해서
-       두 URL이 절대 달라지지 않도록 보장 */
+    /* 2단계: 미리보기 URL(sl-link-preview)의 실제 저장된 URL로 메시지 구성.
+       문구는 buildKakaoMsg 하나만 사용하므로 미리보기·메시지·복사본이 항상 동일하다. */
     var linkEl = document.getElementById('sl-link-preview');
     var actualUrl = linkEl ? linkEl.textContent.trim() : '';
     if (!actualUrl) { showToast('❌ 링크를 찾을 수 없습니다.'); return; }
 
-    var clientName = (document.getElementById('sl-kakao-msg') || {}).dataset
-        ? '' : '';
-    /* sl-kakao-msg에서 고객 이름 추출 */
     var msgEl = document.getElementById('sl-kakao-msg');
-    var existingMsg = msgEl ? msgEl.textContent : '';
-    var nameMatch = existingMsg.match(/안녕하세요 (.+?)님/);
-    var cName = nameMatch ? nameMatch[1] : '고객';
-
-    /* 최종 메시지: URL은 미리보기와 100% 동일하게 */
-    var finalMsg = '[정결 Design Studio] 계약서 확인 요청\n\n안녕하세요 ' + cName + '님,\n인테리어 계약서가 준비되었습니다.\n아래 링크를 터치하여 확인 및 서명해 주세요.\n\n' + actualUrl + '\n\n접속 비밀번호: 연락처 뒷 4자리';
+    var cName = (msgEl && msgEl.dataset && msgEl.dataset.client) || '고객';
+    var finalMsg = buildKakaoMsg(cName, actualUrl);
 
     /* 메시지 박스 업데이트 (확인용) */
     if (msgEl) msgEl.textContent = finalMsg;
@@ -4631,6 +4696,9 @@ async function doSendLink(contractId, mode) {
         if (!res.ok) throw new Error(await res.text());
 
         window._pendingLinkToken = null; /* 저장 성공했으니 초기화 */
+
+        /* "다음 발송부터 자동으로 채우기" 체크 시 계좌를 시공사 정보에 저장 (실패해도 발송은 계속) */
+        await saveAccountsIfChecked();
 
         if (mode !== 'copy') {
             var modal = document.getElementById('send-link-modal');
