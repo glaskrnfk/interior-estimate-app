@@ -648,6 +648,9 @@ function renderEditTable() {
             // #5: 소계 = 자재 소계 + 노무 소계 (단가×수량)
             const matSubtotal = rowMat;   // matPrice × qty
             const labSubtotal = rowLab;   // labPrice × qty
+            // 실행 단가 × 수량 (실행 자재 / 실행 노무 합계 표시용)
+            const execMatSubtotal = (row.execMatPrice || 0) * (row.qty || 0);
+            const execLabSubtotal = (row.execLabPrice || 0) * (row.qty || 0);
 
             tr.innerHTML = `
               <td>
@@ -701,11 +704,13 @@ function renderEditTable() {
                 <input type="number" value="${row.execMatPrice||0}"
                    onchange="upRow(${idx},'execMatPrice',+this.value)" min="0" step="100"
                    style="width:82px;background:#fffbeb;border-color:#fcd34d" title="실행 자재단가(관리용)">
+                <div style="font-size:10px;color:#1a3e72;font-weight:600;text-align:right;margin-top:2px;white-space:nowrap">${execMatSubtotal>0?'='+won(execMatSubtotal):''}</div>
               </td>
               <td class="exec-col">
                 <input type="number" value="${row.execLabPrice||0}"
                    onchange="upRow(${idx},'execLabPrice',+this.value)" min="0" step="100"
                    style="width:82px;background:#fffbeb;border-color:#fcd34d" title="실행 노무단가(관리용)">
+                <div style="font-size:10px;color:#059669;font-weight:600;text-align:right;margin-top:2px;white-space:nowrap">${execLabSubtotal>0?'='+won(execLabSubtotal):''}</div>
               </td>
               <td style="text-align:center;white-space:nowrap;min-width:64px">
                 <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
