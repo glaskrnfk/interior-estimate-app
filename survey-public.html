@@ -589,7 +589,7 @@ body {
       <span class="cover-badge">✦ 완전 무료</span>
     </div>
     <p style="margin-top:16px;font-size:11px;color:rgba(255,255,255,.4);line-height:1.7;">
-      입력하신 정보는 인테리어 상담 연락 목적으로만 사용됩니다.<br>진단 완료 후 담당자가 24시간 이내 연락드립니다.
+      우리집 공사에 필요한 정보를 입력하시면<br>대략적인 견적비용을 확인하실 수 있습니다.
     </p>
   </div>
 </div>
@@ -607,28 +607,6 @@ body {
 
 <!-- ════ 설문 ════ -->
 <main class="survey-main" id="survey-form-wrap">
-
-  <!-- 기본 정보 -->
-  <div class="client-info-card" style="margin-top:8px">
-    <div class="ci-title">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-      결과를 받으실 정보
-    </div>
-    <div class="q-grid-2">
-      <div>
-        <div class="q-input-label">성함 <span class="q-required">*</span></div>
-        <input class="q-input" id="clientName" placeholder="홍길동">
-      </div>
-      <div>
-        <div class="q-input-label">연락처 <span class="q-required">*</span></div>
-        <input class="q-input" id="clientPhone" type="tel" placeholder="010-0000-0000">
-      </div>
-    </div>
-    <div style="margin-top:10px;">
-      <div class="q-input-label">공사 위치 (시·구 단위) <span class="q-required">*</span></div>
-      <input class="q-input" id="siteAddress" placeholder="예: 서울 강남구 / 경기 성남시 분당구">
-    </div>
-  </div>
 
   <!-- PART 01 -->
   <div class="part-header">
@@ -656,7 +634,9 @@ body {
       <div class="budget-chip" data-val="10평대 (33㎡ 미만)" onclick="selectChip(this,'size')">10평대</div>
       <div class="budget-chip" data-val="20평대 (33~66㎡)" onclick="selectChip(this,'size')">20평대</div>
       <div class="budget-chip" data-val="30평대 (66~99㎡)" onclick="selectChip(this,'size')">30평대</div>
-      <div class="budget-chip" data-val="40평대 이상 (99㎡~)" onclick="selectChip(this,'size')">40평대 이상</div>
+      <div class="budget-chip" data-val="40평대 (132~165㎡)" onclick="selectChip(this,'size')">40평대</div>
+                <div class="budget-chip" data-val="50평대 (165~198㎡)" onclick="selectChip(this,'size')">50평대</div>
+                <div class="budget-chip" data-val="60평대 이상 (198㎡~)" onclick="selectChip(this,'size')">60평대 이상</div>
     </div>
     <input type="hidden" id="siteSize">
   </div>
@@ -859,7 +839,7 @@ body {
   </div>
 
   <div class="section-intro">
-    🔒 입력하신 정보는 스타일 진단 목적으로만 활용되며, 외부에 제공되지 않습니다.
+    🔒 입력하신 내용은 <strong>예상견적 진단 목적</strong>으로만 사용되며, 이 단계에서는 이름·연락처를 받지 않습니다.
   </div>
 
 </main>
@@ -867,12 +847,6 @@ body {
 <!-- ════ 제출 버튼 ════ -->
 <div class="submit-area" id="submit-area">
   <div class="submit-inner">
-    <label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;cursor:pointer;">
-      <input type="checkbox" id="agreeCheck" style="margin-top:3px;width:16px;height:16px;flex-shrink:0;accent-color:#8b6f47;">
-      <span style="font-size:12px;color:#6b7280;line-height:1.6;">
-        <strong style="color:#2d2d2d;">[필수]</strong> 입력하신 개인정보(성함·연락처·주소)는 인테리어 상담 및 견적 안내 목적으로 수집되며, 담당자가 24시간 이내 연락드립니다. 이에 동의합니다.
-      </span>
-    </label>
     <button class="btn-submit" id="btn-submit" onclick="submitSurvey()">
       ✦ 나의 인테리어 스타일 진단받기
     </button>
@@ -918,15 +892,103 @@ body {
     <div id="res-photos" style="position:relative;overflow:hidden;border-radius:8px;"></div>
   </div>
 
+  <!-- ════ 상담 신청 (선택) ════ -->
+  <div class="result-card" id="consult-card">
+    <div class="result-card-title">상담 신청 <span style="font-size:12px;font-weight:400;color:var(--jk-gray);">(선택)</span></div>
+    <div id="consult-form-wrap">
+      <p style="font-size:12.5px;color:var(--jk-gray);line-height:1.8;margin:0 0 14px;">
+        예상 견적을 확인하셨다면, 현장 조건에 맞는 정확한 견적을 상담받아 보세요.<br>
+        아래 정보를 남겨 주시면 상황에 맞게 안내해 드립니다.
+      </p>
+      <div class="q-grid-2">
+        <div>
+          <div class="q-input-label">성함 <span class="q-required">*</span></div>
+          <input class="q-input" id="clientName" placeholder="홍길동" autocomplete="name">
+        </div>
+        <div>
+          <div class="q-input-label">연락처 <span class="q-required">*</span></div>
+          <input class="q-input" id="clientPhone" type="tel" placeholder="010-0000-0000" autocomplete="tel">
+        </div>
+      </div>
+      <div style="margin-top:10px;">
+        <div class="q-input-label">공사 위치 (시·구 단위) <span class="q-required">*</span></div>
+        <input class="q-input" id="siteAddress" placeholder="예: 서울 강남구 / 경기 성남시 분당구">
+      </div>
+      <div class="q-grid-2" style="margin-top:10px;">
+        <div>
+          <div class="q-input-label">공사 희망 시기 <span class="q-required">*</span></div>
+          <select class="q-input" id="wantTiming">
+            <option value="">선택해 주세요</option>
+            <option value="1개월 이내">1개월 이내</option>
+            <option value="1~3개월 이내">1~3개월 이내</option>
+            <option value="3~6개월 이내">3~6개월 이내</option>
+            <option value="6개월 이후">6개월 이후</option>
+            <option value="아직 미정">아직 미정</option>
+          </select>
+        </div>
+        <div>
+          <div class="q-input-label">공사 예정 예산 <span class="q-required">*</span></div>
+          <select class="q-input" id="wantBudget">
+            <option value="">선택해 주세요</option>
+            <option value="3천만원 미만">3천만원 미만</option>
+            <option value="3천~5천만원">3천~5천만원</option>
+            <option value="5천~7천만원">5천~7천만원</option>
+            <option value="7천만원~1억원">7천만원~1억원</option>
+            <option value="1억원 이상">1억원 이상</option>
+            <option value="아직 미정">아직 미정</option>
+          </select>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#6b7280;line-height:1.7;margin:10px 0 14px;">
+        ※ 상담을 신청하시면 정결디자인 담당자가 <strong style="color:#2d2d2d;">24시간 이내</strong> 연락드립니다.
+      </p>
+
+      <!-- 동의 ① 개인정보 수집·이용 (상담 연락 동의와 분리) -->
+      <div style="background:#f7f4ef;border-radius:8px;padding:12px 14px;margin-bottom:8px;">
+        <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="agreePrivacy" style="margin-top:3px;width:16px;height:16px;flex-shrink:0;accent-color:#8b6f47;">
+          <span style="font-size:12.5px;color:#2d2d2d;line-height:1.6;"><strong>[필수] 개인정보 수집·이용에 동의합니다.</strong></span>
+        </label>
+        <div style="font-size:11.5px;color:#6b7280;line-height:1.8;margin:8px 0 0 24px;">
+          · 수집 항목: 성함, 연락처, 공사 위치, 공사 희망 시기, 공사 예정 예산<br>
+          · 이용 목적: 인테리어 상담 및 견적 안내<br>
+          · 보유·이용 기간: 상담 종료 또는 삭제 요청 시까지, 이후 지체 없이 파기<br>
+          · 동의를 거부하실 수 있으며, 거부 시 상담 신청이 제한됩니다. (예상 견적 확인은 가능합니다.)<br>
+          <strong style="color:#2d2d2d;">· 수집하신 정보는 인테리어 상담 외 목적으로 사용하지 않습니다.</strong>
+        </div>
+      </div>
+
+      <!-- 동의 ② 상담 연락 -->
+      <div style="background:#f7f4ef;border-radius:8px;padding:12px 14px;margin-bottom:14px;">
+        <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="agreeContact" style="margin-top:3px;width:16px;height:16px;flex-shrink:0;accent-color:#8b6f47;">
+          <span style="font-size:12.5px;color:#2d2d2d;line-height:1.6;"><strong>[필수] 상담을 위한 연락(전화·문자)에 동의합니다.</strong></span>
+        </label>
+        <div style="font-size:11.5px;color:#6b7280;line-height:1.8;margin:8px 0 0 24px;">
+          정결디자인 담당자가 입력하신 연락처로 24시간 이내 상담 안내를 드립니다. 언제든지 수신 거부를 요청하실 수 있습니다.
+        </div>
+      </div>
+
+      <button class="btn-submit" id="btn-consult" onclick="submitConsult()" style="width:100%;">
+        상담 신청하기
+      </button>
+    </div>
+    <div id="consult-done" style="display:none;text-align:center;padding:22px 10px;">
+      <div style="font-size:30px;margin-bottom:8px;">✓</div>
+      <div style="font-size:15px;font-weight:700;color:#2d2d2d;margin-bottom:6px;">상담 신청이 접수되었습니다</div>
+      <div style="font-size:12.5px;color:var(--jk-gray);line-height:1.8;">정결디자인 담당자가 24시간 이내<br>입력하신 연락처로 연락드리겠습니다.</div>
+    </div>
+  </div>
+
   <div class="cta-card">
     <div class="cta-inner">
       <div class="cta-name">JUNG KYUL DESIGN STUDIO</div>
       <div class="cta-title">정확한 견적, 대표가 직접 상담드립니다</div>
       <div class="cta-desc">
-        진단 결과를 바탕으로<br>
-        정결인테리어 대표가 <strong style="color:var(--jk-gold);">24시간 이내 직접</strong> 연락드립니다.<br><br>
+        진단 결과를 바탕으로 현장 조건에 맞는<br>
+        정확한 견적을 대표가 직접 상담해 드립니다.<br><br>
         <span style="font-size:11px;color:rgba(255,255,255,.45);">
-          입력하신 정보는 상담 목적 외 사용되지 않으며<br>언제든지 수신 거부 요청이 가능합니다.
+          위 상담 신청서를 남기시거나, 아래 버튼으로 바로 문의하실 수 있습니다.
         </span>
       </div>
       <a class="btn-cta" href="http://pf.kakao.com/_ixaNxlX" id="btn-kakao">
@@ -954,6 +1016,14 @@ var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 
 /* ══ 칩 선택 ══ */
 var _chipVals = { size: '', budget: '' };
+
+/* 평형별 면적값 — 40평대 이상을 세분화하며 새로 추가된 구간.
+   10·20·30·40평대(12/22/32/45)는 기존 계산 코드를 그대로 사용한다. 값 조정은 여기서만 하면 된다. */
+var SQM_BY_SIZE = { '50평': 55, '60평': 65 };
+
+/* 퍼널 상태 보관: 진단 응답(연락처 제외)과 고객이 본 예상견적 */
+var _diagAnswers = null;
+var _diagEstimate = '';
 
 function selectChip(el, group) {
   var groupEl = document.getElementById(group + '-chips');
@@ -1099,6 +1169,8 @@ function diagnoseStyle(data) {
   else if (sz2.includes('20평')) sqmVal2 = 22;
   else if (sz2.includes('30평')) sqmVal2 = 32;
   else if (sz2.includes('40평')) sqmVal2 = 45;
+  else if (sz2.includes('50평')) sqmVal2 = SQM_BY_SIZE['50평'];
+  else if (sz2.includes('60평')) sqmVal2 = SQM_BY_SIZE['60평'];
 
   var total2 = 0;
   document.querySelectorAll('input[name="scopeItem"]:checked').forEach(function(el) {
@@ -1232,81 +1304,69 @@ function renderResult(result) {
 }
 
 /* ══ 제출 ══ */
+/* 공통: Supabase 저장 */
+async function _sbInsert(payload) {
+  var res = await fetch(SUPABASE_URL + '/rest/v1/survey_responses', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error('저장 실패 (' + res.status + ')');
+}
+
+/* ══ 1단계: 진단받기 — 이름·연락처 없이 익명으로 1건 기록(type:'funnel') 후 예상견적 표시 ══ */
 async function submitSurvey() {
-  if (!document.getElementById('agreeCheck').checked) { showToast('개인정보 수집 동의를 체크해 주세요.'); return; }
-  if (!vt('clientName')) { showToast('성함을 입력해 주세요.'); document.getElementById('clientName').focus(); return; }
-  if (!vt('clientPhone')) { showToast('연락처를 입력해 주세요.'); document.getElementById('clientPhone').focus(); return; }
-  if (!vt('siteAddress'))           { showToast('공사 위치를 입력해 주세요.'); return; }
   if (!getRadio('aptType')) { showToast('주거 유형을 선택해 주세요.'); return; }
   if (!_chipVals.size) { showToast('전용면적을 선택해 주세요.'); return; }
   if (getChecked('purpose').length === 0) { showToast('리모델링 목적을 선택해 주세요.'); return; }
   if (!getRadio('style'))               { showToast('원하는 스타일을 선택해 주세요.'); return; }
   if (!getRadio('colorPrefer')) { showToast('선호 색상을 선택해 주세요.'); return; }
   if (getChecked('scopeItem').length === 0) { showToast('공사 항목을 1개 이상 선택해 주세요.'); return; }
-  /* 예산 칩 제거됨 — 항목 합산으로 대체 */
 
   var overlay = document.getElementById('loading-overlay');
   var loadingText = document.getElementById('loading-text');
   overlay.classList.add('show');
   document.getElementById('btn-submit').disabled = true;
-
   loadingText.textContent = '답변을 분석하고 있습니다…';
 
-  var payload = {
-    submitted_at:       new Date().toISOString(),
-    status:             '신규',
-    admin_status:       '홍보유입',
-    admin_memo:         '[스타일진단 홍보유입] ' + new Date().toLocaleDateString('ko-KR'),
-    client_name:        vt('clientName'),
-    client_phone:       vt('clientPhone'),
+  var today = new Date();
+  /* 진단 응답 — 연락처 등 개인정보는 포함하지 않는다 */
+  var answers = {
     purpose:            getChecked('purpose'),
-    budget:             '',  /* 항목 합산으로 대체 */
+    budget:             '',
     site_size:          _chipVals.size,
     apt_type:           getRadio('aptType'),
     overall_style:      getRadio('style') ? [getRadio('style')] : [],
     color_prefer:       getRadio('colorPrefer'),
     construction_scope: Array.from(document.querySelectorAll('input[name="scopeItem"]:checked')).map(function(e){return e.value;}),
-    priority1:          vt('priority1'),
-    start_date:         '',
-    move_in_date:       '',
-    priority2:          '',
-    improve_spaces:     '',
-    family_info:        '',
-    site_address:       vt('siteAddress'),
-    move_status:        '',
-    kitchen_style:      '',
-    kitchen_notes:      '',
-    bathroom_count:     '',
-    bathroom_style:     '',
-    floor_material:     '',
-    wall_style:         [],
-    lighting_style:     '',
-    custom_furniture:   [],
-    system_ac:          '',
-    floor_heating:      '',
-    concerns:           '',
-    reference_images:   '',
-    additional_notes:   '홍보유입_스타일진단_' + new Date().toISOString().slice(0,10)
+    priority1:          vt('priority1')
   };
+  _diagAnswers = answers;
+
+  /* 익명 기록 — 저장에 실패해도 고객은 견적을 볼 수 있어야 하므로 오류는 삼킨다 */
+  var anon = Object.assign({}, answers, {
+    type:         'funnel',
+    status:       '진단만',
+    admin_status: '진단만',
+    admin_memo:   '[홍보 퍼널] 진단 완료(익명) ' + today.toLocaleDateString('ko-KR'),
+    client_name:  '',
+    client_phone: '',
+    submitted_at: today.toISOString()
+  });
+  try { await _sbInsert(anon); }
+  catch (err) { console.warn('[funnel] 익명 기록 저장 실패(견적 표시는 계속):', err); }
+
+  loadingText.textContent = '스타일을 분석하는 중…';
+  await new Promise(function(r) { setTimeout(r, 800); });
 
   try {
-    var res = await fetch(SUPABASE_URL + '/rest/v1/survey_responses', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (!res.ok) throw new Error('저장 실패');
-
-    loadingText.textContent = '스타일을 분석하는 중…';
-    await new Promise(function(r) { setTimeout(r, 800); });
-
-    var result = diagnoseStyle(payload);
+    var result = diagnoseStyle(answers);
+    _diagEstimate = result.estimate || '';
 
     overlay.classList.remove('show');
     document.getElementById('survey-cover').style.display = 'none';
@@ -1316,11 +1376,55 @@ async function submitSurvey() {
     renderResult(result);
     document.getElementById('result-screen').style.display = 'block';
     window.scrollTo(0, 0);
-
-  } catch(e) {
+  } catch (e) {
     overlay.classList.remove('show');
     document.getElementById('btn-submit').disabled = false;
-    var msg = e.message || '오류가 발생했습니다.'; showToast(msg.length > 60 ? '저장 오류: ' + msg.slice(0,60) + '...' : '오류: ' + msg);
+    var msg = e.message || '오류가 발생했습니다.';
+    showToast(msg.length > 60 ? '오류: ' + msg.slice(0,60) + '...' : '오류: ' + msg);
+  }
+}
+
+/* ══ 2단계: 상담 신청 — 진단 응답 + 연락처를 두 번째 기록(type:'public')으로 저장 ══ */
+async function submitConsult() {
+  if (!_diagAnswers) { showToast('먼저 예상 견적 진단을 진행해 주세요.'); return; }
+  var name = vt('clientName'), phone = vt('clientPhone'), addr = vt('siteAddress');
+  var timing = vt('wantTiming'), budget = vt('wantBudget');
+  if (!name)  { showToast('성함을 입력해 주세요.');   document.getElementById('clientName').focus(); return; }
+  if (!phone) { showToast('연락처를 입력해 주세요.'); document.getElementById('clientPhone').focus(); return; }
+  if (phone.replace(/\D/g, '').length < 9) { showToast('연락처를 정확히 입력해 주세요.'); document.getElementById('clientPhone').focus(); return; }
+  if (!addr)  { showToast('공사 위치를 입력해 주세요.'); document.getElementById('siteAddress').focus(); return; }
+  if (!timing) { showToast('공사 희망 시기를 선택해 주세요.'); return; }
+  if (!budget) { showToast('공사 예정 예산을 선택해 주세요.'); return; }
+  if (!document.getElementById('agreePrivacy').checked) { showToast('개인정보 수집·이용에 동의해 주세요.'); return; }
+  if (!document.getElementById('agreeContact').checked) { showToast('상담 연락에 동의해 주세요.'); return; }
+
+  var btn = document.getElementById('btn-consult');
+  btn.disabled = true; btn.textContent = '접수 중…';
+
+  var today = new Date();
+  var payload = Object.assign({}, _diagAnswers, {
+    type:         'public',
+    status:       '신규',
+    admin_status: '홍보유입',
+    admin_memo:   '[스타일진단 홍보유입] 상담 신청 ' + today.toLocaleDateString('ko-KR'),
+    client_name:  name,
+    client_phone: phone,
+    site_address: addr,
+    start_date:   timing,
+    budget:       budget,
+    additional_notes: '홍보유입_스타일진단_' + today.toISOString().slice(0,10) +
+                      (_diagEstimate ? ' | 고객이 확인한 예상견적: ' + _diagEstimate : ''),
+    submitted_at: today.toISOString()
+  });
+
+  try {
+    await _sbInsert(payload);
+    document.getElementById('consult-form-wrap').style.display = 'none';
+    document.getElementById('consult-done').style.display = 'block';
+  } catch (e) {
+    btn.disabled = false; btn.textContent = '상담 신청하기';
+    var msg = e.message || '오류가 발생했습니다.';
+    showToast('접수 오류: ' + (msg.length > 50 ? msg.slice(0,50) + '...' : msg) + ' 다시 시도해 주세요.');
   }
 }
 
