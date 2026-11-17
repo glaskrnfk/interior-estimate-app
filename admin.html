@@ -849,6 +849,31 @@ input[type=number] { user-select:none; }
           🏠 공사범위 체크리스트
           <span id="sv-scope-cnt" style="background:#e5e7eb;color:#374151;padding:1px 7px;border-radius:99px;font-size:10.5px;margin-left:4px">0</span>
         </button>
+        <button id="svtab-public" onclick="setSurveyTypeTab('public',this)"
+          style="padding:9px 18px;border:none;background:none;font:600 13px 'Noto Sans KR',sans-serif;color:var(--text2);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px">
+          🎨 인테리어 스타일 진단
+          <span id="sv-public-cnt" style="background:#e5e7eb;color:#374151;padding:1px 7px;border-radius:99px;font-size:10.5px;margin-left:4px">0</span>
+        </button>
+      </div>
+
+      <!-- 홍보 링크(스타일 진단) 유입 현황 — 클릭하면 일자별 상세 -->
+      <div id="funnel-card" onclick="openFunnelDetail()" title="클릭하면 일자별 상세를 볼 수 있습니다"
+           style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px;cursor:pointer">
+        <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 14px;text-align:center">
+          <div style="font-size:10.5px;color:#888;margin-bottom:5px">🎨 무료견적 완료 <span style="color:#aaa">(개인정보 없음)</span></div>
+          <div style="font-size:22px;font-weight:800;color:var(--navy)"><span id="fn-done">–</span><span style="font-size:12px;font-weight:600;color:#888;margin-left:2px">건</span></div>
+        </div>
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px 14px;text-align:center">
+          <div style="font-size:10.5px;color:#059669;margin-bottom:5px">📞 상담신청 <span style="color:#6ee7b7">(연락처 제출)</span></div>
+          <div style="font-size:22px;font-weight:800;color:#059669"><span id="fn-consult">–</span><span style="font-size:12px;font-weight:600;color:#6ee7b7;margin-left:2px">건</span></div>
+        </div>
+        <div style="background:#f5f3ff;border:1px solid #c4b5fd;border-radius:8px;padding:12px 14px;text-align:center">
+          <div style="font-size:10.5px;color:#7c3aed;margin-bottom:5px">📈 견적완료 대비 상담 신청률</div>
+          <div style="font-size:22px;font-weight:800;color:#7c3aed"><span id="fn-rate">–</span><span style="font-size:12px;font-weight:600;color:#a78bfa;margin-left:2px">%</span></div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#9ca3af;margin:-2px 2px 14px;text-align:right">
+        홍보 링크(인테리어 스타일 진단) 기준 · 최근 30일 · <span style="text-decoration:underline">클릭하면 일자별 상세</span>
       </div>
 
       <!-- ★수정 #6: 상태 카운트 배지 – 취소/계약완료 추가 (6열) -->
@@ -1448,6 +1473,26 @@ input[type=number] { user-select:none; }
 <div id="contract-pdf-wrap" style="position:absolute;left:-9999px;width:794px;background:#fff"></div>
 
 <!-- ━━━ 고객 설문 상세 모달 ━━━ -->
+<div class="modal-backdrop" id="funnel-detail-modal">
+  <div class="modal-box" style="max-width:560px;width:96vw">
+    <div class="mhdr">
+      <h3>🎨 홍보 링크 유입 현황 — 일자별</h3>
+      <button class="modal-close" onclick="closeModal('funnel-detail-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="mbody" style="max-height:calc(90vh - 160px);overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+        <div style="font-size:12px;color:#6b7280">이름·연락처 없이 예상견적만 확인한 사람은 숫자로만 집계됩니다.</div>
+        <select id="funnel-days" onchange="loadFunnelStats(true)" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:12.5px">
+          <option value="7">최근 7일</option>
+          <option value="30" selected>최근 30일</option>
+          <option value="90">최근 90일</option>
+        </select>
+      </div>
+      <div id="funnel-detail-body"></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="survey-detail-modal">
   <div class="modal-box" style="max-width:760px;width:96vw">
     <div class="mhdr">
@@ -1753,7 +1798,7 @@ function sbCheckSession(token) {
 
 /* SELECT — 최신 200건 */
 function sbLoadSurveys() {
-    return fetch(SB_URL + '/rest/v1/survey_responses?select=*&order=submitted_at.desc&limit=200', {
+    return fetch(SB_URL + '/rest/v1/survey_responses?select=*&or=(type.is.null,type.neq.funnel)&order=submitted_at.desc&limit=200', {
         headers: sbHeaders({ 'Range': '0-199', 'Prefer': 'count=none' })
     })
     .then(function(r) {
@@ -1800,15 +1845,145 @@ function _parseArr(v) {
     }
     return [];
 }
+/* ════════════════════════════════════════════════════════
+   홍보 링크 유입 현황 (무료견적 완료 / 상담신청 / 신청률)
+   - 무료견적 완료 : type='funnel' (이름·연락처 없는 익명 기록)
+   - 상담신청      : type='public' (연락처까지 제출)
+   - 신청률        : 상담신청 ÷ 무료견적 완료
+════════════════════════════════════════════════════════ */
+var _funnelAgg = null;
+
+/* UTC 시각 문자열 → 한국 날짜(YYYY-MM-DD) */
+function _kstDate(ts) {
+    var d = new Date(new Date(ts).getTime() + 9 * 3600 * 1000);
+    return d.toISOString().slice(0, 10);
+}
+
+/* 순수 집계 함수 — funnelRows / consultRows: [{created_at}], days: 조회 일수, nowMs: 기준 시각 */
+function aggregateFunnel(funnelRows, consultRows, days, nowMs) {
+    var byDay = {};
+    var bump = function(rows, key) {
+        (rows || []).forEach(function(r) {
+            if (!r || !r.created_at) return;
+            var k = _kstDate(r.created_at);
+            if (!byDay[k]) byDay[k] = { done: 0, consult: 0 };
+            byDay[k][key]++;
+        });
+    };
+    bump(funnelRows, 'done');
+    bump(consultRows, 'consult');
+
+    var list = [];
+    for (var i = 0; i < days; i++) {
+        var k = _kstDate(nowMs - i * 86400000);
+        var v = byDay[k] || { done: 0, consult: 0 };
+        list.push({ date: k, done: v.done, consult: v.consult,
+                    rate: v.done > 0 ? Math.round(v.consult / v.done * 1000) / 10 : null });
+    }
+    var done = list.reduce(function(s, x){ return s + x.done; }, 0);
+    var consult = list.reduce(function(s, x){ return s + x.consult; }, 0);
+    return { days: list, done: done, consult: consult,
+             rate: done > 0 ? Math.round(consult / done * 1000) / 10 : null };
+}
+
+async function loadFunnelStats(fromDetail) {
+    var daysEl = document.getElementById('funnel-days');
+    var days = fromDetail && daysEl ? parseInt(daysEl.value, 10) : 30;
+    var since = new Date(Date.now() - days * 86400000).toISOString();
+    try {
+        var q = function(type) {
+            return fetch(SB_URL + '/rest/v1/survey_responses?select=created_at&type=eq.' + type +
+                         '&created_at=gte.' + encodeURIComponent(since) + '&order=created_at.desc&limit=1000',
+                         { headers: sbHeaders() }).then(function(r) {
+                if (!r.ok) throw new Error('조회 실패 ' + r.status);
+                return r.json();
+            });
+        };
+        var res = await Promise.all([q('funnel'), q('public')]);
+        _funnelAgg = aggregateFunnel(res[0], res[1], days, Date.now());
+        _funnelAgg.capped = (res[0].length >= 1000 || res[1].length >= 1000);
+        renderFunnelCard();
+        if (fromDetail || document.getElementById('funnel-detail-modal').classList.contains('open')) renderFunnelDetail();
+    } catch (e) {
+        console.warn('loadFunnelStats 실패:', e);
+        var setEl = function(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
+        setEl('fn-done', '–'); setEl('fn-consult', '–'); setEl('fn-rate', '–');
+    }
+}
+
+function renderFunnelCard() {
+    if (!_funnelAgg) return;
+    var a = _funnelAgg;
+    var setEl = function(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
+    setEl('fn-done', a.done.toLocaleString());
+    setEl('fn-consult', a.consult.toLocaleString());
+    setEl('fn-rate', a.rate === null ? '–' : a.rate);
+}
+
+function renderFunnelDetail() {
+    var body = document.getElementById('funnel-detail-body');
+    if (!body || !_funnelAgg) return;
+    var a = _funnelAgg;
+    var rows = a.days.filter(function(d){ return d.done || d.consult; }).map(function(d) {
+        var p = d.date.split('-');
+        return '<tr>' +
+            '<td style="padding:8px 10px;border-bottom:1px solid #f0f4f8;font-weight:600">' + p[0].slice(2) + '.' + p[1] + '.' + p[2] + '</td>' +
+            '<td style="padding:8px 10px;border-bottom:1px solid #f0f4f8;text-align:right">' + d.done + '명</td>' +
+            '<td style="padding:8px 10px;border-bottom:1px solid #f0f4f8;text-align:right;color:#059669;font-weight:700">' + d.consult + '명</td>' +
+            '<td style="padding:8px 10px;border-bottom:1px solid #f0f4f8;text-align:right;color:#7c3aed">' + (d.rate === null ? '–' : d.rate + '%') + '</td>' +
+            '</tr>';
+    }).join('');
+    if (!rows) rows = '<tr><td colspan="4" style="padding:28px;text-align:center;color:#bbb;font-size:12.5px">해당 기간에 집계된 유입이 없습니다.</td></tr>';
+
+    body.innerHTML =
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">' +
+          '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center"><div style="font-size:10.5px;color:#888;margin-bottom:3px">무료견적 완료</div><div style="font-size:18px;font-weight:800;color:var(--navy)">' + a.done.toLocaleString() + '건</div></div>' +
+          '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10.5px;color:#059669;margin-bottom:3px">상담신청</div><div style="font-size:18px;font-weight:800;color:#059669">' + a.consult.toLocaleString() + '건</div></div>' +
+          '<div style="background:#f5f3ff;border:1px solid #c4b5fd;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10.5px;color:#7c3aed;margin-bottom:3px">상담 신청률</div><div style="font-size:18px;font-weight:800;color:#7c3aed">' + (a.rate === null ? '–' : a.rate + '%') + '</div></div>' +
+        '</div>' +
+        '<table style="width:100%;border-collapse:collapse;font-size:13px">' +
+          '<thead><tr style="background:var(--navy);color:#fff">' +
+            '<th style="padding:8px 10px;text-align:left;font-weight:700">날짜</th>' +
+            '<th style="padding:8px 10px;text-align:right;font-weight:700">무료견적 완료</th>' +
+            '<th style="padding:8px 10px;text-align:right;font-weight:700">상담신청</th>' +
+            '<th style="padding:8px 10px;text-align:right;font-weight:700">신청률</th>' +
+          '</tr></thead><tbody>' + rows + '</tbody></table>' +
+        (a.capped ? '<div style="margin-top:10px;font-size:11.5px;color:#dc2626">※ 조회 한도(1,000건)에 도달해 일부만 집계되었을 수 있습니다. 기간을 줄여 확인해 주세요.</div>' : '') +
+        '<div style="margin-top:10px;font-size:11px;color:#9ca3af;line-height:1.7">※ 같은 사람이 다시 진단하거나 새로고침하면 중복으로 집계될 수 있어 대략적인 수치로 보시기 바랍니다.</div>';
+}
+
+function openFunnelDetail() {
+    openModal('funnel-detail-modal');
+    loadFunnelStats(true);
+}
+
+/* 상태값 통일: 저장된 값이 영문이거나 유입 경로 표시(홍보유입)여도 기존 상태 체계로 맞춘다.
+   기존 체계: 신규 / 확인중(화면 표기 "상담중") / 미팅완료 / 계약완료 / 취소 */
+function _normSurveyStatus(v) {
+    var map = { 'unread':'신규', 'new':'신규', '홍보유입':'신규', '':'신규',
+                'reviewing':'확인중', '상담중':'확인중' };
+    if (v === undefined || v === null) return '신규';
+    return Object.prototype.hasOwnProperty.call(map, v) ? map[v] : v;
+}
+
+/* 응답 종류 분류: 새 응답은 type 컬럼으로, 이전에 쌓인 스타일 진단 응답은 저장 당시의 표식으로 구분 */
+function _classifySurveyType(r) {
+    if (r.type && r.type !== 'checklist') return r.type;           /* scope / public / funnel */
+    var memo  = String(r.admin_memo || '');
+    var notes = String(r.additional_notes || '');
+    if (memo.indexOf('[스타일진단 홍보유입]') === 0 || notes.indexOf('홍보유입_스타일진단_') === 0) return 'public';
+    return 'checklist';
+}
+
 function sbToCamel(r) {
     return {
         id               : r.id,
         created_at       : r.created_at,
         submittedAt      : r.submitted_at   || r.created_at || '',
         status           : r.status         || '신규',
-        adminStatus      : r.admin_status   || r.status || '신규',
+        adminStatus      : _normSurveyStatus(r.admin_status || r.status),
         adminMemo        : r.admin_memo     || '',
-        type             : r.type           || 'checklist',   /* 공사범위: 'scope', 사전체크: 'checklist' */
+        type             : _classifySurveyType(r),   /* checklist / scope / public(스타일 진단) */
         clientName       : r.client_name    || '',
         clientPhone      : r.client_phone   || '',
         purpose          : _parseArr(r.purpose),
@@ -1826,7 +2001,7 @@ function sbToCamel(r) {
         constructionScope: (function(v) {
             if (!v) return {};
             if (typeof v === 'object') return v;
-            try { return JSON.parse(v); } catch(e) { return {}; }
+            try { return JSON.parse(v); } catch(e) { return String(v); }   /* JSON이 아닌 옛 문자열은 그대로 보존 */
         })(r.construction_scope),
         kitchenStyle     : r.kitchen_style  || '',
         kitchenNotes     : r.kitchen_notes  || '',
@@ -3153,7 +3328,7 @@ var _surveyTypeFilter = 'checklist';
 function setSurveyTypeTab(type, btn) {
     _surveyTypeFilter = type;
     /* 탭 스타일 */
-    ['svtab-checklist','svtab-scope'].forEach(function(id) {
+    ['svtab-checklist','svtab-scope','svtab-public'].forEach(function(id) {
         var el = document.getElementById(id);
         if (!el) return;
         var isActive = el === btn;
@@ -3188,6 +3363,7 @@ function loadSurveyResponses() {
             updateSurveyBadge();
             renderSurveyList();
             initSurveyUrl();
+            loadFunnelStats(false);
         })
         .catch(function(e) {
             var isAuth = (e.message === 'AUTH_FAIL');
@@ -3233,6 +3409,9 @@ function renderSurveyList() {
     if (!Array.isArray(_surveyRecords)) return;
     /* 타입별 카운트 배지 업데이트 */
     var chkCnt   = _surveyRecords.filter(function(r){ return !r.type || r.type === 'checklist'; }).length;
+    var pubCnt   = _surveyRecords.filter(function(r){ return r.type === 'public'; }).length;
+    var cntEl3   = document.getElementById('sv-public-cnt');
+    if (cntEl3) cntEl3.textContent = pubCnt;
     var scopeCnt = _surveyRecords.filter(function(r){ return r.type === 'scope'; }).length;
     var cntEl1 = document.getElementById('sv-checklist-cnt');
     var cntEl2 = document.getElementById('sv-scope-cnt');
@@ -3244,6 +3423,7 @@ function renderSurveyList() {
         var rType = r.type || 'checklist';
         if (_surveyTypeFilter === 'checklist' && rType !== 'checklist') return false;
         if (_surveyTypeFilter === 'scope'     && rType !== 'scope')     return false;
+        if (_surveyTypeFilter === 'public'    && rType !== 'public')    return false;
         var status = r.adminStatus || r.status || '신규';
         if (_surveyFilter !== 'all' && status !== _surveyFilter) return false;
         if (kw) {
@@ -3271,15 +3451,21 @@ function renderSurveyList() {
             : '—';
         /* constructionScope는 {공종명:{items,common,note}} 형태 객체 */
         var scope = '';
-        if (r.constructionScope && typeof r.constructionScope === 'object') {
+        if (Array.isArray(r.constructionScope)) {            /* 스타일진단: 항목 이름 배열 */
+            scope = r.constructionScope.join(', ').replace(/_/g, ' · ');
+        } else if (r.constructionScope && typeof r.constructionScope === 'object') {   /* 공사범위: {공종:{...}} */
             var scopeKeys = Object.keys(r.constructionScope);
             if (scopeKeys.length) scope = scopeKeys.join(', ');
+        } else if (typeof r.constructionScope === 'string') {
+            scope = r.constructionScope;
         }
         var purpose = Array.isArray(r.purpose)           ? r.purpose.join(', ')           : (r.purpose||'');
         /* onclick: scope 타입은 openScopeDetail, 나머지는 openSurveyDetail */
         var clickFn = (r.type === 'scope') ? 'openScopeDetail' : 'openSurveyDetail';
         var typeBadge = (r.type === 'scope')
             ? '<span style="background:#d1fae5;color:#065f46;padding:1px 7px;border-radius:99px;font-size:10px;font-weight:700;margin-left:6px">🏠 공사범위</span>'
+            : (r.type === 'public')
+            ? '<span style="background:#fef3c7;color:#92400e;padding:1px 7px;border-radius:99px;font-size:10px;font-weight:700;margin-left:6px">🎨 스타일진단</span>'
             : '<span style="background:#dbeafe;color:#1d4ed8;padding:1px 7px;border-radius:99px;font-size:10px;font-weight:700;margin-left:6px">📋 사전체크</span>';
         html += '<div class="survey-card ' + cardCls + '" data-sid="' + escHtml(r.id) + '" onclick="' + clickFn + '(this.dataset.sid)">' +
             '<div class="sv-header">' +
@@ -3349,7 +3535,7 @@ function openSurveyDetail(id) {
         '<div class="sd-section"><div class="sd-section-title"><i class="fas fa-map-marker-alt" style="margin-right:4px"></i>현장 정보</div>' +
         '<div class="sd-grid">' + fld('현장 주소', r.siteAddress, 'sd-full') + fld('평수', r.siteSize) + fld('주거 유형', r.aptType) + fld('현재 공간의 상태', r.moveStatus, 'sd-full') + '</div></div>' +
         '<div class="sd-section"><div class="sd-section-title"><i class="fas fa-tools" style="margin-right:4px"></i>PART 2. 공사 범위 & 공간별 요구사항</div>' +
-        '<div class="sd-grid">' + fld('공사 범위', arr(r.constructionScope), 'sd-full') + fld('주방 형태', r.kitchenStyle) + fld('주방 세부요청', r.kitchenNotes) + fld('욕실 개수', r.bathroomCount) + fld('욕실 스타일', r.bathroomStyle) + '</div></div>' +
+        '<div class="sd-grid">' + fld('공사 범위', arr(Array.isArray(r.constructionScope) ? r.constructionScope.map(function(x){return String(x).replace(/_/g,' · ');}) : (typeof r.constructionScope==='string' ? r.constructionScope : '')), 'sd-full') + fld('주방 형태', r.kitchenStyle) + fld('주방 세부요청', r.kitchenNotes) + fld('욕실 개수', r.bathroomCount) + fld('욕실 스타일', r.bathroomStyle) + '</div></div>' +
         '<div class="sd-section"><div class="sd-section-title"><i class="fas fa-paint-brush" style="margin-right:4px"></i>PART 3. 마감재 & 스타일</div>' +
         '<div class="sd-grid">' + fld('바닥재', r.floorMaterial) + fld('벽체/도배 선호', arr(r.wallStyle), 'sd-full') + fld('조명 밝기', r.lightingStyle) + fld('인테리어 스타일', arr(r.overallStyle), 'sd-full') + fld('선호 색상', r.colorPrefer) + '</div></div>' +
         '<div class="sd-section"><div class="sd-section-title"><i class="fas fa-couch" style="margin-right:4px"></i>PART 4. 맞춤 가구 계획</div>' +
@@ -6499,11 +6685,11 @@ function openScopeDetail(id) {
         '<div class="modal-footer">' +
           '<button class="btn btn-secondary" onclick="document.getElementById(\'scope-detail-modal\').remove()">닫기</button>' +
           '<select id="scope-status-sel" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;cursor:pointer" onchange="saveScopeStatus(\'' + id + '\',this.value)">' +
-            '<option value="unread"'  + (r.adminStatus==='unread'  ?'selected':'') + '>🟡 신규</option>' +
-            '<option value="상담중"'  + (r.adminStatus==='상담중'  ?'selected':'') + '>🔵 상담중</option>' +
+            '<option value="신규"'    + (r.adminStatus==='신규'    ?'selected':'') + '>🔴 신규</option>' +
+            '<option value="확인중"'  + (r.adminStatus==='확인중'  ?'selected':'') + '>🔵 상담중</option>' +
             '<option value="미팅완료"'+ (r.adminStatus==='미팅완료'?'selected':'') + '>✅ 미팅완료</option>' +
             '<option value="계약완료"'+ (r.adminStatus==='계약완료'?'selected':'') + '>🤝 계약완료</option>' +
-            '<option value="취소"'    + (r.adminStatus==='취소'    ?'selected':'') + '>❌ 취소</option>' +
+            '<option value="취소"'    + (r.adminStatus==='취소'    ?'selected':'') + '>⛔ 취소</option>' +
           '</select>' +
           '<button class="btn" style="background:#fee2e2;color:#dc2626;border:1.5px solid #fca5a5" onclick="deleteScopeResponse(\'' + id + '\')"><i class="fas fa-trash"></i> 삭제</button>' +
           '<button class="btn btn-primary" onclick="printScopeDetail(\'' + id + '\')"><i class="fas fa-print"></i> 인쇄</button>' +

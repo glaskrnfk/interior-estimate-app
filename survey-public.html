@@ -699,6 +699,25 @@ body {
 
     <div id="scope-groups" style="display:flex;flex-direction:column;gap:10px;">
 
+      <!-- 공조 (최상단) -->
+      <div class="scope-group">
+        <div class="scope-group-title">공조 (에어컨)</div>
+        <div class="options-grid col2">
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="공조_에어컨 이전설치" data-val="0"><span class="opt-box"><span class="opt-check"></span>에어컨 이전설치</span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="공조_신규/2IN1 별도구매" data-val="0"><span class="opt-box"><span class="opt-check"></span>신규 / 2IN1 별도구매</span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="공조_시스템에어컨" data-val="tbl:시스템에어컨"><span class="opt-box"><span class="opt-check"></span>시스템에어컨</span></label>
+        </div>
+      </div>
+
+      <!-- 샷시 (최상단) -->
+      <div class="scope-group">
+        <div class="scope-group-title">샷시 (창호)</div>
+        <div class="options-grid col2">
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="샷시_창호 전체교체" data-val="tbl:창호전체교체"><span class="opt-box"><span class="opt-check"></span>창호 전체교체</span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="샷시_창호 일부만교체" data-val="0"><span class="opt-box"><span class="opt-check"></span>창호 일부만교체</span></label>
+        </div>
+      </div>
+
       <!-- 확장공사 -->
       <div class="scope-group">
         <div class="scope-group-title">확장공사 / 구조변경</div>
@@ -1021,9 +1040,23 @@ var _chipVals = { size: '', budget: '' };
    10·20·30·40평대(12/22/32/45)는 기존 계산 코드를 그대로 사용한다. 값 조정은 여기서만 하면 된다. */
 var SQM_BY_SIZE = { '50평': 55, '60평': 65 };
 
+/* 평형별 금액표 (단위: 만원) — data-val="tbl:이름" 항목이 평형에 따라 이 값으로 계산된다.
+   금액을 바꾸려면 여기만 수정하면 된다. */
+var SCOPE_PRICE_TABLE = {
+  '시스템에어컨': { '10평': 200, '20평': 450, '30평': 600, '40평': 750, '50평': 800, '60평': 950 },
+  '창호전체교체': { '10평': 400, '20평': 600, '30평': 800, '40평': 900, '50평': 1000, '60평': 1200 }
+};
+
+/* 선택한 평형 문구 → 평형 키('10평'~'60평'). 판정하지 못하면 null */
+function sizeKey(sizeText) {
+  var m = String(sizeText || '').match(/^\s*(10|20|30|40|50|60)\s*평/);
+  return m ? m[1] + '평' : null;
+}
+
 /* 퍼널 상태 보관: 진단 응답(연락처 제외)과 고객이 본 예상견적 */
 var _diagAnswers = null;
 var _diagEstimate = '';
+var _consultDone = false;   /* 상담 신청 접수 완료 여부 — 중복 저장 방지 */
 
 function selectChip(el, group) {
   var groupEl = document.getElementById(group + '-chips');
@@ -1177,6 +1210,12 @@ function diagnoseStyle(data) {
     var v = el.dataset.val || '0';
     if (v.startsWith('sqm:')) {
       total2 += parseFloat(v.replace('sqm:', '')) * sqmVal2;
+    } else if (v.startsWith('tbl:')) {
+      /* 평형별 금액표 — 평형을 판정하지 못하면 0으로 두고 경고만 남긴다 */
+      var tblRow = SCOPE_PRICE_TABLE[v.slice(4)];
+      var tblKey = sizeKey(sz2);
+      if (tblRow && tblKey && tblRow[tblKey] !== undefined) total2 += tblRow[tblKey];
+      else console.warn('[견적계산] 금액표 적용 실패:', v, '/ size:', sz2);
     } else {
       total2 += parseFloat(v) || 0;
     }
@@ -1386,6 +1425,7 @@ async function submitSurvey() {
 
 /* ══ 2단계: 상담 신청 — 진단 응답 + 연락처를 두 번째 기록(type:'public')으로 저장 ══ */
 async function submitConsult() {
+  if (_consultDone) return;   /* 이미 접수됨 — 중복 저장 방지 */
   if (!_diagAnswers) { showToast('먼저 예상 견적 진단을 진행해 주세요.'); return; }
   var name = vt('clientName'), phone = vt('clientPhone'), addr = vt('siteAddress');
   var timing = vt('wantTiming'), budget = vt('wantBudget');
@@ -1419,6 +1459,7 @@ async function submitConsult() {
 
   try {
     await _sbInsert(payload);
+    _consultDone = true;
     document.getElementById('consult-form-wrap').style.display = 'none';
     document.getElementById('consult-done').style.display = 'block';
   } catch (e) {

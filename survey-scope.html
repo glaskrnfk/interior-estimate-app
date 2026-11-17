@@ -390,8 +390,8 @@ async function submitScope() {
         start_date   : start || null,
         additional_notes: memo,
         construction_scope: JSON.stringify(scopeData),
-        status       : 'new',
-        admin_status : 'unread',
+        status       : '신규',
+        admin_status : '신규',
         submitted_at : new Date().toISOString()
     };
 
