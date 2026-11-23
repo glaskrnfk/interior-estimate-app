@@ -158,19 +158,24 @@ body{font-family:'Noto Sans KR',sans-serif;font-size:13px;background:#f5f7fa;col
 .copy-mode .task-chip:hover{outline:2px dashed #7c3aed;cursor:copy}
 
 /* 공종별 색상 */
+.cat-보양\/가설{background:#f1f5f9;border:1px solid #cbd5e1}.cat-보양\/가설 .chip-dot{background:#64748b}
 .cat-철거{background:#fef2f2;border:1px solid #fecaca}.cat-철거 .chip-dot{background:#ef4444}
+.cat-폐기물반출{background:#fafaf9;border:1px solid #d6d3d1}.cat-폐기물반출 .chip-dot{background:#78716c}
 .cat-목공{background:#fff7ed;border:1px solid #fed7aa}.cat-목공 .chip-dot{background:#f97316}
+.cat-금속{background:#ecfeff;border:1px solid #a5f3fc}.cat-금속 .chip-dot{background:#0891b2}
 .cat-전기{background:#fefce8;border:1px solid #fef08a}.cat-전기 .chip-dot{background:#eab308}
 .cat-설비{background:#f0fdf4;border:1px solid #bbf7d0}.cat-설비 .chip-dot{background:#22c55e}
 .cat-타일{background:#ecfdf5;border:1px solid #a7f3d0}.cat-타일 .chip-dot{background:#10b981}
 .cat-도배{background:#eff6ff;border:1px solid #bfdbfe}.cat-도배 .chip-dot{background:#3b82f6}
 .cat-마루{background:#f5f3ff;border:1px solid #ddd6fe}.cat-마루 .chip-dot{background:#8b5cf6}
+.cat-장판{background:#faf5f0;border:1px solid #e7d5c3}.cat-장판 .chip-dot{background:#a16207}
 .cat-필름{background:#fdf4ff;border:1px solid #f5d0fe}.cat-필름 .chip-dot{background:#d946ef}
 .cat-도장{background:#fff1f2;border:1px solid #fecdd3}.cat-도장 .chip-dot{background:#f43f5e}
 .cat-조명{background:#fefce8;border:1px solid #fde68a}.cat-조명 .chip-dot{background:#f59e0b}
 .cat-주방{background:#f0f9ff;border:1px solid #bae6fd}.cat-주방 .chip-dot{background:#0ea5e9}
 .cat-욕실{background:#f0fdfa;border:1px solid #99f6e4}.cat-욕실 .chip-dot{background:#14b8a6}
 .cat-가구{background:#fdf2f8;border:1px solid #fbcfe8}.cat-가구 .chip-dot{background:#ec4899}
+.cat-입주청소{background:#f7fee7;border:1px solid #d9f99d}.cat-입주청소 .chip-dot{background:#84cc16}
 .cat-마감{background:#fff0f9;border:2px solid #f9a8d4;font-weight:700}.cat-마감 .chip-dot{background:#be185d}
 .cat-샷시{background:#f0fdf4;border:1px solid #86efac}.cat-샷시 .chip-dot{background:#16a34a}
 .cat-소음{background:#fef9c3;border:1px solid #fde047}.cat-소음 .chip-dot{background:#ca8a04}
@@ -477,20 +482,25 @@ td.ctrl-copy-target{background:rgba(5,150,105,.1)!important;outline:2px dashed #
     <div class="form-row">
       <label>공종 *</label>
       <select id="tf-cat">
+        <option value="보양/가설">🛡️ 보양/가설</option>
         <option value="철거">🔴 철거</option>
+        <option value="폐기물반출">🚛 폐기물반출</option>
         <option value="샷시">🟢 샷시</option>
         <option value="목공">🟠 목공</option>
+        <option value="금속">🔩 금속</option>
         <option value="전기">🟡 전기</option>
         <option value="설비">🟢 설비</option>
         <option value="타일">🟩 타일</option>
         <option value="도배">🔵 도배</option>
         <option value="마루">🟣 마루</option>
+        <option value="장판">🟫 장판</option>
         <option value="필름">🟤 필름</option>
         <option value="도장">🔺 도장</option>
         <option value="조명">🟡 조명</option>
         <option value="주방">🔷 주방</option>
         <option value="욕실">🔹 욕실</option>
         <option value="가구">💗 가구</option>
+        <option value="입주청소">🧹 입주청소</option>
         <option value="마감">🏁 마감</option>
         <option value="소음">⚠️ 소음점검일</option>
         <option value="기타">⬜ 기타</option>
