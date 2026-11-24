@@ -1159,6 +1159,19 @@ input[type=number] { user-select:none; }
         <span style="font-size:11.5px;color:#aaa">※ 지난달 고정비를 이달로 복사합니다. 이후 이달에서만 수정하세요.</span>
       </div>
 
+      <!-- 이달 지출 구성 그래프 -->
+      <div class="card" style="padding:18px;margin-bottom:16px" id="expense-chart-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <h3 style="font-size:13.5px;font-weight:800;color:var(--navy)"><i class="fas fa-chart-pie" style="margin-right:6px"></i>이달 지출 구성</h3>
+          <div style="display:flex;gap:6px" id="exp-scope-btns">
+            <button type="button" data-scope="all"      onclick="setExpChartScope('all')"      class="exp-scope-btn">전체</button>
+            <button type="button" data-scope="biz"      onclick="setExpChartScope('biz')"      class="exp-scope-btn">사업</button>
+            <button type="button" data-scope="personal" onclick="setExpChartScope('personal')" class="exp-scope-btn">개인</button>
+          </div>
+        </div>
+        <div id="expense-chart-body"></div>
+      </div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
 
         <!-- 사업 고정비 (이달) -->
@@ -4965,6 +4978,132 @@ function switchProfitTab(id, btn) {
 
 function genProfitId() { return 'pft_' + Date.now() + '_' + Math.random().toString(36).slice(2,6); }
 
+
+/* ── 지출 그래프 (순수 CSS/SVG, 외부 라이브러리 없음) ── */
+var _expChartScope = 'all';
+var _EXP_COLORS = ['#2563eb','#7c3aed','#059669','#d97706','#dc2626','#0891b2','#db2777'];
+
+/* 비슷한 카테고리는 한 묶음으로 (식비/접대 + 회식 → 식비) */
+function _expCatGroup(cat) {
+    var c = String(cat || '').trim();
+    if (!c) return '미분류';
+    if (/식비|식대|회식|접대|식사/.test(c)) return '식비';
+    return c;
+}
+function _expCatTotals(rows) {
+    var m = {};
+    (rows || []).forEach(function(x) {
+        if (!x || x.bucket === 'income') return;
+        var a = Number(x.amount) || 0;
+        if (a <= 0) return;
+        var k = _expCatGroup(x.category);
+        m[k] = (m[k] || 0) + a;
+    });
+    return m;
+}
+function _fmtShort(v) {
+    var a = Math.abs(v), sg = v < 0 ? '-' : '';
+    if (a >= 1e8) return sg + (Math.round(a / 1e7) / 10) + '억';
+    if (a >= 1e4) return sg + Math.round(a / 1e4).toLocaleString() + '만';
+    return sg + a.toLocaleString();
+}
+/* 카테고리별 도넛 + 큰 금액순 목록. 상위 6개 + 기타 */
+function _buildDonutHtml(map, emptyMsg, periodLabel) {
+    var arr = Object.keys(map).map(function(k){ return { name: k, amt: map[k] }; })
+                   .sort(function(a, b){ return b.amt - a.amt; });
+    var total = arr.reduce(function(s, x){ return s + x.amt; }, 0);
+    if (!total) return '<div style="text-align:center;color:#bbb;padding:24px;font-size:12.5px">' + emptyMsg + '</div>';
+
+    if (arr.length > _EXP_COLORS.length) {
+        var keep = arr.slice(0, _EXP_COLORS.length - 1);
+        var rest = arr.slice(_EXP_COLORS.length - 1);
+        keep.push({ name: '기타 ' + rest.length + '개', amt: rest.reduce(function(s, x){ return s + x.amt; }, 0), etc: true });
+        arr = keep;
+    }
+    var acc = 0, stops = [], legend = '';
+    arr.forEach(function(x, i) {
+        var color = x.etc ? '#94a3b8' : _EXP_COLORS[i];
+        var pct = x.amt / total * 100;
+        stops.push(color + ' ' + acc.toFixed(3) + '% ' + (acc + pct).toFixed(3) + '%');
+        acc += pct;
+        legend +=
+            '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:12.5px">' +
+              '<span style="width:10px;height:10px;border-radius:3px;background:' + color + ';flex-shrink:0"></span>' +
+              '<span style="flex:1;font-weight:600">' + escHtml(x.name) + '</span>' +
+              '<span style="color:#666;min-width:84px;text-align:right">&#8361; ' + x.amt.toLocaleString() + '</span>' +
+              '<span style="font-weight:800;min-width:48px;text-align:right;color:' + color + '">' + pct.toFixed(1) + '%</span>' +
+            '</div>';
+    });
+    var top = arr[0];
+    var topLine = top.etc ? '' :
+        '<div style="font-size:13px;margin-bottom:12px;padding:8px 12px;background:#f8fafc;border-radius:8px">' +
+        escHtml(periodLabel) + ' 가장 큰 지출은 <b>' + escHtml(top.name) + '</b> ' +
+        '<b style="color:' + _EXP_COLORS[0] + '">' + (top.amt / total * 100).toFixed(1) + '%</b> (&#8361; ' + top.amt.toLocaleString() + ')</div>';
+
+    return topLine +
+        '<div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">' +
+          '<div style="position:relative;width:170px;height:170px;border-radius:50%;flex-shrink:0;' +
+               'background:conic-gradient(' + stops.join(',') + ');-webkit-print-color-adjust:exact;print-color-adjust:exact">' +
+            '<div style="position:absolute;inset:34px;background:#fff;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">' +
+              '<div style="font-size:10.5px;color:#888">총 지출</div>' +
+              '<div style="font-size:14px;font-weight:800;color:var(--navy)">' + _fmtShort(total) + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="flex:1;min-width:240px">' + legend + '</div>' +
+        '</div>';
+}
+function renderExpenseChart() {
+    var body = document.getElementById('expense-chart-body');
+    if (!body) return;
+    var rows = (_expenseCache || []).filter(function(x) {
+        if (_expChartScope === 'biz')      return x.bucket === 'biz_fixed' || x.bucket === 'biz_var';
+        if (_expChartScope === 'personal') return x.bucket === 'personal_fixed' || x.bucket === 'personal';
+        return x.bucket !== 'income';
+    });
+    body.innerHTML = _buildDonutHtml(_expCatTotals(rows), '이달 지출 내역이 없습니다.', '이달');
+    document.querySelectorAll('#exp-scope-btns .exp-scope-btn').forEach(function(b) {
+        var on = b.getAttribute('data-scope') === _expChartScope;
+        b.style.cssText = 'border:1.5px solid ' + (on ? 'var(--navy)' : 'var(--border)') + ';border-radius:99px;padding:3px 13px;font-size:12px;font-weight:700;cursor:pointer;' +
+                          'background:' + (on ? 'var(--navy)' : '#fff') + ';color:' + (on ? '#fff' : '#666');
+    });
+}
+function setExpChartScope(s) { _expChartScope = s; renderExpenseChart(); }
+
+/* 연간: 월별 실수입 / 총지출 막대 + 실질잔액 선 (SVG) */
+function _buildAnnualChart(mon) {
+    if (!mon.some(function(m){ return m.inc || m.exp || m.bal; }))
+        return '<div style="text-align:center;color:#bbb;padding:24px;font-size:12.5px">이 해에 표시할 데이터가 없습니다.</div>';
+    var W = 720, H = 250, L = 46, R = 10, T = 14, B = 26, iw = W - L - R, ih = H - T - B;
+    var yMax = 0, yMin = 0;
+    mon.forEach(function(m){ yMax = Math.max(yMax, m.inc, m.exp, m.bal); yMin = Math.min(yMin, m.bal); });
+    var span = (yMax - yMin) || 1;
+    var Y = function(v){ return T + (yMax - v) / span * ih; };
+    var step = iw / 12, bw = Math.min(16, step * 0.3);
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" role="img" aria-label="월별 실수입과 지출">';
+    [yMax, 0].concat(yMin < 0 ? [yMin] : []).forEach(function(v) {
+        svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="' + (v === 0 ? '#cbd5e1' : '#eef2f7') + '"/>' +
+               '<text x="' + (L - 6) + '" y="' + (Y(v) + 3.5).toFixed(1) + '" text-anchor="end" font-size="10" fill="#94a3b8">' + _fmtShort(v) + '</text>';
+    });
+    var pts = [];
+    mon.forEach(function(m, i) {
+        var cx = L + step * (i + 0.5);
+        var y0 = Y(0);
+        if (m.inc > 0) svg += '<rect x="' + (cx - bw - 1).toFixed(1) + '" y="' + Y(m.inc).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (y0 - Y(m.inc)).toFixed(1) + '" rx="2" fill="#2563eb"><title>' + m.m + '월 실수입 ' + m.inc.toLocaleString() + '원</title></rect>';
+        if (m.exp > 0) svg += '<rect x="' + (cx + 1).toFixed(1) + '" y="' + Y(m.exp).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (y0 - Y(m.exp)).toFixed(1) + '" rx="2" fill="#f59e0b"><title>' + m.m + '월 총지출 ' + m.exp.toLocaleString() + '원</title></rect>';
+        svg += '<text x="' + cx.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10.5" fill="#64748b">' + m.m + '월</text>';
+        if (m.inc || m.exp) pts.push({ x: cx, y: Y(m.bal), bal: m.bal, m: m.m });
+    });
+    if (pts.length > 1) svg += '<polyline fill="none" stroke="#059669" stroke-width="2" points="' + pts.map(function(p){ return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ') + '"/>';
+    pts.forEach(function(p) {
+        svg += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3.5" fill="' + (p.bal >= 0 ? '#059669' : '#dc2626') + '" stroke="#fff" stroke-width="1.5"><title>' + p.m + '월 실질잔액 ' + p.bal.toLocaleString() + '원</title></circle>';
+    });
+    svg += '</svg>';
+    var lg = function(c, t, round){ return '<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:10px;height:10px;background:' + c + ';border-radius:' + (round ? '50%' : '2px') + '"></span>' + t + '</span>'; };
+    return '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:#555;margin-bottom:6px">' +
+           lg('#2563eb', '실수입(입금+추가수입)') + lg('#f59e0b', '총지출(공사원가 + 사업운영비 + 개인생활비)') + lg('#059669', '실질잔액', true) + '</div>' + svg;
+}
+/* ── END 지출 그래프 ── */
+
 /* ══════════════════════════════════════════
    지출 탭 — 로드 / 렌더
 ══════════════════════════════════════════ */
@@ -4980,6 +5119,7 @@ async function loadExpenseTab() {
     renderFixedSection('biz_fixed',      'biz-fixed-list',      'biz-fixed-total');
     renderFixedSection('personal_fixed', 'personal-fixed-list', 'personal-fixed-total');
     renderVarSection();
+    renderExpenseChart();
 }
 
 function renderFixedSection(bucket, listId, totId) {
@@ -5352,6 +5492,7 @@ async function loadAnnualSummary() {
     var months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
     var totals = { dopup:0, cashflow:0, bizExp:0, persExp:0, balance:0 };
     var rows = '';
+    var monSeries = [];
 
     months.forEach(function(mm) {
         var ym  = _profitYear + '-' + mm;
@@ -5380,6 +5521,7 @@ async function loadAnnualSummary() {
         var pe  = persFixed + persVar;
         var bal = totalInc - (autoCost+overrun) - be - pe;
 
+        monSeries.push({ m: parseInt(mm), inc: totalInc, exp: autoCost + overrun + be + pe, bal: bal });
         totals.dopup    += autoDopup;
         totals.cashflow += totalInc;
         totals.bizExp   += be;
@@ -5399,7 +5541,12 @@ async function loadAnnualSummary() {
 
     var wrap = document.getElementById('annual-summary-wrap');
     if (!wrap) return;
-    wrap.innerHTML =
+    var chartHtml =
+        '<div class="card" style="padding:18px;margin-bottom:16px"><h3 style="font-size:13.5px;font-weight:800;color:var(--navy);margin-bottom:10px"><i class="fas fa-chart-bar" style="margin-right:6px"></i>월별 수입 · 지출</h3>' +
+        _buildAnnualChart(monSeries) + '</div>' +
+        '<div class="card" style="padding:18px;margin-bottom:16px"><h3 style="font-size:13.5px;font-weight:800;color:var(--navy);margin-bottom:10px"><i class="fas fa-chart-pie" style="margin-right:6px"></i>올해 지출 구성 <span style="font-size:11px;font-weight:400;color:#aaa">사업·개인 고정/변동 합계 (공사원가 제외)</span></h3>' +
+        _buildDonutHtml(_expCatTotals(expRows), '올해 지출 내역이 없습니다.', '올해') + '</div>';
+    wrap.innerHTML = chartHtml +
         '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;width:100%;box-sizing:border-box">' +
           _miniKpi('&#128200; 계약 도급 합계','자동','&#8361; '+totals.dopup.toLocaleString(),'var(--navy)') +
           _miniKpi('&#128181; 실제 입금 합계','수동+추가수입','&#8361; '+totals.cashflow.toLocaleString(),'#1d4ed8') +
