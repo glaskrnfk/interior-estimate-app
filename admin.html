@@ -1291,16 +1291,10 @@ input[type=number] { user-select:none; }
           <i class="fas fa-pencil-alt" style="margin-right:6px"></i>수동 입력 <span style="font-size:11px;font-weight:400;color:#aaa">(꼭 필요한 항목만)</span>
         </div>
         <div style="font-size:12px;color:#888;margin-bottom:14px;padding:8px 12px;background:#f0fdf4;border-radius:6px">
-          💡 도급금액·원가·예상이익은 위에서 자동 계산됩니다. 아래는 실제 현금 흐름과 차이가 있는 항목만 입력하세요.
+          💡 매출(도급금액)과 견적 원가는 위 '이달 계약 현황'에서 자동 계산됩니다. 견적보다 실제로 더 쓴 금액이 있을 때만 입력하세요.
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="fg">
-            <label style="font-size:12px;font-weight:700;color:var(--text2)">
-              💰 실제 잔금 입금액
-              <span style="font-weight:400;color:#aaa;font-size:10.5px;display:block">계약금+중도금+잔금 이달 실입금 합계</span>
-            </label>
-            <input type="number" id="rev-cashflow" placeholder="0" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px">
-          </div>
+          <input type="hidden" id="rev-cashflow" value="">
           <!-- 추가수입은 지출관리 탭 > 추가수입 버튼으로 입력 -->
           <div class="fg">
             <label style="font-size:12px;font-weight:700;color:var(--text2)">
@@ -3043,6 +3037,7 @@ function extractFinancials(record) {
         } catch(e) {}
     }
     
+    profit = Math.round(profit);
     var profitPct = fin > 0 ? (profit / fin * 100) : 0;
     return { fin: fin, profit: profit, profitPct: profitPct };
 }
@@ -5017,7 +5012,7 @@ function _buildDonutHtml(map, emptyMsg, periodLabel) {
     if (arr.length > _EXP_COLORS.length) {
         var keep = arr.slice(0, _EXP_COLORS.length - 1);
         var rest = arr.slice(_EXP_COLORS.length - 1);
-        keep.push({ name: '기타 ' + rest.length + '개', amt: rest.reduce(function(s, x){ return s + x.amt; }, 0), etc: true });
+        keep.push({ name: '그 외 ' + rest.length + '개', amt: rest.reduce(function(s, x){ return s + x.amt; }, 0), etc: true });
         arr = keep;
     }
     var acc = 0, stops = [], legend = '';
@@ -5088,7 +5083,7 @@ function _buildAnnualChart(mon) {
     mon.forEach(function(m, i) {
         var cx = L + step * (i + 0.5);
         var y0 = Y(0);
-        if (m.inc > 0) svg += '<rect x="' + (cx - bw - 1).toFixed(1) + '" y="' + Y(m.inc).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (y0 - Y(m.inc)).toFixed(1) + '" rx="2" fill="#2563eb"><title>' + m.m + '월 실수입 ' + m.inc.toLocaleString() + '원</title></rect>';
+        if (m.inc > 0) svg += '<rect x="' + (cx - bw - 1).toFixed(1) + '" y="' + Y(m.inc).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (y0 - Y(m.inc)).toFixed(1) + '" rx="2" fill="#2563eb"><title>' + m.m + '월 매출 ' + m.inc.toLocaleString() + '원</title></rect>';
         if (m.exp > 0) svg += '<rect x="' + (cx + 1).toFixed(1) + '" y="' + Y(m.exp).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (y0 - Y(m.exp)).toFixed(1) + '" rx="2" fill="#f59e0b"><title>' + m.m + '월 총지출 ' + m.exp.toLocaleString() + '원</title></rect>';
         svg += '<text x="' + cx.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10.5" fill="#64748b">' + m.m + '월</text>';
         if (m.inc || m.exp) pts.push({ x: cx, y: Y(m.bal), bal: m.bal, m: m.m });
@@ -5100,7 +5095,7 @@ function _buildAnnualChart(mon) {
     svg += '</svg>';
     var lg = function(c, t, round){ return '<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:10px;height:10px;background:' + c + ';border-radius:' + (round ? '50%' : '2px') + '"></span>' + t + '</span>'; };
     return '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:#555;margin-bottom:6px">' +
-           lg('#2563eb', '실수입(입금+추가수입)') + lg('#f59e0b', '총지출(공사원가 + 사업운영비 + 개인생활비)') + lg('#059669', '실질잔액', true) + '</div>' + svg;
+           lg('#2563eb', '매출(도급금액+추가수입)') + lg('#f59e0b', '총지출(실행원가 + 사업운영비 + 개인생활비)') + lg('#059669', '실질잔액', true) + '</div>' + svg;
 }
 /* ── END 지출 그래프 ── */
 
@@ -5359,7 +5354,7 @@ async function loadMonthlySummary() {
             var f = extractFinancials(r);
             var snap = r.costSnapshot || {};
             var cost = Number(snap.matCost||0) + Number(snap.labCost||0);
-            if (!cost && snap.fin && snap.margin) cost = snap.fin - snap.margin;
+            if (!cost && snap.fin && snap.margin) cost = Math.round(snap.fin - snap.margin);
             autoDopup  += f.fin;
             autoCost   += cost;
             autoProfit += f.profit;
@@ -5408,7 +5403,8 @@ async function loadMonthlySummary() {
 
     var cashflow  = Number(rev.cashflow_amount)||0;
     var overrun   = Number(rev.cost_labor)||0;
-    var totalInc  = cashflow + incomeAmt;
+    var totalInc  = autoDopup + incomeAmt;            /* 매출 = 이달 계약 도급금액 + 추가수입 */
+    autoCost      = Math.round(autoCost);
     var realCost  = autoCost + overrun;
     var constrP   = totalInc - realCost;
     var bizExpT   = bizFixed + bizVar;
@@ -5420,10 +5416,10 @@ async function loadMonthlySummary() {
     function w(n){ return '<span class="pl-val">&#8361; '+Number(n||0).toLocaleString()+'</span>'; }
 
     var html =
-        '<div class="pl-section"><div class="pl-section-header">&#128200; 이달 수입</div>' +
-        '<div class="pl-row sub"><span>실제 입금액 (계약금+중도금+잔금)</span>'+w(cashflow)+'</div>' +
+        '<div class="pl-section"><div class="pl-section-header">&#128200; 이달 매출</div>' +
+        '<div class="pl-row sub"><span>계약 도급금액 (계약완료일 기준·'+monthEsts.length+'건)</span>'+w(autoDopup)+'</div>' +
         (incomeAmt?'<div class="pl-row sub"><span>추가 수입 (AS·용역 등)</span><span class="pl-val pos">+&#8361; '+incomeAmt.toLocaleString()+'</span></div>':'') +
-        '<div class="pl-row total"><span>총 수입</span>'+wf(totalInc)+'</div></div>' +
+        '<div class="pl-row total"><span>총 매출</span>'+wf(totalInc)+'</div></div>' +
         '<div class="pl-section"><div class="pl-section-header">&#127959;&#65039; 공사 원가</div>' +
         '<div class="pl-row sub"><span>견적 원가 (자동·'+monthEsts.length+'건)</span>'+w(autoCost)+'</div>' +
         (overrun?'<div class="pl-row sub"><span>실행원가 초과분</span><span class="pl-val neg">+&#8361; '+overrun.toLocaleString()+'</span></div>':'') +
@@ -5439,7 +5435,7 @@ async function loadMonthlySummary() {
         '<div class="pl-row total"><span>개인 생활비 합계</span>'+w(persExpT)+'</div></div>' +
         '<div class="pl-section">' +
         '<div class="pl-row highlight" style="font-size:17px"><span>&#128181; 실질 잔액</span>'+wf(realBal)+'</div>' +
-        '<div class="pl-row sub"><span>월 손익분기 필요 입금액</span><span style="color:#888">&#8361; '+(bizExpT+persExpT).toLocaleString()+' 이상</span></div>' +
+        '<div class="pl-row sub"><span>월 손익분기 (공사 이익이 이 금액 이상 필요)</span><span style="color:#888">&#8361; '+(bizExpT+persExpT).toLocaleString()+'</span></div>' +
         '</div>';
 
     var card = document.getElementById('monthly-summary-card');
@@ -5490,7 +5486,7 @@ async function loadAnnualSummary() {
     var allEst  = loadContractedEstimates();
 
     var months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
-    var totals = { dopup:0, cashflow:0, bizExp:0, persExp:0, balance:0 };
+    var totals = { dopup:0, cashflow:0, cost:0, bizExp:0, persExp:0, balance:0 };
     var rows = '';
     var monSeries = [];
 
@@ -5505,35 +5501,37 @@ async function loadAnnualSummary() {
             var f = extractFinancials(r);
             var snap = r.costSnapshot || {};
             var cost = Number(snap.matCost||0)+Number(snap.labCost||0);
-            if (!cost && snap.fin && snap.margin) cost = snap.fin - snap.margin;
+            if (!cost && snap.fin && snap.margin) cost = Math.round(snap.fin - snap.margin);
             autoDopup += f.fin; autoCost += cost;
         });
 
         var cashflow  = Number(rev.cashflow_amount||0);
         var overrun   = Number(rev.cost_labor||0);
         var incomeAmt = me.filter(function(x){ return x.bucket==='income'; }).reduce(function(s,x){ return s+(Number(x.amount)||0);},0);
-        var totalInc  = cashflow + incomeAmt;
+        var totalInc  = autoDopup + incomeAmt;            /* 매출 = 계약 도급금액 + 추가수입 */
         var bizFixed  = me.filter(function(x){ return x.bucket==='biz_fixed'; }).reduce(function(s,x){ return s+(Number(x.amount)||0);},0);
         var bizVar    = me.filter(function(x){ return x.bucket==='biz_var'; }).reduce(function(s,x){ return s+(Number(x.amount)||0);},0);
         var persFixed = me.filter(function(x){ return x.bucket==='personal_fixed'; }).reduce(function(s,x){ return s+(Number(x.amount)||0);},0);
         var persVar   = me.filter(function(x){ return x.bucket==='personal'; }).reduce(function(s,x){ return s+(Number(x.amount)||0);},0);
         var be  = bizFixed + bizVar;
         var pe  = persFixed + persVar;
-        var bal = totalInc - (autoCost+overrun) - be - pe;
+        var costAll = Math.round(autoCost) + overrun;      /* 실행원가 = 견적 원가 + 초과분 */
+        var bal = totalInc - costAll - be - pe;
 
-        monSeries.push({ m: parseInt(mm), inc: totalInc, exp: autoCost + overrun + be + pe, bal: bal });
+        monSeries.push({ m: parseInt(mm), inc: totalInc, exp: costAll + be + pe, bal: bal });
         totals.dopup    += autoDopup;
         totals.cashflow += totalInc;
+        totals.cost     += costAll;
         totals.bizExp   += be;
         totals.persExp  += pe;
         totals.balance  += bal;
 
-        var has = autoDopup || cashflow || incomeAmt;
+        var has = autoDopup || incomeAmt || costAll || be || pe;
         rows += '<tr style="'+(has?'':'color:#ccc')+'">' +
             '<td>'+parseInt(mm)+'월</td>' +
             '<td>'+(monthEsts.length?monthEsts.length+'건':'—')+'</td>' +
-            '<td>'+(autoDopup?'&#8361; '+autoDopup.toLocaleString():'—')+'</td>' +
             '<td>'+(totalInc?'&#8361; '+totalInc.toLocaleString():'—')+'</td>' +
+            '<td>'+(costAll?'&#8361; '+costAll.toLocaleString():'—')+'</td>' +
             '<td>&#8361; '+be.toLocaleString()+'</td>' +
             '<td>&#8361; '+pe.toLocaleString()+'</td>' +
             '<td style="font-weight:700;color:'+(bal>=0?'#059669':'#dc2626')+'">'+(has?(bal>=0?'&#8361; ':'-&#8361; ')+Math.abs(bal).toLocaleString():'—')+'</td></tr>';
@@ -5548,25 +5546,25 @@ async function loadAnnualSummary() {
         _buildDonutHtml(_expCatTotals(expRows), '올해 지출 내역이 없습니다.', '올해') + '</div>';
     wrap.innerHTML = chartHtml +
         '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;width:100%;box-sizing:border-box">' +
-          _miniKpi('&#128200; 계약 도급 합계','자동','&#8361; '+totals.dopup.toLocaleString(),'var(--navy)') +
-          _miniKpi('&#128181; 실제 입금 합계','수동+추가수입','&#8361; '+totals.cashflow.toLocaleString(),'#1d4ed8') +
+          _miniKpi('&#128200; 연 매출','계약 도급금액 + 추가수입','&#8361; '+totals.cashflow.toLocaleString(),'var(--navy)') +
+          _miniKpi('&#127959;&#65039; 실행원가 합계','견적 원가 + 초과분','&#8361; '+totals.cost.toLocaleString(),'#1d4ed8') +
           _miniKpi('&#127970; 사업+개인 지출','','&#8361; '+(totals.bizExp+totals.persExp).toLocaleString(),'#d97706') +
           _miniKpi('&#127881; 연간 실질 잔액','','&#8361; '+totals.balance.toLocaleString(),totals.balance>=0?'#059669':'#dc2626') +
         '</div>' +
         '<div style="background:#fff;border-radius:10px;border:1px solid var(--border);overflow-x:auto;width:100%;box-sizing:border-box">' +
         '<table class="annual-tbl"><thead><tr>' +
-          '<th style="width:45px">월</th><th>계약건수</th><th>도급금액(자동)</th><th>실수입(입금+추가)</th><th>사업운영비</th><th>개인생활비</th><th>실질잔액</th>' +
+          '<th style="width:45px">월</th><th>계약건수</th><th>매출(도급+추가수입)</th><th>실행원가</th><th>사업운영비</th><th>개인생활비</th><th>실질잔액</th>' +
         '</tr></thead><tbody>'+rows+'</tbody>' +
         '<tfoot><tr class="total-row">' +
           '<td>합계</td><td>—</td>' +
-          '<td>&#8361; '+totals.dopup.toLocaleString()+'</td>' +
           '<td>&#8361; '+totals.cashflow.toLocaleString()+'</td>' +
+          '<td>&#8361; '+totals.cost.toLocaleString()+'</td>' +
           '<td>&#8361; '+totals.bizExp.toLocaleString()+'</td>' +
           '<td>&#8361; '+totals.persExp.toLocaleString()+'</td>' +
           '<td style="color:'+(totals.balance>=0?'#059669':'#dc2626')+'">&#8361; '+totals.balance.toLocaleString()+'</td>' +
         '</tr></tfoot></table></div>' +
         '<div style="margin-top:12px;padding:10px 14px;background:#f8fafc;border-radius:8px;font-size:12px;color:#666">' +
-        '※ 도급금액은 계약관리 자동 집계 / 실수입은 월간손익 탭 입력+추가수입 합산 / 고정비는 해당 월 등록 기준' +
+        '※ 매출은 계약완료일이 속한 달에 도급금액 전액을 반영합니다(추가공사 견적도 "계약 완료"로 표시하면 그 달 매출에 포함) / 실행원가는 견적서 기준 자동 + 월간 손익의 초과분 / 사업·개인 비용은 해당 월 등록 기준' +
         '</div>';
 }
 
