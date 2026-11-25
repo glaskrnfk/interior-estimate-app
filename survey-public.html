@@ -519,6 +519,17 @@ body {
   transition: .2s;
 }
 .btn-cta:hover { opacity: .9; }
+/* 전화 상담 버튼 — 어두운 카드 위에서 잘 보이도록 흰색 바탕 */
+.btn-call {
+  display: block; width: 100%; box-sizing: border-box;
+  margin-top: 10px; padding: 15px;
+  background: #fff; color: var(--jk-black) !important;
+  border: none; border-radius: var(--radius-sm);
+  font: 700 14px 'Noto Sans KR', sans-serif;
+  letter-spacing: 0.5px; text-decoration: none !important; text-align: center;
+  transition: .2s;
+}
+.btn-call:hover { opacity: .9; }
 
 .scope-group {
   background: var(--jk-bg);
@@ -780,6 +791,7 @@ body {
         <div class="scope-group-title">목공사 (벽체·천장·단열)</div>
         <div class="options-grid col2">
           <label class="opt-item"><input type="checkbox" name="scopeItem" value="목공사" data-val="sqm:32.6"><span class="opt-box"><span class="opt-check"></span>벽체·천장·단열</span></label>
+          <label class="opt-item"><input type="checkbox" name="scopeItem" value="목공사_문/문틀 교체" data-val="tbl:문문틀교체"><span class="opt-box"><span class="opt-check"></span>문 / 문틀 교체</span></label>
         </div>
       </div>
 
@@ -1104,7 +1116,9 @@ var SQM_BY_SIZE = { '50평': 55, '60평': 65 };
    금액을 바꾸려면 여기만 수정하면 된다. */
 var SCOPE_PRICE_TABLE = {
   '시스템에어컨': { '10평': 200, '20평': 450, '30평': 600, '40평': 750, '50평': 800, '60평': 950 },
-  '창호전체교체': { '10평': 400, '20평': 600, '30평': 800, '40평': 900, '50평': 1000, '60평': 1200 }
+  '창호전체교체': { '10평': 400, '20평': 600, '30평': 800, '40평': 900, '50평': 1000, '60평': 1200 },
+  /* 문/문틀 교체: 1조 55만원 × 평형별 임의 지정 개수 (3·4·5·6·7·8조) */
+  '문문틀교체':   { '10평': 55*3, '20평': 55*4, '30평': 55*5, '40평': 55*6, '50평': 55*7, '60평': 55*8 }
 };
 
 /* 선택한 평형 문구 → 평형 키('10평'~'60평'). 판정하지 못하면 null */
