@@ -647,6 +647,13 @@ function wonFull(n){
   return '₩'+n.toLocaleString();
 }
 function goAdmin(){ window.location.href='admin.html'; }
+/* 관리자 화면 안(iframe)에서 열린 경우: 어드민 버튼 숨김 + 상단 바 고정 해제 */
+(function(){ try { if (window.self !== window.top) {
+  document.addEventListener('DOMContentLoaded', function(){
+    var b = document.querySelector('.top-bar-right .btn-secondary[onclick="goAdmin()"]'); if (b) b.style.display='none';
+    var t = document.querySelector('.top-bar'); if (t) t.style.position='static';
+  });
+} } catch(e){} })();
 
 /* 법정공휴일 */
 var HOLIDAYS={
