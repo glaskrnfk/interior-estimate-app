@@ -1488,7 +1488,7 @@ input[type=number] { user-select:none; }
     </div>
     <div class="mbody" style="max-height:calc(90vh - 160px);overflow-y:auto">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-        <div style="font-size:12px;color:#6b7280">이름·연락처 없이 예상견적만 확인한 사람은 숫자로만 집계됩니다.</div>
+        <div style="font-size:12px;color:#6b7280">이름·연락처 없이 예상견적만 확인한 사람은 숫자로만 집계됩니다. 날짜(▸)를 누르면 시각별 기록이 나오고 개별 삭제할 수 있습니다.</div>
         <select id="funnel-days" onchange="loadFunnelStats(true)" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:12.5px">
           <option value="7">최근 7일</option>
           <option value="30" selected>최근 30일</option>
@@ -1859,6 +1859,73 @@ function _parseArr(v) {
    - 신청률        : 상담신청 ÷ 무료견적 완료
 ════════════════════════════════════════════════════════ */
 var _funnelAgg = null;
+var _funnelRows = [], _consultRows = [], _funnelDays = 30, _funnelCapped = false;
+var _funnelOpen = {};                      /* 펼쳐 둔 날짜 */
+
+function _recomputeFunnel() {
+    _funnelAgg = aggregateFunnel(_funnelRows, _consultRows, _funnelDays, Date.now());
+    _funnelAgg.capped = _funnelCapped;
+}
+/* UTC 시각 → 한국 시각 HH:MM */
+function _kstTime(ts) {
+    return new Date(new Date(ts).getTime() + 9 * 3600 * 1000).toISOString().slice(11, 16);
+}
+function _funnelScopeCount(v) {
+    if (Array.isArray(v)) return v.length;
+    if (v && typeof v === 'object') return Object.keys(v).length;
+    if (typeof v === 'string' && v) { try { var j = JSON.parse(v); return Array.isArray(j) ? j.length : Object.keys(j).length; } catch (e) { return 1; } }
+    return 0;
+}
+/* 개별 기록 한 줄: 시각 · 평형 · 공사유형 · 항목 수 · 삭제 */
+function _funnelEntryHtml(r) {
+    var purpose = Array.isArray(r.purpose) ? r.purpose.join(', ') : (r.purpose || '');
+    var size = String(r.site_size || '').replace(/\s*\(.*\)\s*$/, '');
+    var info = [size, purpose, _funnelScopeCount(r.construction_scope) + '개 항목'].filter(Boolean).join(' · ');
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px dashed #e5e7eb;font-size:12px">' +
+        '<span style="font-weight:800;color:var(--navy);min-width:46px">' + _kstTime(r.created_at) + '</span>' +
+        '<span style="flex:1;color:#555">' + escHtml(info) + '</span>' +
+        '<button type="button" data-id="' + escHtml(String(r.id)) + '" onclick="deleteFunnelEntry(this.getAttribute(\'data-id\'))" ' +
+            'style="border:1px solid #fecaca;background:#fff5f5;color:#dc2626;border-radius:6px;padding:2px 9px;font-size:11.5px;cursor:pointer">&#128465;&#65039; 삭제</button>' +
+        '</div>';
+}
+/* 시간대별 분포 (한국 시각, 무료견적 완료 기준) */
+function _funnelHourHtml() {
+    var h = []; for (var i = 0; i < 24; i++) h.push(0);
+    _funnelRows.forEach(function(r) { if (r && r.created_at) h[parseInt(_kstTime(r.created_at).slice(0, 2), 10)]++; });
+    var max = Math.max.apply(null, h);
+    if (!max) return '';
+    var top = h.indexOf(max);
+    var bars = h.map(function(n, i) {
+        return '<div title="' + i + '시 ' + n + '건" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center">' +
+            '<div style="width:100%;max-width:14px;background:' + (i === top ? '#2563eb' : '#93c5fd') + ';border-radius:2px 2px 0 0;height:' + Math.max(n ? 4 : 0, Math.round(n / max * 44)) + 'px"></div>' +
+            '<div style="font-size:9px;color:#94a3b8;margin-top:2px;height:11px">' + (i % 3 === 0 ? i : '') + '</div></div>';
+    }).join('');
+    return '<div style="margin-top:16px;padding:12px 12px 8px;border:1px solid var(--border);border-radius:8px">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:8px">&#128337; 유입 시간대 <span style="font-weight:400;color:#888">(한국시간 · 무료견적 완료 기준)</span></div>' +
+        '<div style="display:flex;gap:2px;align-items:flex-end;height:60px">' + bars + '</div>' +
+        '<div style="font-size:11.5px;color:#555;margin-top:6px">가장 많은 시간대: <b>' + top + '~' + (top + 1) + '시</b> (' + max + '건)</div></div>';
+}
+function toggleFunnelDay(date) { _funnelOpen[date] = !_funnelOpen[date]; renderFunnelDetail(); }
+
+/* 무료견적 개별 기록 삭제 (테스트 기록 정리용) */
+async function deleteFunnelEntry(id) {
+    if (!id) return;
+    var r = _funnelRows.filter(function(x){ return String(x.id) === String(id); })[0];
+    var when = r ? (_kstDate(r.created_at) + ' ' + _kstTime(r.created_at)) : '';
+    if (!confirm('이 무료견적 기록을 삭제할까요?\n' + when + '\n\n삭제하면 되돌릴 수 없습니다.')) return;
+    try {
+        var res = await fetch(SB_URL + '/rest/v1/survey_responses?id=eq.' + encodeURIComponent(id) + '&type=eq.funnel',
+            { method: 'DELETE', headers: Object.assign({}, sbHeaders(), { 'Prefer': 'return=representation' }) });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        var gone = await res.json();
+        if (!Array.isArray(gone) || !gone.length) throw new Error('삭제된 기록이 없습니다(이미 삭제됐거나 권한 없음)');
+        _funnelRows = _funnelRows.filter(function(x){ return String(x.id) !== String(id); });
+        _recomputeFunnel(); renderFunnelCard(); renderFunnelDetail();
+        showToast('✅ 삭제했습니다.');
+    } catch (e) {
+        showToast('삭제 실패: ' + (e.message || e));
+    }
+}
 
 /* UTC 시각 문자열 → 한국 날짜(YYYY-MM-DD) */
 function _kstDate(ts) {
@@ -1898,17 +1965,18 @@ async function loadFunnelStats(fromDetail) {
     var days = fromDetail && daysEl ? parseInt(daysEl.value, 10) : 30;
     var since = new Date(Date.now() - days * 86400000).toISOString();
     try {
-        var q = function(type) {
-            return fetch(SB_URL + '/rest/v1/survey_responses?select=created_at&type=eq.' + type +
+        var q = function(type, cols) {
+            return fetch(SB_URL + '/rest/v1/survey_responses?select=' + cols + '&type=eq.' + type +
                          '&created_at=gte.' + encodeURIComponent(since) + '&order=created_at.desc&limit=1000',
                          { headers: sbHeaders() }).then(function(r) {
                 if (!r.ok) throw new Error('조회 실패 ' + r.status);
                 return r.json();
             });
         };
-        var res = await Promise.all([q('funnel'), q('public')]);
-        _funnelAgg = aggregateFunnel(res[0], res[1], days, Date.now());
-        _funnelAgg.capped = (res[0].length >= 1000 || res[1].length >= 1000);
+        var res = await Promise.all([q('funnel', 'id,created_at,site_size,purpose,construction_scope'), q('public', 'created_at')]);
+        _funnelRows = res[0]; _consultRows = res[1]; _funnelDays = days;
+        _funnelCapped = (res[0].length >= 1000 || res[1].length >= 1000);
+        _recomputeFunnel();
         renderFunnelCard();
         if (fromDetail || document.getElementById('funnel-detail-modal').classList.contains('open')) renderFunnelDetail();
     } catch (e) {
@@ -1933,12 +2001,19 @@ function renderFunnelDetail() {
     var a = _funnelAgg;
     var rows = a.days.filter(function(d){ return d.done || d.consult; }).map(function(d) {
         var p = d.date.split('-');
-        return '<tr>' +
-            '<td style="padding:8px 10px;border-bottom:1px solid #f0f4f8;font-weight:600">' + p[0].slice(2) + '.' + p[1] + '.' + p[2] + '</td>' +
+        var open = !!_funnelOpen[d.date];
+        var list = _funnelRows.filter(function(r){ return r && r.created_at && _kstDate(r.created_at) === d.date; })
+                              .sort(function(x, y){ return new Date(y.created_at) - new Date(x.created_at); });
+        var main = '<tr' + (d.done ? ' onclick="toggleFunnelDay(\'' + d.date + '\')" style="cursor:pointer"' : '') + '>' +
+            '<td style="padding:8px 10px;border-bottom:1px solid #f0f4f8;font-weight:600">' + (d.done ? (open ? '&#9662; ' : '&#9656; ') : '') + p[0].slice(2) + '.' + p[1] + '.' + p[2] + '</td>' +
             '<td style="padding:8px 10px;border-bottom:1px solid #f0f4f8;text-align:right">' + d.done + '명</td>' +
             '<td style="padding:8px 10px;border-bottom:1px solid #f0f4f8;text-align:right;color:#059669;font-weight:700">' + d.consult + '명</td>' +
             '<td style="padding:8px 10px;border-bottom:1px solid #f0f4f8;text-align:right;color:#7c3aed">' + (d.rate === null ? '–' : d.rate + '%') + '</td>' +
             '</tr>';
+        var sub = (open && list.length)
+            ? '<tr><td colspan="4" style="padding:4px 12px 10px;background:#fafbfc;border-bottom:1px solid #f0f4f8">' + list.map(_funnelEntryHtml).join('') + '</td></tr>'
+            : '';
+        return main + sub;
     }).join('');
     if (!rows) rows = '<tr><td colspan="4" style="padding:28px;text-align:center;color:#bbb;font-size:12.5px">해당 기간에 집계된 유입이 없습니다.</td></tr>';
 
@@ -1954,7 +2029,7 @@ function renderFunnelDetail() {
             '<th style="padding:8px 10px;text-align:right;font-weight:700">무료견적 완료</th>' +
             '<th style="padding:8px 10px;text-align:right;font-weight:700">상담신청</th>' +
             '<th style="padding:8px 10px;text-align:right;font-weight:700">신청률</th>' +
-          '</tr></thead><tbody>' + rows + '</tbody></table>' +
+          '</tr></thead><tbody>' + rows + '</tbody></table>' + _funnelHourHtml() +
         (a.capped ? '<div style="margin-top:10px;font-size:11.5px;color:#dc2626">※ 조회 한도(1,000건)에 도달해 일부만 집계되었을 수 있습니다. 기간을 줄여 확인해 주세요.</div>' : '') +
         '<div style="margin-top:10px;font-size:11px;color:#9ca3af;line-height:1.7">※ 같은 사람이 다시 진단하거나 새로고침하면 중복으로 집계될 수 있어 대략적인 수치로 보시기 바랍니다.</div>';
 }
