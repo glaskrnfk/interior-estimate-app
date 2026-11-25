@@ -453,6 +453,7 @@ input[type=number] { user-select:none; }
     <!-- ★수정 #13/#14: 계약서 탭 추가 -->
     <button class="tab-btn" onclick="switchTab('tab-contract-tmpl',this)">
       <i class="fas fa-file-contract"></i> 계약서 템플릿
+      <span id="tmpl-count" class="cat-count" title="계약서 발행 수량 (최초 저장 기준 · 불러와서 수정·재저장한 건은 제외)">-</span>
     </button>
     <button class="tab-btn" onclick="switchTab('tab-consult',this)">
       <i class="fas fa-book-open"></i> 상담일지
@@ -467,6 +468,7 @@ input[type=number] { user-select:none; }
     </button>
     <button class="tab-btn" onclick="window.open('schedule.html','_blank')" style="background:#1a3e72;color:#fff;border-radius:6px 6px 0 0">
       <i class="fas fa-calendar-alt"></i> 공정표 관리
+      <span id="sched-count" class="cat-count" title="생성된 공정표 수" style="background:rgba(255,255,255,.22);color:#fff">-</span>
     </button>
   </div>
 
@@ -2130,6 +2132,62 @@ window.addEventListener('beforeunload', function(e) {
 });
 
 /* ── 탭 전환 ───────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════
+   탭 숫자 미리 표시 (상담일지 / 영수증 / 계약서 발행 / 공정표)
+   - 탭을 열기 전에도 숫자가 보이도록 서버에서 건수만 가져온다.
+   - 관리자 화면로드, 탭 이동, 창으로 돌아올 때(공정표 새 창 작업 후) 갱신
+════════════════════════════════════════════════════════ */
+var _tabBadgeAt = 0;
+async function _sbCount(path) {
+    var base = SB_URL + '/rest/v1/' + path;
+    var r = await fetch(base, { headers: sbHeaders({ 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var cr = r.headers && r.headers.get ? r.headers.get('content-range') : null;
+    var m = cr && String(cr).match(/\/(\d+)$/);
+    if (m) return parseInt(m[1], 10);
+    /* 응답 헤더를 읽을 수 없는 환경 대비: 목록을 직접 세어 본다(최대 1000건) */
+    var r2 = await fetch(base + (path.indexOf('?') < 0 ? '?' : '&') + 'limit=1000', { headers: sbHeaders() });
+    var rows = await r2.json();
+    return Array.isArray(rows) ? rows.length : null;
+}
+/* 계약서 발행 수량 = 최초 저장 기준.
+   - 불러와서 수정·재저장한 계약서는 같은 행을 갱신하므로 늘지 않는다.
+   - 같은 견적서로 계약서를 다시 새로 만들어 저장한 경우는 1건으로 본다(견적서 기준 중복 제거).
+   - 견적서와 연결하지 않고 저장한 계약서는 각각 1건으로 센다. */
+async function _contractIssuedCount() {
+    var r = await fetch(SB_URL + '/rest/v1/contracts?select=id,estimate_id&limit=1000', { headers: sbHeaders() });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var rows = await r.json();
+    if (!Array.isArray(rows)) return null;
+    var seen = {}, n = 0;
+    rows.forEach(function(c) {
+        if (c && c.estimate_id) { if (!seen[c.estimate_id]) { seen[c.estimate_id] = 1; n++; } }
+        else n++;
+    });
+    return n;
+}
+async function refreshTabBadges(force) {
+    var now = Date.now();
+    if (!force && now - _tabBadgeAt < 8000) return;      /* 너무 자주 조회하지 않음 */
+    _tabBadgeAt = now;
+    var set = function(id, n) {
+        var el = document.getElementById(id);
+        if (el && n !== null && n !== undefined) el.textContent = n;
+    };
+    var jobs = [
+        ['consult-count', function(){ return _sbCount('consultation_logs?select=id'); }],
+        ['receipt-count', function(){ return _sbCount('receipts?select=id'); }],
+        ['sched-count',   function(){ return _sbCount('schedules?select=id'); }],
+        ['tmpl-count',    _contractIssuedCount]
+    ];
+    await Promise.all(jobs.map(function(j) {
+        return j[1]().then(function(n){ set(j[0], n); })
+                             .catch(function(e){ console.warn('탭 숫자 조회 실패(' + j[0] + '):', e.message || e); });
+    }));
+}
+window.addEventListener('focus', function() { try { refreshTabBadges(false); } catch (e) {} });
+
 function switchTab(id, btn) {
     var panels = document.querySelectorAll('.tab-panel');
     var btns   = document.querySelectorAll('.tab-btn');
@@ -2139,6 +2197,7 @@ function switchTab(id, btn) {
     if (panel) panel.classList.add('active');
     if (btn)   btn.classList.add('active');
     populateCatFilters();
+    refreshTabBadges(false);
     if (id === 'tab-company')  loadCompanyForm();
     if (id === 'tab-unit')     { renderUnitList(); populateUnitSelects(); }
     if (id === 'tab-profit')   { switchProfitTab('profit-expense', document.querySelector('.profit-sub-tab')); }
@@ -3468,7 +3527,13 @@ function updateSurveyBadge() {
     var st     = function(r) { return r.adminStatus || r.status || '신규'; };
     var newCnt = recs.filter(function(r){ return st(r)==='신규'; }).length;
     var badge  = document.getElementById('survey-new-count');
-    if (badge) badge.textContent = newCnt > 0 ? newCnt : '0';
+    if (badge) {
+        badge.textContent = newCnt > 0 ? newCnt : '0';
+        /* 확인 전(신규)이 있을 때만 붉은색, 없으면 차분한 회색 */
+        badge.style.background = newCnt > 0 ? '#fee2e2' : '#f1f5f9';
+        badge.style.color      = newCnt > 0 ? '#dc2626' : '#94a3b8';
+        badge.title = newCnt > 0 ? '확인 전 신규 ' + newCnt + '건' : '확인 전 신규 없음';
+    }
     var setEl  = function(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
     setEl('sv-total',      recs.length);
     setEl('sv-new',        recs.filter(function(r){ return st(r)==='신규';    }).length);
@@ -3806,14 +3871,8 @@ async function initPage() {
     var cnt   = loadContractedEstimates().length;
     var badge = document.getElementById('contract-count');
     if (badge) badge.textContent = cnt;
-    /* 영수증 배지 카운트 초기 로드 */
-    fetch(SB_URL + '/rest/v1/receipts?select=id&limit=1&order=created_at.desc', { headers: sbHeaders() })
-        .then(function(r){ return r.json(); })
-        .then(function(rows){
-            /* 전체 카운트를 별도 헤더로 가져오기엔 복잡하므로, 탭 열 때 정확히 로드 */
-            var rcptBadge = document.getElementById('receipt-count');
-            if (rcptBadge && Array.isArray(rows) && rows.length > 0) rcptBadge.textContent = '…';
-        }).catch(function(){});
+    /* 탭 숫자(상담일지·영수증·계약서·공정표) — 탭을 열기 전에도 미리 표시 */
+    refreshTabBadges(true);
     /* ★수정: 설문 데이터를 _surveyRecords에 저장하고 배지·목록 모두 초기화 */
     sbLoadSurveys()
         .then(function(rows) {
