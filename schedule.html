@@ -593,10 +593,44 @@ var SB_URL = 'https://isrimiwqqytzzqjovtot.supabase.co';
 var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzcmltaXdxcXl0enpxam92dG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0Mjg5NDEsImV4cCI6MjA5MjAwNDk0MX0.DescofNz1_U0eCp1CY0Nstxd3OzB_xlRMCv0IBiZAGA';
 var _token = null;
 function sbH(extra){
+  try{ var lt=localStorage.getItem('sb_token'); if(lt) _token=lt; }catch(e){}   /* 다른 화면이 갱신한 최신 토큰 사용 */
   var h={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+(_token||SB_KEY)};
   if(extra) Object.assign(h,extra); return h;
 }
 function initToken(){ var t=localStorage.getItem('sb_token'); if(t) _token=t; }
+
+/* ═══ 로그인 유지: 토큰 만료(약 1시간) 전 자동 갱신 + 401 시 1회 재시도 ═══
+   관리자 화면 안(iframe)에서는 관리자의 갱신 함수를 사용, 단독 접속이면 여기서 직접 갱신 */
+var _schRefreshing=null;
+function _schJwtLeft(tok){ try{ var p=JSON.parse(atob(tok.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))); return p.exp? p.exp-Date.now()/1000 : 0; }catch(e){ return -1; } }
+var _schOrigFetch=window.fetch.bind(window);
+function schRefresh(){
+  try{ if(window.parent!==window && typeof window.parent.sbRefreshSession==='function') return window.parent.sbRefreshSession().then(function(ok){ var t=localStorage.getItem('sb_token'); if(t) _token=t; return ok; }); }catch(e){}
+  if(_schRefreshing) return _schRefreshing;
+  var stored=localStorage.getItem('sb_token');
+  if(stored && stored!==_token && _schJwtLeft(stored)>120){ _token=stored; return Promise.resolve(true); }
+  var rt=localStorage.getItem('sb_refresh'); if(!rt) return Promise.resolve(false);
+  _schRefreshing=_schOrigFetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},body:JSON.stringify({refresh_token:rt})})
+    .then(function(r){return r.json();})
+    .then(function(d){ if(d&&d.access_token){ _token=d.access_token; localStorage.setItem('sb_token',d.access_token); if(d.refresh_token) localStorage.setItem('sb_refresh',d.refresh_token); return true; } return false; })
+    .catch(function(){return false;})
+    .then(function(v){ _schRefreshing=null; return v; });
+  return _schRefreshing;
+}
+function schEnsureFresh(){ if(!_token) return Promise.resolve(false); if(_schJwtLeft(_token)>300) return Promise.resolve(true); return schRefresh(); }
+window.fetch=function(u,o){
+  var url=String((u&&u.url)||u), hdr=o&&o.headers;
+  var usesUser= url.indexOf(SB_URL+'/rest/')===0 && hdr && typeof hdr==='object' && !(hdr instanceof Headers) && hdr.Authorization && hdr.Authorization!=='Bearer '+SB_KEY && _token;
+  if(!usesUser) return _schOrigFetch(u,o);
+  function withTok(){ return Object.assign({},o,{headers:Object.assign({},hdr,{Authorization:'Bearer '+_token})}); }
+  return schEnsureFresh().then(function(){
+    return _schOrigFetch(u,withTok()).then(function(res){
+      if(res.status!==401) return res;
+      return schRefresh().then(function(ok){ return ok? _schOrigFetch(u,withTok()) : res; });
+    });
+  });
+};
+setInterval(function(){ schEnsureFresh(); },60000);
 
 /* ═══════════════════════════════════════════
    상태 변수

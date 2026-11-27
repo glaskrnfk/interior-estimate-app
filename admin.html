@@ -1721,6 +1721,57 @@ var SB_KEY      = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIs
 var _sbToken    = null;   // 로그인 후 access_token
 var _sbUserId   = null;
 
+/* ═══ 로그인 유지 (토큰 자동 갱신) ═══
+   Supabase 로그인 토큰은 약 1시간 뒤 만료된다 → 만료 5분 전부터 refresh_token 으로 자동 갱신.
+   요청이 401(JWT expired)로 실패해도 한 번 갱신 후 자동 재시도. (공정표 iframe/다른 탭과 공유: localStorage) */
+var _sbRefreshing = null;
+function _sbJwtLeft(tok) {
+    try { var p = JSON.parse(atob(tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); return p.exp ? p.exp - Date.now() / 1000 : 0; }
+    catch (e) { return -1; }
+}
+function sbSaveSession(d) {
+    _sbToken = d.access_token;
+    if (d.user && d.user.id) _sbUserId = d.user.id;
+    try { localStorage.setItem('sb_token', d.access_token); if (d.refresh_token) localStorage.setItem('sb_refresh', d.refresh_token); } catch (e) {}
+}
+function sbRefreshSession() {
+    if (_sbRefreshing) return _sbRefreshing;
+    /* 다른 탭/공정표 화면이 이미 갱신했으면 그 토큰을 그대로 사용(리프레시 토큰 중복 사용 방지) */
+    var stored = null; try { stored = localStorage.getItem('sb_token'); } catch (e) {}
+    if (stored && stored !== _sbToken && _sbJwtLeft(stored) > 120) { _sbToken = stored; return Promise.resolve(true); }
+    var rt = null; try { rt = localStorage.getItem('sb_refresh'); } catch (e) {}
+    if (!rt) return Promise.resolve(false);
+    _sbRefreshing = _sbOrigFetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY }, body: JSON.stringify({ refresh_token: rt })
+    }).then(function(r) { return r.json(); })
+      .then(function(d) { if (d && d.access_token) { sbSaveSession(d); return true; } return false; })
+      .catch(function() { return false; })
+      .then(function(v) { _sbRefreshing = null; return v; });
+    return _sbRefreshing;
+}
+function sbEnsureFreshToken() {
+    if (!_sbToken) return Promise.resolve(false);
+    if (_sbJwtLeft(_sbToken) > 300) return Promise.resolve(true);
+    return sbRefreshSession();
+}
+var _sbOrigFetch = window.fetch.bind(window);
+window.fetch = function(u, o) {
+    var url = String((u && u.url) || u);
+    var hdr = o && o.headers;
+    var usesUser = url.indexOf(SB_URL + '/rest/') === 0 && hdr && typeof hdr === 'object' && !(hdr instanceof Headers) &&
+                   hdr.Authorization && hdr.Authorization !== 'Bearer ' + SB_KEY && _sbToken;
+    if (!usesUser) return _sbOrigFetch(u, o);
+    function withToken() { var h = Object.assign({}, hdr, { Authorization: 'Bearer ' + _sbToken }); return Object.assign({}, o, { headers: h }); }
+    return sbEnsureFreshToken().then(function() {
+        return _sbOrigFetch(u, withToken()).then(function(res) {
+            if (res.status !== 401) return res;
+            return sbRefreshSession().then(function(ok) { return ok ? _sbOrigFetch(u, withToken()) : res; });
+        });
+    });
+};
+setInterval(function() { sbEnsureFreshToken(); }, 60000);
+document.addEventListener('visibilitychange', function() { if (!document.hidden) sbEnsureFreshToken(); });
+
 /* 공통 Supabase fetch 헤더 */
 function sbHeaders(extra) {
     var h = {
@@ -1750,9 +1801,7 @@ function sbLogin() {
     .then(async function(d) {
         btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right:8px"></i>로그인';
         if (d.access_token) {
-            _sbToken  = d.access_token;
-            _sbUserId = d.user && d.user.id;
-            localStorage.setItem('sb_token', _sbToken);
+            sbSaveSession(d);
             document.getElementById('sb-login-overlay').style.display = 'none';
             addLogoutBtn();
             await initPage();
@@ -1772,6 +1821,7 @@ function sbLogin() {
 function sbLogout() {
     _sbToken = null; _sbUserId = null;
     localStorage.removeItem('sb_token');
+    localStorage.removeItem('sb_refresh');
     document.getElementById('sb-login-overlay').style.display = 'flex';
     document.getElementById('sb-email').value    = '';
     document.getElementById('sb-password').value = '';
@@ -4048,6 +4098,10 @@ async function startApp() {
     /* 저장된 토큰 있음 → Supabase 서버에 실제 유효성 검증 */
     overlay.style.display = 'flex'; /* 검증 중에는 로그인 화면 유지 */
     sbCheckSession(savedToken).then(async function(valid) {
+        if (!valid && localStorage.getItem('sb_refresh')) {
+            /* 만료된 토큰이면 저장된 refresh_token 으로 조용히 재로그인 */
+            if (await sbRefreshSession()) valid = await sbCheckSession(localStorage.getItem('sb_token'));
+        }
         if (valid) {
             overlay.style.display = 'none';
             addLogoutBtn();
@@ -4055,6 +4109,7 @@ async function startApp() {
         } else {
             /* 만료/무효 토큰 → 삭제 후 로그인 화면 */
             localStorage.removeItem('sb_token');
+            localStorage.removeItem('sb_refresh');
             overlay.style.display = 'flex';
         }
     });
