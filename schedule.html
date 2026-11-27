@@ -1378,16 +1378,24 @@ async function saveSchedule(){
        다음에 "공정표" 버튼을 누르면 이 공정표로 바로 연결되도록 한다. */
     if(_linkedEstId && _currentId){
       try{
+        /* 서버(estimates)의 최신 견적을 받아 scheduleId 기록 → 다른 PC·모바일에서도 연결 유지 */
+        var gr=await fetch(SB_URL+'/rest/v1/estimates?id=eq.'+encodeURIComponent(_linkedEstId)+'&select=*&limit=1',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+        if(!gr.ok) throw new Error('견적 조회 HTTP '+gr.status);
+        var grows=await gr.json();
+        if(!grows[0]) throw new Error('연결할 견적을 서버에서 찾지 못했습니다.');
+        var erow=grows[0];
+        erow.data=erow.data||{};
+        erow.data.fields=erow.data.fields||{};
+        erow.data.fields.scheduleId=_currentId;
+        var pr=await fetch(SB_URL+'/rest/v1/estimates',{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(erow)});
+        if(!pr.ok) throw new Error('견적 저장 HTTP '+pr.status);
+        /* 이 기기의 사본도 맞춰둠 */
         var ests=JSON.parse(localStorage.getItem('iq_estimates')||'[]');
         for(var ei=0; ei<ests.length; ei++){
-          if(ests[ei].id===_linkedEstId){
-            if(!ests[ei].fields) ests[ei].fields={};
-            ests[ei].fields.scheduleId=_currentId;
-            break;
-          }
+          if(ests[ei].id===_linkedEstId){ if(!ests[ei].fields) ests[ei].fields={}; ests[ei].fields.scheduleId=_currentId; break; }
         }
         localStorage.setItem('iq_estimates', JSON.stringify(ests));
-      }catch(le){ console.error('[공정표-계약 연동 저장 실패]', le); }
+      }catch(le){ console.error('[공정표-계약 연동 저장 실패]', le); showToast('⚠️ 공정표는 저장됐지만 계약(견적)과의 연결 저장에 실패했습니다: '+le.message); }
     }
     showToast('✅ 공정표가 저장되었습니다.');
     document.getElementById('edit-title').textContent=site;

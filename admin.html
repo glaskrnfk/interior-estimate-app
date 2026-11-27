@@ -2191,7 +2191,7 @@ async function refreshTabBadges(force) {
                              .catch(function(e){ console.warn('탭 숫자 조회 실패(' + j[0] + '):', e.message || e); });
     }));
 }
-window.addEventListener('focus', function() { try { refreshTabBadges(false); } catch (e) {} });
+window.addEventListener('focus', function() { try { refreshTabBadges(false); syncEstimatesAndRefresh(false); } catch (e) {} });
 
 /* 공정표 관리 — 새 창 대신 관리자 화면 안(iframe)에서 연다 */
 function openScheduleTab(url, btn) {
@@ -2227,6 +2227,7 @@ function switchTab(id, btn) {
     if (id === 'tab-profit')   { switchProfitTab('profit-expense', document.querySelector('.profit-sub-tab')); }
     if (id === 'tab-contract') renderContractDashboard();
     if (id === 'tab-survey')   loadSurveyResponses();
+    if (id === 'tab-contract' || id === 'tab-profit' || id === 'tab-contract-tmpl') syncEstimatesAndRefresh(false);
 }
 
 /* ── 공종 셀렉트 옵션 동적 생성 ─────────────── */
@@ -2883,6 +2884,12 @@ var _stampEnabled = false;  /* 현재 도장 표시 여부 */
 var _stampDataUrl = null;   /* base64 도장 이미지 */
 
 function loadStampImage() {
+    /* 서버(company_settings)에 저장된 도장이 원본 — 서버 값을 읽어온 상태면 그것을 우선(다른 PC에서 지운/바꾼 것도 반영) */
+    var _st = (typeof _cache !== 'undefined' && _cache.settings) ? _cache.settings : null;
+    if (_st && _st.id) {
+        if (_st.stamp_base64) { localStorage.setItem('iq_stamp_image', _st.stamp_base64); localStorage.setItem('iq_stamp', _st.stamp_base64); }
+        else { localStorage.removeItem('iq_stamp_image'); localStorage.removeItem('iq_stamp'); }
+    }
     _stampDataUrl = localStorage.getItem('iq_stamp_image') || localStorage.getItem('iq_stamp') || null;
     if (_stampDataUrl) { localStorage.setItem('iq_stamp_image', _stampDataUrl); localStorage.setItem('iq_stamp', _stampDataUrl); }
     var img  = document.getElementById('stamp-preview-img');
@@ -2909,7 +2916,10 @@ function uploadStampImage(input) {
         localStorage.setItem('iq_stamp_image', _stampDataUrl);
         localStorage.setItem('iq_stamp', _stampDataUrl); /* receipt.js에서 iq_stamp 키를 사용하므로 동기화 */
         loadStampImage();
-        showToast('✅ 도장 이미지가 저장되었습니다.');
+        /* 서버에도 저장 → 다른 PC·모바일에서도 같은 도장 */
+        patchSettings({ stamp_base64: _stampDataUrl })
+            .then(function() { showToast('✅ 도장 이미지가 저장되었습니다. (모든 기기에 적용)'); })
+            .catch(function(err) { showToast('⚠️ 이 기기에만 저장됨 — 서버 저장 실패: ' + (err.message || err)); });
         /* 도장 체크박스 자동 on */
         var toggle = document.getElementById('stamp-toggle');
         if (toggle && !toggle.checked) { toggle.checked = true; toggleStamp(true); }
@@ -2926,7 +2936,9 @@ function clearStampImage() {
     localStorage.removeItem('iq_stamp'); /* receipt.js 동기화 */
     loadStampImage();
     renderContractTmpl();
-    showToast('도장 이미지가 삭제되었습니다.');
+    patchSettings({ stamp_base64: '' })
+        .then(function() { showToast('도장 이미지가 삭제되었습니다. (모든 기기에 적용)'); })
+        .catch(function(err) { showToast('⚠️ 이 기기에서만 삭제됨 — 서버 반영 실패: ' + (err.message || err)); });
 }
 
 function toggleStamp(on) {
@@ -3155,6 +3167,107 @@ function won(n) {
     return '₩ ' + v.toLocaleString();
 }
 function wonFull(n) { return '₩ ' + (Number(n)||0).toLocaleString() + '원'; }
+
+/* ═══════════════════════════════════════════════════════
+   견적 서버 동기화 (어느 PC·모바일에서 열어도 같은 데이터)
+   - 서버(Supabase estimates)가 원본, localStorage 'iq_estimates'는 화면용 사본
+   - 관리자 열 때 / 탭 이동 / 창 복귀 시 서버에서 다시 받아 사본 갱신
+   - 관리자에서 견적을 고치면(메모·공정표 연결·공정명 변경) 서버에 먼저 저장
+═══════════════════════════════════════════════════════ */
+var _estSyncAt = 0, _estSyncing = null, _estLastSig = '';
+
+function _estRowToRec(row) {
+    var d = row.data || {};
+    return {
+        id: row.id, title: row.title || '', clientName: row.client_name || '', siteName: row.site_name || '',
+        savedAt: row.saved_at || 0, contracted: !!row.contracted, contractedAt: row.contracted_at || null,
+        costSnapshot: row.cost_snapshot || null,
+        fields: d.fields || {}, selectedMats: d.selectedMats || {}, selectedLabs: d.selectedLabs || {},
+        detailRows: d.detailRows || [], estRates: d.estRates || {}, vatMode: d.vatMode || 'include', step: d.step || 1
+    };
+}
+function _estRecToRow(r) {
+    return {
+        id: r.id, title: r.title || '', client_name: r.clientName || '', site_name: r.siteName || '',
+        saved_at: r.savedAt || Date.now(), contracted: !!r.contracted, contracted_at: r.contractedAt || null,
+        cost_snapshot: r.costSnapshot || null,
+        data: {
+            fields: r.fields || {}, selectedMats: r.selectedMats || {}, selectedLabs: r.selectedLabs || {},
+            detailRows: r.detailRows || [], estRates: r.estRates || {}, vatMode: r.vatMode || 'include', step: r.step || 1
+        }
+    };
+}
+function _estLocalList() { try { return JSON.parse(localStorage.getItem('iq_estimates') || '[]'); } catch (e) { return []; } }
+function _estLocalPut(rec) {
+    var list = _estLocalList(), hit = false;
+    for (var i = 0; i < list.length; i++) if (list[i].id === rec.id) { list[i] = rec; hit = true; break; }
+    if (!hit) list.unshift(rec);
+    try { localStorage.setItem('iq_estimates', JSON.stringify(list)); } catch (e) {}
+}
+
+/* 서버 → 사본. 성공하면 true, 사본 내용이 바뀌었으면 changed=true 로 콜백 */
+function syncEstimatesFromCloud(force) {
+    var now = Date.now();
+    if (_estSyncing) return _estSyncing;
+    if (!force && now - _estSyncAt < 8000) return Promise.resolve({ ok: true, changed: false });
+    _estSyncing = fetch(SUPABASE_URL + '/rest/v1/estimates?select=*&order=saved_at.desc&limit=1000', { headers: SB_HEADERS })
+        .then(function(res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+        .then(function(rows) {
+            var list = rows.map(_estRowToRec);
+            var sig = list.length + ':' + list.map(function(r) { return r.id + '|' + r.savedAt + '|' + (r.contracted ? 1 : 0) + '|' + (r.contractedAt || '') + '|' + ((r.costSnapshot && r.costSnapshot.fin) || '') + '|' + ((r.fields && (r.fields.scheduleId || '') + (r.fields.adminMemo || '')) || ''); }).join(',');
+            var changed = sig !== _estLastSig;
+            _estLastSig = sig;
+            try { localStorage.setItem('iq_estimates', JSON.stringify(list)); } catch (e) {}
+            _estSyncAt = Date.now();
+            return { ok: true, changed: changed };
+        })
+        .catch(function(e) {
+            console.warn('[견적 동기화 실패] 이 기기의 사본으로 표시합니다:', e.message || e);
+            return { ok: false, changed: false };
+        })
+        .then(function(r) { _estSyncing = null; return r; });
+    return _estSyncing;
+}
+
+/* 사본이 바뀌었을 때 현재 열린 화면 다시 그리기 */
+function _rerenderEstimateViews() {
+    try {
+        var badge = document.getElementById('contract-count');
+        if (badge) badge.textContent = loadContractedEstimates().length;
+        var act = document.querySelector('.tab-panel.active');
+        var id = act ? act.id : '';
+        if (id === 'tab-contract') renderContractDashboard();
+        else if (id === 'tab-contract-tmpl') populateContractEstSelect();
+        else if (id === 'tab-profit') {
+            var sub = document.querySelector('.profit-sub-tab.active');
+            var pane = document.querySelector('.profit-pane:not([style*="display: none"]):not([style*="display:none"])');
+            if (sub && pane && pane.id) switchProfitTab(pane.id, sub);
+        }
+        refreshTabBadges(true);
+    } catch (e) { console.warn('[재표시 실패]', e); }
+}
+function syncEstimatesAndRefresh(force) {
+    return syncEstimatesFromCloud(force).then(function(r) { if (r.ok && r.changed) _rerenderEstimateViews(); return r; });
+}
+
+/* 서버의 최신 견적 1건을 받아 → 수정 → 서버 저장 → 사본 갱신. 실패하면 예외(저장 안 된 것을 알 수 있게) */
+async function updateEstimateInCloud(id, mutate) {
+    var res = await fetch(SUPABASE_URL + '/rest/v1/estimates?id=eq.' + encodeURIComponent(id) + '&select=*&limit=1', { headers: SB_HEADERS });
+    if (!res.ok) throw new Error('서버 조회 실패 (' + res.status + ')');
+    var rows = await res.json();
+    var rec;
+    if (rows[0]) rec = _estRowToRec(rows[0]);
+    else { rec = _estLocalList().filter(function(r) { return r.id === id; })[0]; if (!rec) throw new Error('견적을 찾을 수 없습니다.'); }
+    mutate(rec);
+    var up = await fetch(SUPABASE_URL + '/rest/v1/estimates', {
+        method: 'POST',
+        headers: Object.assign({}, SB_HEADERS, { 'Prefer': 'resolution=merge-duplicates,return=minimal' }),
+        body: JSON.stringify(_estRecToRow(rec))
+    });
+    if (!up.ok) throw new Error('서버 저장 실패 (' + up.status + ')');
+    _estLocalPut(rec);
+    return rec;
+}
 
 function loadContractedEstimates() {
     try {
@@ -3851,17 +3964,12 @@ async function relinkScheduleToContract(contractId) {
     }
 }
 
-function confirmRelinkSchedule(contractId, scheduleId) {
+async function confirmRelinkSchedule(contractId, scheduleId) {
     try {
-        var ests = JSON.parse(localStorage.getItem('iq_estimates') || '[]');
-        for (var i = 0; i < ests.length; i++) {
-            if (ests[i].id === contractId) {
-                if (!ests[i].fields) ests[i].fields = {};
-                ests[i].fields.scheduleId = scheduleId;
-                break;
-            }
-        }
-        localStorage.setItem('iq_estimates', JSON.stringify(ests));
+        await updateEstimateInCloud(contractId, function(rec) {
+            if (!rec.fields) rec.fields = {};
+            rec.fields.scheduleId = scheduleId;
+        });
         /* 현재 계약서 템플릿에서 이 계약과 연결 중이면 메모리 변수도 즉시 업데이트 */
         if (_currentLinkedEstId === contractId || !_currentLinkedEstId) {
             _currentLinkedScheduleId = scheduleId;
@@ -3883,6 +3991,7 @@ function openScheduleFromSurvey(clientName, siteAddress) {
 /* ── 초기 렌더 ──────────────────────────────── */
 async function initPage() {
     await initMasterData();
+    await syncEstimatesFromCloud(true);   /* 견적 목록을 서버에서 먼저 받아온 뒤 화면 구성 */
     populateCatFilters();
     populateUnitSelects();
     renderProcTable();
@@ -4037,18 +4146,23 @@ if (document.readyState === 'loading') {
    #8: localStorage 견적서 카테고리명 동기화 함수
 ════════════════════════════════════════════════════════ */
 
-function syncEstimatesProcName(oldName, newName) {
+async function syncEstimatesProcName(oldName, newName) {
     try {
-        var ests = JSON.parse(localStorage.getItem('iq_estimates') || '[]');
-        var changed = false;
+        await syncEstimatesFromCloud(true);   /* 서버 최신본 기준으로 바꾼다 */
+        var ests = _estLocalList();
         for (var i = 0; i < ests.length; i++) {
             var rows = ests[i].detailRows || [];
+            var hit = false;
             for (var j = 0; j < rows.length; j++) {
-                if (rows[j].category === oldName) { rows[j].category = newName; changed = true; }
+                if (rows[j].category === oldName) { rows[j].category = newName; hit = true; }
+            }
+            if (hit) {
+                await updateEstimateInCloud(ests[i].id, function(rec) {
+                    (rec.detailRows || []).forEach(function(r) { if (r.category === oldName) r.category = newName; });
+                });
             }
         }
-        if (changed) localStorage.setItem('iq_estimates', JSON.stringify(ests));
-    } catch(e) {}
+    } catch(e) { console.error('[공정명 변경 → 견적 서버 반영 실패]', e); showToast('⚠️ 일부 견적에 공정명 변경을 서버 저장하지 못했습니다: ' + (e.message || e)); }
 }
 
 /* ════════════════════════════════════════════════════════
@@ -4085,20 +4199,15 @@ function syncEstimatesProcName(oldName, newName) {
     };
 })();
 
-function saveContractMemo(id) {
+async function saveContractMemo(id) {
     var ta = document.getElementById('cp-admin-memo');
     if (!ta) return;
     var memo = ta.value;
     try {
-        var ests = JSON.parse(localStorage.getItem('iq_estimates') || '[]');
-        for (var i = 0; i < ests.length; i++) {
-            if (ests[i].id === id) {
-                if (!ests[i].fields) ests[i].fields = {};
-                ests[i].fields.adminMemo = memo;
-                break;
-            }
-        }
-        localStorage.setItem('iq_estimates', JSON.stringify(ests));
+        await updateEstimateInCloud(id, function(rec) {
+            if (!rec.fields) rec.fields = {};
+            rec.fields.adminMemo = memo;
+        });
         showToast('✅ 메모가 저장되었습니다.');
     } catch(e) { showToast('저장 실패: ' + e.message); }
 }
@@ -6611,7 +6720,8 @@ function clDelete() {
 }
 
 /* ── 견적서 연동 (계약완료 견적서 선택) ── */
-function clLoadEstimate() {
+async function clLoadEstimate() {
+    await syncEstimatesFromCloud(false);
     /* Supabase: 고객 정보 전체 필드 포함하여 가져오기 */
     /* localStorage 에서 직접 읽기 (estimates는 localStorage 기반) */
     /* Supabase estimates 테이블 컬럼: camelCase localStorage 키 사용 */
